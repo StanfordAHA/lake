@@ -1,6 +1,7 @@
 from lake.attributes.hybrid_port_attr import HybridPortAddr
 from lake.modules.chain_accessor import ChainAccessor
 from lake.modules.reg_fifo import RegFIFO
+from lake.modules.reg_fifo_cfg import RegFIFO_cfg
 from lake.top.cgra_tile_builder import CGRATileBuilder
 from lake.modules.storage_config_seq import StorageConfigSeq
 from kratos.stmts import IfStmt
@@ -13,6 +14,7 @@ from lake.attributes.formal_attr import *
 import kratos as kts
 from lake.passes.passes import lift_config_reg
 from lake.attributes.dedicated_port import DedicatedPortAttribute
+import os
 
 
 class MemoryTileFinalizedException(Exception):
@@ -34,6 +36,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                  io_prefix=None):
 
         super().__init__(name, debug)
+
+        self.is_PE = 'PE' in name
+        self.is_MEM = 'MemCore' in name
+        self.is_Pond = 'Pond' in name
 
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
@@ -130,7 +136,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     def set_banks(self, banks):
         self.memory_banks = banks
 
-    def set_memory_interface(self, name_prefix, mem_params, ports, sim_macro_n, tech_map):
+    def set_memory_interface(self, name_prefix, mem_params, ports, sim_macro_n, tech_map, allow_flush=False):
 
         if not sim_macro_n:
             self.tech_map = tech_map
@@ -139,12 +145,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                                 mem_params=mem_params,
                                                 ports=ports,
                                                 sim_macro_n=sim_macro_n,
-                                                tech_map=tech_map)
+                                                tech_map=tech_map,
+                                                allow_flush=allow_flush)
         self.memories = [MemoryInterface(name=f"{name_prefix}_{i}",
                                          mem_params=mem_params,
                                          ports=ports,
                                          sim_macro_n=sim_macro_n,
-                                         tech_map=tech_map) for i in range(self.memory_banks)]
+                                         tech_map=tech_map,
+                                         allow_flush=allow_flush) for i in range(self.memory_banks)]
         # Clear and reallocate the new memory port mappings
         self.allocate_mem_conn()
 
@@ -159,13 +167,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         bulk_ctrl = 0
         exclusive_ctrl = 0
         for ctrl in self.controllers:
-            print(ctrl)
             if ctrl.get_exclusive():
-                print("FOUND EXCLUSIVE")
                 self.ctrl_to_mode[ctrl.name] = (exclusive_ctrl, "excl")
                 exclusive_ctrl += 1
             else:
-                print("FOUND BULK")
                 self.ctrl_to_mode[ctrl.name] = (bulk_ctrl, "bulk")
                 bulk_ctrl += 1
         # self.num_modes = len(self.controllers)
@@ -259,12 +264,21 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             ctrl_outs = mem_ctrl.get_outputs()
             # Do a pass to block the ready/valids associated with a port
             # All ready/valid ports will be width 1 - there's probably a better way to do this
-            wider_than_1_in = [(inp, width) for (inp, width) in ctrl_ins if width > 1]
-            wider_than_1_out = [(inp, width) for (inp, width) in ctrl_outs if width > 1]
+            actual_data_signals_in = []
+            actual_data_signals_out = []
+
+            # Reduce_pe_cluster handled differenlty here. Connect its 1b signals to RV interconnect.
+            if mem_ctrl.name == "reduce_pe_cluster_flat":
+                actual_data_signals_in = [(inp, width) for (inp, width) in ctrl_ins if not ("ready" in inp.name or "valid" in inp.name)]
+                actual_data_signals_out = [(inp, width) for (inp, width) in ctrl_outs if not ("ready" in inp.name or "valid" in inp.name)]
+            else:
+                actual_data_signals_in = [(inp, width) for (inp, width) in ctrl_ins if width > 1]
+                actual_data_signals_out = [(inp, width) for (inp, width) in ctrl_outs if width > 1]
+
             width_1_in = [inp.name for (inp, width) in ctrl_ins if width == 1]
             width_1_out = [outp.name for (outp, width) in ctrl_outs if width == 1]
             # Handle main data inputs and get rid of the valid in
-            for (inp, width) in wider_than_1_in:
+            for (inp, width) in actual_data_signals_in:
                 full_name = inp.name
                 stripped_name = full_name.rstrip("_f_")
                 has_rv = f"{stripped_name}_ready_f_" in width_1_out and f"{stripped_name}_valid_f_" in width_1_in
@@ -278,7 +292,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 else:
                     self.dense.append((mem_ctrl.name, inp, False))
             # Handle data outputs to get rid of the input readys...wasteful work
-            for (outp, width) in wider_than_1_out:
+            for (outp, width) in actual_data_signals_out:
                 full_name = outp.name
                 stripped_name = full_name.rstrip("_f_")
                 has_rv = f"{stripped_name}_ready_f_" in width_1_in and f"{stripped_name}_valid_f_" in width_1_out
@@ -302,9 +316,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             stop_ded = self.size_to_port(ded)
             self.add_io_dict(to_add=stop_ded, merged_dict=self.inputs_dict, mem_ctrl=mem_ctrl)
 
-            print("INPUTS DICT")
-            print(self.inputs_dict)
-
     def resolve_outputs(self):
         '''
         This function finds the connections between each controller
@@ -318,11 +329,20 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             ctrl_ins = mem_ctrl.get_inputs()
             # Do a pass to block the ready/valids associated with a port
             # All ready/valid ports will be width 1 - there's probably a better way to do this
-            wider_than_1_in = [(outp, width) for (outp, width) in ctrl_ins if width > 1]
-            wider_than_1_out = [(outp, width) for (outp, width) in ctrl_outs if width > 1]
+            actual_data_signals_in = []
+            actual_data_signals_out = []
+
+            #  Reduce_pe_cluster handled differenlty here. Connect its 1b signals to RV interconnect.
+            if mem_ctrl.name == "reduce_pe_cluster_flat":
+                actual_data_signals_in = [(outp, width) for (outp, width) in ctrl_ins if not ("ready" in outp.name or "valid" in outp.name)]
+                actual_data_signals_out = [(outp, width) for (outp, width) in ctrl_outs if not ("ready" in outp.name or "valid" in outp.name)]
+            else:
+                actual_data_signals_in = [(outp, width) for (outp, width) in ctrl_ins if width > 1]
+                actual_data_signals_out = [(outp, width) for (outp, width) in ctrl_outs if width > 1]
+
             width_1_in = [inp.name for (inp, width) in ctrl_ins if width == 1]
             width_1_out = [outp.name for (outp, width) in ctrl_outs if width == 1]
-            for (outp, width) in wider_than_1_out:
+            for (outp, width) in actual_data_signals_out:
                 full_name = outp.name
                 stripped_name = full_name.rstrip("_f_")
                 has_rv = f"{stripped_name}_ready_f_" in width_1_in and f"{stripped_name}_valid_f_" in width_1_out
@@ -336,7 +356,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 else:
                     self.dense.append((mem_ctrl.name, outp, False))
             # Handle data inputs to get rid of the output readys...wasteful work
-            for (inp, width) in wider_than_1_in:
+            for (inp, width) in actual_data_signals_in:
                 full_name = inp.name
                 stripped_name = full_name.rstrip("_f_")
                 has_rv = f"{stripped_name}_ready_f_" in width_1_out and f"{stripped_name}_valid_f_" in width_1_in
@@ -781,8 +801,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if input_width != 1:
                     new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
                 else:
-                    new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width)
-                isctrl = input_width == 1
+                    new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width, packed=True)
+
+                isctrl = input_width == 1 and not (self.io_prefix == "PE_") # HACK: don't do this for PEs. Their 1b (bit0, bit1, bit2) inputs are never ctrl signals.
                 new_input.add_attribute(ControlSignalAttr(isctrl))
                 # Now to determine if the port is rv/dense
                 # If any signal in this dict is rv, we are going to make it an rv
@@ -805,9 +826,17 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     new_input_ready.add_attribute(ControlSignalAttr(False))
 
                     # Add in the fifo if there are any fifos on this path
-                    new_reg_fifo = RegFIFO(data_width=input_width,
-                                           width_mult=1, depth=self.fifo_depth,
-                                           defer_hrdwr_gen=False)
+                    if self.is_PE:
+                        # Create config for bogus init
+                        input_fifo_bogus_init_num = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}_fifo_bogus_init_num', width=2)
+                        input_fifo_bogus_init_num.add_attribute(ConfigRegAttr("Choose bogus init num for input fifo"))
+                        new_reg_fifo = RegFIFO_cfg(data_width=input_width,
+                                            width_mult=1, depth=self.fifo_depth,
+                                            defer_hrdwr_gen=False)
+                    else:
+                        new_reg_fifo = RegFIFO(data_width=input_width,
+                                            width_mult=1, depth=self.fifo_depth,
+                                            defer_hrdwr_gen=False)
 
                     self.add_child(f"input_width_{input_width}_num_{i}_input_fifo",
                                    new_reg_fifo,
@@ -818,13 +847,15 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                    data_in=new_input)
 
                     # self.wire(new_input_ready, ~new_reg_fifo.ports.full)
+                    if self.is_Pond:
+                        self.wire(new_input_ready, kts.const(1, 1))
 
                     # Alias the new input across the fifo boundary
                     if input_width != 1:
                         new_input_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out',
                                                   width=input_width, explicit_array=True, packed=True)
                     else:
-                        new_input_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width)
+                        new_input_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width, packed=True)
 
                     new_input_valid_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out_valid', width=1)
                     new_input_ready_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out_ready', width=1)
@@ -832,6 +863,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     self.wire(new_input_fifo, new_reg_fifo.ports.data_out)
                     self.wire(new_input_valid_fifo, ~new_reg_fifo.ports.empty)
                     self.wire(new_reg_fifo.ports.pop, new_input_ready_fifo)
+                    if self.is_PE:
+                        self.wire(input_fifo_bogus_init_num, new_reg_fifo.ports.bogus_init_num)
 
                     mux_size = len(rvs)
                     mux_comb = self.combinational()
@@ -845,26 +878,27 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     for (ctrl_name, port, (mode_num, b_ex), hybrid) in rvs:
 
                         if hybrid is True and hybrid_bypass is None:
-                            hybrid_bypass = self.input(f"{self.io_prefix}input_width_{input_width}_num_{i}_dense", 1)
-                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}input_width_{input_width}_num_{i}_dense to bypass input fifo"))
+                            hybrid_bypass = self.input(f"{self.io_prefix}input_width_{input_width}_num_{i}_bypass_rv", 1)
+                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}input_width_{input_width}_num_{i}_bypass_rv to bypass input fifo and operate in static mode"))
+
+                            fine_grain_fifo_bypass = self.input(f"{self.io_prefix}input_width_{input_width}_num_{i}_fine_grain_fifo_bypass", 1)
+                            fine_grain_fifo_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}input_width_{input_width}_num_{i}_fine_grain_fifo_bypass to bypass PE input fifo. Still operating in RV mode. Data still goes through primitive FIFO."))
 
                         port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
                         port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
 
                         if hybrid:
                             # In the hybrid case, we need to mux between the original input data/valid and the fifo's offering
-                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port], kts.ternary(hybrid_bypass,
+                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port], kts.ternary(hybrid_bypass | fine_grain_fifo_bypass,
                                                                                                      new_input,
                                                                                                      new_input_fifo))
-                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port_valid_name], kts.ternary(hybrid_bypass,
-                                                                                                                # new_input_valid,
-                                                                                                                kts.const(1, 1),
-                                                                                                                new_input_valid_fifo))
+                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port_valid_name], kts.ternary(hybrid_bypass, kts.const(1, 1),
+                                                                                                                kts.ternary(fine_grain_fifo_bypass, new_input_valid, new_input_valid_fifo)))
+
                             # The ready out for this selection should also be ternary
-                            tmp_ready_choose = (kts.ternary(hybrid_bypass,
-                                                        #    self.controllers_flat_dict[ctrl_name].ports[port_ready_name],
-                                                           kts.const(1, 1),
-                                                           ~new_reg_fifo.ports.full), mode_num)
+                            tmp_ready_choose = (kts.ternary(hybrid_bypass, kts.const(1, 1),
+                                                          kts.ternary(fine_grain_fifo_bypass, self.controllers_flat_dict[ctrl_name].ports[port_ready_name], ~new_reg_fifo.ports.full)), mode_num)
+
                         else:
                             # Otherwise, we can simply directly wire them
                             self.wire(new_input_fifo, self.controllers_flat_dict[ctrl_name].ports[port])
@@ -910,8 +944,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     for (ctrl_name, port) in signal_dict.items():
                         self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
 
-                if any_rvs:
-                    print(output_ready_map)
+                if any_rvs and not self.is_Pond:
+                    # print(output_ready_map)
                     self.create_mode_based_mux(out_sig=new_input_ready,
                                                items=output_ready_map,
                                                default=1)
@@ -951,7 +985,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if output_width != 1:
                     new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width, explicit_array=True, packed=True)
                 else:
-                    new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width)
+                    new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width, packed=True)
                 new_output.add_attribute(ControlSignalAttr(False))
 
                 rvs = [(ctrl_, port_.name, self.ctrl_to_mode[self.flat_to_c[ctrl_]], hybrid_) for ctrl_, port_, hybrid_ in self.rv if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]
@@ -972,9 +1006,17 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     new_output_ready.add_attribute(ControlSignalAttr(True))
 
                     # Add in the fifo if there are any fifos on this path
-                    new_reg_fifo = RegFIFO(data_width=output_width,
-                                           width_mult=1, depth=self.fifo_depth,
-                                           defer_hrdwr_gen=False)
+                    if self.is_PE:
+                        # Create config for bogus init
+                        output_fifo_bogus_init_num = self.input(f'{self.io_prefix}output_width_{output_width}_num_{i}_fifo_bogus_init_num', width=2)
+                        output_fifo_bogus_init_num.add_attribute(ConfigRegAttr("Choose bogus init num for output fifo"))
+                        new_reg_fifo = RegFIFO_cfg(data_width=output_width,
+                                            width_mult=1, depth=self.fifo_depth,
+                                            defer_hrdwr_gen=False)
+                    else:
+                        new_reg_fifo = RegFIFO(data_width=output_width,
+                                            width_mult=1, depth=self.fifo_depth,
+                                            defer_hrdwr_gen=False)
 
                     self.add_child(f"output_width_{output_width}_num_{i}_output_fifo",
                                    new_reg_fifo,
@@ -989,7 +1031,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     if output_width != 1:
                         new_output_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width, explicit_array=True, packed=True)
                     else:
-                        new_output_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width)
+                        new_output_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width, packed=True)
 
                     new_output_valid_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in_valid', width=1)
                     new_output_ready_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in_ready', width=1)
@@ -997,6 +1039,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     self.wire(new_output_fifo, new_reg_fifo.ports.data_in)
                     self.wire(new_output_ready_fifo, ~new_reg_fifo.ports.full)
                     self.wire(new_output_valid_fifo, new_reg_fifo.ports.push)
+                    if self.is_PE:
+                        self.wire(output_fifo_bogus_init_num, new_reg_fifo.ports.bogus_init_num)
 
                     # Mux all the inputs to the fifo, broadcast ready back
                     mux_size = len(rvs)
@@ -1011,23 +1055,23 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     for (ctrl_name, port, (mode_num, b_ex), hybrid) in rvs:
 
                         if hybrid and hybrid_bypass is None:
-                            hybrid_bypass = self.input(f"{self.io_prefix}output_width_{output_width}_num_{i}_dense", 1)
-                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}output_width_{output_width}_num_{i}_dense to bypass input fifo"))
+                            hybrid_bypass = self.input(f"{self.io_prefix}output_width_{output_width}_num_{i}_bypass_rv", 1)
+                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}output_width_{output_width}_num_{i}_bypass_rv to bypass output fifo"))
+
+                            fine_grain_fifo_bypass = self.input(f"{self.io_prefix}output_width_{output_width}_num_{i}_fine_grain_fifo_bypass", 1)
+                            fine_grain_fifo_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}output_width_{output_width}_num_{i}_fine_grain_fifo_bypass to bypass PE output fifo. Still operating in RV mode. Data still goes through primitive FIFO."))
 
                         port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
                         port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
                         # Wire ready_in if this is a ready/valid port
                         if hybrid:
-                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port_ready_name], kts.ternary(hybrid_bypass,
-                                                                                                                # new_output_ready,
-                                                                                                                kts.const(1, 1),
-                                                                                                                new_output_ready_fifo))
+                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port_ready_name], kts.ternary(hybrid_bypass, kts.const(1, 1),
+                                                                                                    kts.ternary(fine_grain_fifo_bypass, new_output_ready, new_output_ready_fifo)))
                             # Choose between the controller's valid or the fifo valid
-                            tmp_valid_choose = (kts.ternary(hybrid_bypass,
-                                                            # self.controllers_flat_dict[ctrl_name].ports[port_valid_name],
-                                                            kts.const(1, 1),
-                                                            ~new_reg_fifo.ports.empty), mode_num)
-                            tmp_data_choose = (kts.ternary(hybrid_bypass,
+                            tmp_valid_choose = (kts.ternary(hybrid_bypass, kts.const(1, 1),
+                                                kts.ternary(fine_grain_fifo_bypass, self.controllers_flat_dict[ctrl_name].ports[port_valid_name], ~new_reg_fifo.ports.empty)), mode_num)
+
+                            tmp_data_choose = (kts.ternary(hybrid_bypass | fine_grain_fifo_bypass,
                                                             self.controllers_flat_dict[ctrl_name].ports[port],
                                                             new_reg_fifo.ports.data_out), mode_num)
 
@@ -1102,7 +1146,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 # Create the final output muxes
                 self.create_mode_based_mux(out_sig=new_output, items=output_data_map, default=0)
                 if any_rvs:
-                    print(output_valid_map)
+                    # print(output_valid_map)
                     self.create_mode_based_mux(out_sig=new_output_valid, items=output_valid_map, default=0)
 
                 # We need to choose which output is hooked up based on the mode...
@@ -1235,13 +1279,16 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     def get_bit(self, val, n):
         return (val >> n & 1)
 
-    def get_bitstream(self, config_json):
+    def get_bitstream(self, config_json, node_name=None):
         '''
         At this level, we can take in the json and figure out which mode we are using
         '''
         # Create blank config - turn the tile on
         config = []
         config.append(("tile_en", 1))
+
+        print("MEMTILE BUILDER CONFIG JSON")
+        print(config_json)
         # Extract the mode to set the mode config reg (if there is more than one mode)
         mode_map = self.get_mode_map()
         if 'init' in config_json:
@@ -1256,21 +1303,26 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         if 'mode' in config_json:
             mode_used = config_json['mode']
+            # HACK: Replace UB with lakespec if not in mode map (and do it before mode selection so that
+            # the register is programmed correctly)
+            if mode_used == 'UB' and 'UB' not in mode_map:
+                mode_used = 'lakespec'
+
             if self.num_modes > 1:
                 # Locate the controller in the list...
                 for idx, ctrl in enumerate(self.controllers):
                     if mode_used == ctrl.get_config_mode_str():
                         if not stencil_valid_used:
-                            print(f"Found ctrl: {mode_used}")
                             config.append(("mode", idx))
                         break
 
             ctrl_to_conf = mode_map[mode_used]
             # Have some guard to see if config is in there or not...
-            if 'config' in config_json:
-                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'])
-            else:
-                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json)
+            dense_ready_valid = "DENSE_READY_VALID" in os.environ and os.environ.get("DENSE_READY_VALID") == "1"
+            ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(
+                config_json['config'] if 'config' in config_json else config_json,
+                **({'node_name': node_name} if dense_ready_valid and (('config' in config_json) or config_json.get('mode') == 'UB') else {})
+            )
 
         # Now need to chop up cfg space
         tmp_cfg_space = [0 for i in range(self.num_chopped_cfg)]
@@ -1295,11 +1347,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         map_hi = map_lo + self.allowed_reg_size - 1
                     else:
                         map_hi = tmp_hi
-                assert map_hi - map_lo < self.allowed_reg_size, f"Failed beacuse reg wider than {self.allowed_reg_size} bits"
+                # This check doesn't make sense anymore - we can handle many-chunk registers that are
+                # split across many addresses in the config space.
+                # assert map_hi - map_lo < self.allowed_reg_size, f"Failed beacuse reg wider than {self.allowed_reg_size} bits"
                 chunk_hi = map_hi // self.allowed_reg_size
                 chunk_lo = map_lo // self.allowed_reg_size
                 # Either all within one chunk...
                 if chunk_hi == chunk_lo:
+                    # print("Single-chunk register")
                     bits_hi = map_hi - chunk_hi * self.allowed_reg_size
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     num_bits = bits_hi - bits_lo + 1
@@ -1308,19 +1363,55 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
                     tmp_cfg_space[chunk_lo] = tmp_val
                 # Or across the boundary...
-                else:
+                elif chunk_hi - chunk_lo == 1:
+                    # print("Two-chunk register")
                     bits_hi = map_hi - chunk_hi * self.allowed_reg_size + 1
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     num_bits_lo = self.allowed_reg_size - bits_lo
                     assert (bits_hi + num_bits_lo) == (map_hi - map_lo + 1)
+                    # Handle low chunk
                     tmp_val = tmp_cfg_space[chunk_lo]
                     for z_ in range(num_bits_lo):
                         tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
                     tmp_cfg_space[chunk_lo] = tmp_val
-
+                    # Handle high chunk
                     tmp_val = tmp_cfg_space[chunk_hi]
                     for z_ in range(bits_hi):
                         tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, num_bits_lo + z_))
+                    tmp_cfg_space[chunk_hi] = tmp_val
+                # Multiple boundaries
+                else:
+                    # I know this is technically repeat code, but it's easier to follow
+                    # print("Many-chunk register")
+                    bits_hi = map_hi - chunk_hi * self.allowed_reg_size + 1
+                    bits_lo = map_lo - chunk_lo * self.allowed_reg_size
+                    intermediate_chunks = chunk_hi - chunk_lo - 1
+                    bits_intermed = intermediate_chunks * self.allowed_reg_size
+                    num_bits_lo = self.allowed_reg_size - bits_lo
+                    assert (bits_hi + num_bits_lo + bits_intermed) == (map_hi - map_lo + 1)
+                    # Handle low chunk
+                    tmp_val = tmp_cfg_space[chunk_lo]
+                    for z_ in range(num_bits_lo):
+                        # print(f"Get bit at {z_}")
+                        tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
+                    tmp_cfg_space[chunk_lo] = tmp_val
+
+                    # Handle the middle chunks
+                    int_chk = 0
+                    while int_chk < intermediate_chunks:
+                        curr_chunk = chunk_lo + 1 + int_chk
+                        tmp_val = tmp_cfg_space[curr_chunk]
+                        for z_ in range(self.allowed_reg_size):
+                            # print(f"Get bit at {(int_chk * self.allowed_reg_size) + num_bits_lo + z_}")
+                            tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, (int_chk * self.allowed_reg_size) + num_bits_lo + z_))
+                        tmp_cfg_space[curr_chunk] = tmp_val
+                        int_chk += 1
+
+                    # Handle high chunk
+                    tmp_val = tmp_cfg_space[chunk_hi]
+                    for z_ in range(bits_hi):
+                        # print(f"Get bit at {bits_intermed + num_bits_lo + z_}")
+                        tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, bits_intermed + num_bits_lo + z_))
                     tmp_cfg_space[chunk_hi] = tmp_val
 
         for idx in range(self.num_chopped_cfg):

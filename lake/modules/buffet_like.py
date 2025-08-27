@@ -187,6 +187,7 @@ class BuffetLike(MemoryController):
         # Read block base and bounds...
         self._blk_base = self.var("blk_base", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
         self._blk_bounds = self.var("blk_bounds", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
+        self._blk_bounds_align = self.var("blk_bounds_align", self.subword_addr_bits, size=self.num_ID, explicit_array=True, packed=True)
 
         self._wen_full = self.var("wen_full", self.num_ID)
 
@@ -354,19 +355,22 @@ class BuffetLike(MemoryController):
         self._clr_curr_bounds = self.var("clr_curr_bounds", self.num_ID)
         self._curr_bounds = [register(self, self._wr_addr_fifo_out_data + 1, enable=self._en_curr_bounds[i], clear=self._clr_curr_bounds[i],
                                       name=f"curr_bounds_{i}", packed=True) for i in range(self.num_ID)]
+        self._curr_bounds_align = self.var("curr_bounds_align", self.subword_addr_bits, size=self.num_ID, explicit_array=True, packed=True)
 
         self._en_curr_base = self.var("en_curr_base", self.num_ID)
         self._first_base_set = [sticky_flag(self, self._en_curr_base[idx_], name=f"first_base_set_{idx_}", seq_only=True) for idx_ in range(self.num_ID)]
         self._curr_base_pre = [self.var(f"curr_base_pre_{i}", self.data_width) for i in range(self.num_ID)]
         self._curr_base = [register(self, self._curr_base_pre[i], enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
 
-        [self.wire(self._curr_base_pre[i], kts.ternary(self._curr_bounds[i][self.subword_addr_bits-1,0] == kts.const(0, self.subword_addr_bits),
+        [self.wire(self._curr_base_pre[i], kts.ternary(self._curr_bounds[i][self.subword_addr_bits - 1, 0] == kts.const(0, self.subword_addr_bits),
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + self._curr_base[i],
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i])) for i in range(self.num_ID)]
 
+        self._rd_rsp_fifo_full = [self.var(f"rd_rsp_fifo_{i}_full", 1) for i in range(self.num_read_ports)]
         self._read_pop_full = self.var("read_pop_full", self.num_ID)
         self._read_pop = [self.var(f"read_pop_{i}", 1) for i in range(self.num_read_ports)]
-        self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=kts.const(1, 1), name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
+        # self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=kts.const(1, 1), name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
+        self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=~self._rd_rsp_fifo_full[idx], name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
 
         if self.optimize_wide and self.mem_width > self.data_width:
 
@@ -866,7 +870,7 @@ class BuffetLike(MemoryController):
         self._size_request_full = self.var("size_request_full", self.num_ID)
 
         self._rd_rsp_fifo_push = [self.var(f"rd_rsp_fifo_{i}_push", 1) for i in range(self.num_read_ports)]
-        self._rd_rsp_fifo_full = [self.var(f"rd_rsp_fifo_{i}_full", 1) for i in range(self.num_read_ports)]
+        # self._rd_rsp_fifo_full = [self.var(f"rd_rsp_fifo_{i}_full", 1) for i in range(self.num_read_ports)]  # move to the declaration of _read_joined_d1
         self._rd_rsp_fifo_almost_full = [self.var(f"rd_rsp_fifo_{i}_almost_full", 1) for i in range(self.num_read_ports)]
 
         self._rd_rsp_fifo_in_data = [self.var(f"rd_rsp_fifo_{i}_in_data", self.data_width + 1, packed=True) for i in range(self.num_read_ports)]
@@ -938,7 +942,8 @@ class BuffetLike(MemoryController):
             # [self.wire(self._rd_rsp_fifo_push[i], self._valid_from_mem | self._use_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
             if self.num_read_ports == 2:
                 # [self.wire(self._rd_rsp_fifo_push[i], self._ren_full_d1[i] | self._use_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
-                [self.wire(self._rd_rsp_fifo_push[i], self._from_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
+                # The rd_rsp_fifo space of size request is guaranteed by ren_full_d1
+                [self.wire(self._rd_rsp_fifo_push[i], (self._from_cached_read[i] & ~self._rd_rsp_fifo_full[i]) | self._size_request_full[i]) for i in range(self.num_read_ports)]
             else:
                 [self.wire(self._rd_rsp_fifo_push[i], self._valid_from_mem | (kts.concat(*self._use_cached_read)).r_or() | self._size_request_full.r_or()) for i in range(self.num_read_ports)]
 
@@ -991,6 +996,7 @@ class BuffetLike(MemoryController):
 
         self._curr_capacity_pre = self.var("curr_capacity_pre", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
         # self._curr_capacity = self.var("curr_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
+        [self.wire(self._curr_bounds_align[i], (kts.const(self.fw_int, width=self.subword_addr_bits + 1) - kts.concat(kts.const(0, 1), self._curr_bounds[i][self.subword_addr_bits - 1, 0]))[self.subword_addr_bits - 1, 0]) for i in range(self.num_ID)]
 
         @always_ff((posedge, self._clk), (negedge, self._rst_n))
         def cap_reg(self, idx):
@@ -999,11 +1005,11 @@ class BuffetLike(MemoryController):
             # Only update when pushed or popped
             elif self._push_blk[idx] or self._pop_blk[idx]:
                 self._curr_capacity_pre[idx] = self._curr_capacity_pre[idx] + kts.ternary(self._push_blk[idx],
-                                                                                        #   self._blk_bounds[idx],
-                                                                                          self._curr_bounds[idx],
-                                                                                          kts.const(0, width=self.data_width)) - kts.ternary(self._pop_blk[idx],
-                                                                                                                                             self._blk_bounds[idx],
-                                                                                                                                             kts.const(0, width=self.data_width))
+                                                                                        self._curr_bounds[idx] + kts.concat(kts.const(0, width=self.data_width - self.subword_addr_bits), self._curr_bounds_align[idx]),
+                                                                                                        kts.const(0, width=self.data_width)) - kts.ternary(self._pop_blk[idx],
+                                                                                                                                                           self._blk_bounds[idx] +
+                                                                                                                                                           kts.concat(kts.const(0, width=self.data_width - self.subword_addr_bits), self._blk_bounds_align[idx]),
+                                                                                                                                                           kts.const(0, width=self.data_width))
 
         [self.add_code(cap_reg, idx=i) for i in range(self.num_ID)]
 
@@ -1373,7 +1379,7 @@ class BuffetLike(MemoryController):
 
             for i in range(self.num_ID):
                 ### Bookkeeping FIFO
-                blk_fifo_in = kts.concat(self._curr_base[i], self._curr_bounds[i])
+                blk_fifo_in = kts.concat(self._curr_base[i], self._curr_bounds[i], self._curr_bounds_align[i])
                 blk_fifo = RegFIFO(data_width=blk_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=False)
 
                 self.add_child(f"blk_fifo_{i}",
@@ -1384,7 +1390,7 @@ class BuffetLike(MemoryController):
                             push=self._push_blk[i],
                             pop=self._pop_blk[i],
                             data_in=blk_fifo_in,
-                            data_out=kts.concat(self._blk_base[i], self._blk_bounds[i]))  # added empty control signal
+                            data_out=kts.concat(self._blk_base[i], self._blk_bounds[i], self._blk_bounds_align[i]))  # added empty control signal
 
                 self.wire(self._blk_full[i], blk_fifo.ports.full)
                 self.wire(self._blk_valid[i], ~blk_fifo.ports.empty)

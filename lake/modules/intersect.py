@@ -223,7 +223,7 @@ class Intersect(MemoryController):
             # tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             # Need to join the coord and pos
             tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i] & self._pos_in_fifo_eos_in[i] & self._pos_in_fifo_valid_in[i],
-                                    clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
+                                     clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             self.wire(self._eos_in_sticky[i], tmp_sticky)
 
         if self.perf_debug:
@@ -237,9 +237,8 @@ class Intersect(MemoryController):
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output ref signal
-            self._done_signal = sticky_flag(self, (self._coord_out == MemoryController.DONE_PROXY) &
-                                                    self._coord_out[MemoryController.EOS_BIT] & self._coord_out_valid_out,
-                                                    name='done_indicator')
+            self._done_signal = sticky_flag(self, (self._coord_out == MemoryController.DONE_PROXY) & self._coord_out[MemoryController.EOS_BIT] & self._coord_out_valid_out,
+                                            name='done_indicator')
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
         """
         # Intermediates
@@ -513,8 +512,8 @@ class Intersect(MemoryController):
         # CHANGE 4
         # PASS_DONE.output(self._pop_fifo[0], (self._coord_in_fifo_valid_in[0] & (self._coord_in_fifo_in[0] == self._done_token)))
         # PASS_DONE.output(self._pop_fifo[1], (self._coord_in_fifo_valid_in[1] & (self._coord_in_fifo_in[1] == self._done_token)))
-        PASS_DONE.output(self._pop_fifo[0], (valid_concat.r_and() & (self._coord_in_fifo_in[0] == self._done_token)))
-        PASS_DONE.output(self._pop_fifo[1], (valid_concat.r_and() & (self._coord_in_fifo_in[1] == self._done_token)))
+        PASS_DONE.output(self._pop_fifo[0], (~self._fifo_full.r_or() & valid_concat.r_and() & (self._coord_in_fifo_in[0] == self._done_token)))
+        PASS_DONE.output(self._pop_fifo[1], (~self._fifo_full.r_or() & valid_concat.r_and() & (self._coord_in_fifo_in[1] == self._done_token)))
         # CHANGE 3
         # PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or())
         PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or() & valid_concat.r_and())

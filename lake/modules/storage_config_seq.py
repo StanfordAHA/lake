@@ -234,16 +234,39 @@ class StorageConfigSeq(MemoryController):
         # Assume for now that there is always an available
         # READWRITE port in each bank...will deal with more complexity later
         # TODO: Find ports based on memory system
-        self.base_ports = [[None]]
-        rw_port = MemoryPort(MemoryPortType.READWRITE)
-        rw_port_intf = rw_port.get_port_interface()
-        rw_port_intf['data_in'] = self._wr_data
-        rw_port_intf['data_out'] = self._rd_data_stg
-        rw_port_intf['write_addr'] = self._addr_out
-        rw_port_intf['write_enable'] = self._wen_out
-        rw_port_intf['read_addr'] = self._addr_out
-        rw_port_intf['read_enable'] = self._ren_out
-        self.base_ports[0][0] = rw_port
+        num_mem_ports = self.memory_interface.get_num_ports()
+        mem_ports = self.memory_interface.get_ports
+
+        new_pond = (self.memory_interface.get_port_type(0) == MemoryPortType.WRITE and
+                    self.memory_interface.get_port_type(1) == MemoryPortType.READ)
+
+        if new_pond:
+            # Write on 0, 0, read on 0, 1
+            w_port = MemoryPort(MemoryPortType.WRITE)
+            w_port_intf = w_port.get_port_interface()
+            w_port_intf['data_in'] = self._wr_data
+            w_port_intf['write_addr'] = self._addr_out
+            w_port_intf['write_enable'] = self._wen_out
+            self.base_ports[0][0] = w_port
+
+            r_port = MemoryPort(MemoryPortType.READ)
+            r_port_intf = r_port.get_port_interface()
+            r_port_intf['data_out'] = self._rd_data_stg
+            r_port_intf['read_addr'] = self._addr_out
+            r_port_intf['read_enable'] = self._ren_out
+            print(self.base_ports[0][1])
+            self.base_ports[0][1] = r_port
+        else:
+            rw_port = MemoryPort(MemoryPortType.READWRITE)
+            rw_port_intf = rw_port.get_port_interface()
+            rw_port_intf['data_in'] = self._wr_data
+            rw_port_intf['data_out'] = self._rd_data_stg
+            rw_port_intf['write_addr'] = self._addr_out
+            rw_port_intf['write_enable'] = self._wen_out
+            rw_port_intf['read_addr'] = self._addr_out
+            rw_port_intf['read_enable'] = self._ren_out
+            self.base_ports[0][0] = rw_port
+
         return self.base_ports
 
     def find_mem_ports(self):

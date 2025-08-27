@@ -3,11 +3,136 @@ import kratos as kts
 from kratos import *
 import math
 import os as os
-from enum import Enum
+from lake.utils.spec_enum import MemoryPortType, Direction
 from lake.attributes.formal_attr import *
-import csv
+import shutil as shutil
+# from lake.spec.component import Component
+
 
 lake_util_verbose_trim = False
+
+
+def lift_port(child_gen, parent_gen, child_port, suffix=""):
+
+    pname = child_port.name
+
+    # Need to get the attributes and copy them up...
+    port_attrs = child_port.attributes
+    tmp_port = parent_gen.port_from_def(child_port, name=f"{child_port.name}{suffix}")
+    for attr in port_attrs:
+        tmp_port.add_attribute(attr)
+    parent_gen.wire(tmp_port, child_port)
+    return tmp_port
+
+
+def check_file_exists_and_has_content(file_path):
+    # Check if the file exists
+    if os.path.exists(file_path):
+        # Check if the file is not empty
+        if os.path.getsize(file_path) > 0:
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+def get_file_contents(file_path):
+    good_file = check_file_exists_and_has_content(file_path=file_path)
+    if good_file is True:
+        contents = None
+        with open(file_path, 'r') as open_file:
+            contents = open_file.readlines()
+        return contents
+    else:
+        return None
+
+
+class TestPrepper():
+
+    def __init__(self, base_dir: str = None) -> None:
+        self.base_dir = base_dir
+        self.pargs_file = None
+
+    def prepare_hw_test(self):
+        # Put it at the lake directory
+        if self.base_dir is None:
+            self.base_dir = os.path.dirname(os.path.abspath(__file__))
+            final_dir = os.path.join(self.base_dir, "../../", "TEST")
+
+        else:
+            # Simpler to use absolute path here
+            final_dir = os.path.abspath(self.base_dir)
+
+        print(f" Prepare hw test at ...{final_dir}")
+
+        os.makedirs(final_dir, exist_ok=True)
+        os.makedirs(os.path.join(final_dir, "inputs"), exist_ok=True)
+        os.makedirs(os.path.join(final_dir, "outputs"), exist_ok=True)
+        os.makedirs(os.path.join(final_dir, "gold"), exist_ok=True)
+
+        # Now copy over the tests/test_hw_spec
+        tb_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../tests/test_spec_hw/")
+        for filename in os.listdir(tb_base_path):
+            src_file = os.path.join(tb_base_path, filename)
+            dst_file = os.path.join(final_dir, filename)
+            if os.path.isfile(src_file):  # Check if it's a file (not a directory)
+                shutil.copy2(src_file, dst_file)
+
+        # Create the PARGS file even if empty...
+        file_path = os.path.join(final_dir, "inputs", "PARGS.txt")
+        with open(file_path, 'w') as file:
+            pass
+        self.pargs_file = file_path
+
+        return final_dir
+
+    def add_pargs(self, pargs):
+        if type(pargs) is list:
+            self.__add_pargs_list(pargs)
+        elif type(pargs) is tuple:
+            self.__add_pargs_tuple(pargs)
+
+    def __add_pargs_list(self, pargs_list):
+        with open(self.pargs_file, 'a') as pargs_file_open:
+            for parg_tuple in pargs_list:
+                parg_name, parg_value = parg_tuple
+                parg_string = f"+{parg_name}={str(parg_value)}\n"
+                pargs_file_open.write(parg_string)
+
+    def __add_pargs_tuple(self, parg_tuple):
+        with open(self.pargs_file, 'a') as pargs_file_open:
+            parg_name, parg_value = parg_tuple
+            parg_string = f"+{parg_name}={str(parg_value)}\n"
+            pargs_file_open.write(parg_string)
+
+
+def prepare_hw_test(base_dir: str = None):
+
+    # Put it at the lake directory
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        final_dir = os.path.join(base_dir, "../../", "TEST")
+
+    else:
+        # Simpler to use absolute path here
+        final_dir = os.path.abspath(base_dir)
+
+    print(f" Prepare hw test at ...{final_dir}")
+
+    os.makedirs(final_dir, exist_ok=True)
+    os.makedirs(os.path.join(final_dir, "inputs"), exist_ok=True)
+    os.makedirs(os.path.join(final_dir, "outputs"), exist_ok=True)
+
+    # Now copy over the tests/test_hw_spec
+    tb_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../tests/test_spec_hw/")
+    for filename in os.listdir(tb_base_path):
+        src_file = os.path.join(tb_base_path, filename)
+        dst_file = os.path.join(final_dir, filename)
+        if os.path.isfile(src_file):  # Check if it's a file (not a directory)
+            shutil.copy2(src_file, dst_file)
+
+    return final_dir
 
 
 def check_env():
@@ -513,8 +638,22 @@ def observe_cfg(generator, port, other_gen, cfg_reg_port):
         cr_attr.add_observer(generator, port)
 
 
+def shift_reg(generator, signal, chain_depth, name=None, clk_en=kts.const(1, 1)):
+    '''Creates a shift register of depth `chain_depth` and returns the output of it
+    '''
+    name_use = signal.name
+    if name is not None:
+        name_use = name
+    #  Check for packed
+    packed_sig = signal.is_packed
+    to_use = signal
+    for i in range(chain_depth):
+        to_use = register(generator, to_use, name=f"{name_use}_d{i + 1}", packed=packed_sig, clk_en=clk_en)
+    return to_use
+
+
 def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1),
-             name=None, packed=False, reset_value=0):
+             name=None, packed=False, reset_value=0, clk_en=kts.const(1, 1)):
     ''' Pass a generator and a signal to create a registered
         version of any signal easily.
     '''
@@ -529,14 +668,15 @@ def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1),
             reg = reset_value
         elif clear:
             reg = 0
-        elif enable:
-            reg = signal
+        elif clk_en:
+            if enable:
+                reg = signal
 
     generator.add_code(reg_code)
     return reg
 
 
-def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=False, verbose=False):
+def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=False, verbose=False, clk_en=kts.const(1, 1)):
     ''' Create a signal that indicates whether a signal is high
         or has been high in the past
     '''
@@ -551,8 +691,9 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=Fa
             reg = 0
         elif clear:
             reg = 0
-        elif signal:
-            reg = 1
+        elif clk_en:
+            if signal:
+                reg = 1
     generator.add_code(reg_code)
 
     sticky = generator.var(f"{use_name}_sticky", 1)
@@ -566,47 +707,32 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=Fa
 
 
 # Add a simple counter to a design and return the signal
-def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=None, pos_reset=False):
+def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=kts.const(0, 1), pos_reset=False, clk_en=kts.const(1, 1)):
 
     ctr = generator.var(name, bitwidth, packed=True)
     if pos_reset is True:
-        if clear is not None:
-            @always_ff((posedge, "clk"), (posedge, "rst_n"))
-            def ctr_inc_clr_code():
-                if generator._rst_n:
-                    ctr = 0
-                elif clear:
-                    ctr = 0
-                elif increment:
+        @always_ff((posedge, "clk"), (posedge, "rst_n"))
+        def ctr_inc_clr_code():
+            if generator._rst_n:
+                ctr = 0
+            elif clear:
+                ctr = 0
+            elif clk_en:
+                if increment:
                     ctr = ctr + 1
-            generator.add_code(ctr_inc_clr_code)
-        else:
-            @always_ff((posedge, "clk"), (posedge, "rst_n"))
-            def ctr_inc_code():
-                if generator._rst_n:
-                    ctr = 0
-                elif increment:
-                    ctr = ctr + 1
-            generator.add_code(ctr_inc_code)
+        generator.add_code(ctr_inc_clr_code)
     else:
-        if clear is not None:
-            @always_ff((posedge, "clk"), (negedge, "rst_n"))
-            def ctr_inc_clr_code():
-                if ~generator._rst_n:
-                    ctr = 0
-                elif clear:
-                    ctr = 0
-                elif increment:
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def ctr_inc_clr_code():
+            if ~generator._rst_n:
+                ctr = 0
+            elif clear:
+                ctr = 0
+            elif clk_en:
+                if increment:
                     ctr = ctr + 1
-            generator.add_code(ctr_inc_clr_code)
-        else:
-            @always_ff((posedge, "clk"), (negedge, "rst_n"))
-            def ctr_inc_code():
-                if ~generator._rst_n:
-                    ctr = 0
-                elif increment:
-                    ctr = ctr + 1
-            generator.add_code(ctr_inc_code)
+        generator.add_code(ctr_inc_clr_code)
+
     return ctr
 
 
@@ -637,7 +763,7 @@ def process_line(item):
     item = item.strip()
     item_nobrack = item.rstrip("]").lstrip("[")
     individ = item_nobrack.split(" ")
-    print(f"individ: {individ}")
+    # print(f"individ: {individ}")
     inced = []
     for i in range(len(individ)):
         inced.append(int(individ[i]) + 1)
@@ -711,6 +837,12 @@ def decode(generator, sel, signals):
     return ret
 
 
+def round_up_to_power_of_2(x):
+    if x < 1:
+        return 1
+    return 1 << (x - 1).bit_length()
+
+
 def get_priority_encode(generator, signal):
     assert generator is not None
     assert signal is not None
@@ -748,6 +880,481 @@ def get_priority_encode(generator, signal):
                 prev_if = new_if
 
     return new_sig
+
+
+def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType = None,
+                               memport_intf=None, strg_intf=None):
+    if mptype == MemoryPortType.R:
+        signals = ['addr',
+                   'read_data',
+                   'read_en']
+    elif mptype == MemoryPortType.W:
+        signals = ['addr',
+                   'write_data',
+                   'write_en']
+
+        if 'clear' in memport_intf:
+            print("Adding clear signal")
+            signals.append('clear')
+
+    elif mptype == MemoryPortType.RW:
+        signals = ['addr',
+                   'read_data',
+                   'write_data',
+                   'read_en',
+                   'write_en']
+    else:
+        raise NotImplementedError
+
+    for signal in signals:
+        # generator.wire(memport_intf[signal], strg_intf[signal])
+        # self._final_gen.wire(memport_intf[signal], strg_intf[signal])
+        generator.wire(memport_intf[signal], strg_intf[signal])
+
+
+def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True, ignore_flush_and_clk_en=True):
+
+    many_list = False
+    if type(many) is list:
+        assert len(many) > 0
+        many_list = True
+        if len(many) == 1:
+            generator.wire(one, many[0])
+            return
+
+    # print(sel)
+    # print(many)
+    # assert type(many) is list
+    # assert len(many) > 0
+
+    mux_gen = kts.Generator(name=name)
+    if ignore_flush_and_clk_en:
+        mux_gen.sync_reset_no_touch = True
+        mux_gen.clk_en_no_touch = True
+    mux_width = one.width
+
+    mux_gen_sel_in = None
+    if one_hot_sel:
+        mux_gen_sel_in = mux_gen.input("sel", len(many))
+    else:
+        mux_gen_sel_in = mux_gen.input("sel", sel.width)
+    mux_gen_one_out = mux_gen.output('mux_gen_one_out', mux_width)
+    # if many_list:
+    mux_gen_many_in = [mux_gen.input(f"many_in_{i}", mux_width) for i in range(len(many))]
+    # else:
+    # mux_gen_many_in = mux_gen.input(f"many_in", )
+
+    # Do a scan through and pick the lowest one (priority)
+    if one_hot_sel:
+        # print("Building one-hot mux...")
+        tmp_done = mux_gen.var("tmp_done", 1)
+        len_sel = mux_gen_sel_in.width
+
+        @always_comb
+        def set_outs():
+            tmp_done = 0
+            mux_gen_one_out = 0
+            # Iterate through the bits of the signal, find the first one that's high
+            for i in range(len_sel):
+                if ~tmp_done:
+                    if mux_gen_sel_in[i]:
+                        mux_gen_one_out = mux_gen_many_in[i]
+                        tmp_done = 1
+
+        mux_gen.add_code(set_outs)
+    else:
+
+        # print("Building non-one-hot mux...")
+        # Non-one-hot (normal sel lines)
+        tmp_done = mux_gen.var("tmp_done", 1)
+        # len_sel = len(sel)
+
+        # For this, assume the bitwidth of sel is large enough
+        # to support many, could assert this
+        len_many = len(many)
+        assert sel.width >= kts.clog2(len_many)
+
+        @always_comb
+        def set_outs():
+            tmp_done = 0
+            mux_gen_one_out = 0
+            # Iterate through the bits of the signal, find the first one that's high
+            for i in range(len_many):
+                if ~tmp_done:
+                    if mux_gen_sel_in == i:
+                        mux_gen_one_out = mux_gen_many_in[i]
+                        tmp_done = 1
+
+        mux_gen.add_code(set_outs)
+
+    # Now instantiate the generator, add the child, and hook it up
+    generator.add_child(f"{name}_inst", mux_gen)
+    generator.wire(one, mux_gen_one_out)
+    if one_hot_sel:
+        for i_ in range(len(many)):
+            generator.wire(many[i_], mux_gen_many_in[i_])
+            generator.wire(sel[i_], mux_gen_sel_in[i_])
+    else:
+        for i_ in range(len(many)):
+            generator.wire(many[i_], mux_gen_many_in[i_])
+        generator.wire(sel, mux_gen_sel_in)
+
+
+def generate_affine_sequence(dimensionality, extents, strides, offset):
+
+    seq_size = 1
+    for i in range(dimensionality):
+        seq_size = seq_size * extents[i]
+    final_seq = [0 for i in range(seq_size)]
+    it_domain = [0 for i in range(dimensionality)]
+    # done = False
+    for i in range(seq_size):
+        # Add the new value
+        new_val = offset
+        for j in range(dimensionality):
+            new_val += it_domain[j] * strides[j]
+        final_seq[i] = new_val
+        # Update the iterators
+        for j in range(dimensionality):
+            it_domain[j] += 1
+            # if it is equal to the extent, set it back to 0 and
+            # keep going up the chain
+            if it_domain[j] == extents[j]:
+                it_domain[j] = 0
+            # Otherwise we are done
+            else:
+                break
+
+    return final_seq
+
+
+def calculate_read_out_vec(schedule, vec=4, mem_depth=2048):
+    '''Handle vectorized - three phases
+    '''
+    # Phase one - calculate all inputs to SIPO
+    # Get all input ports
+    # in_ports = {port_num: port_sched for port_num, port_sched in schedule.items() if port_sched['type'] == Direction.IN}
+
+    in_ports = {}
+    for port_num, port_sched in schedule.items():
+        # Need to ignore vec constraints as well
+        if not isinstance(port_num, int):
+            continue
+        if port_sched['type'] == Direction.IN:
+            in_ports[port_num] = port_sched
+    # quit()
+    # Go through the ports and calculate their SIPO output/schedules
+    sipo_outs = {}
+    sipo_outs_data = {}
+
+    # Simply generate a new app and use other function to get the outputs...
+    for pnum, port_sched in in_ports.items():
+        sipo_outs[pnum] = {'time': [],
+                           'data': []}
+
+        vec_in_config = port_sched['vec_in_config']
+        vec_out_config = port_sched['vec_out_config']
+
+        sub_test = {
+            0: {
+                'type': Direction.IN,
+                'name': f"port_{pnum}_sub_in",
+                'config': vec_in_config
+            },
+            1: {
+                'type': Direction.OUT,
+                'name': f"port_{pnum}_sub_out",
+                'config': vec_out_config
+            }
+
+        }
+        sub_in_test_out = calculate_read_out(sub_test, vec=(1, vec), sanitize=False)
+        sipo_outs[pnum] = sub_in_test_out[1]
+        sipo_outs_data[pnum] = sub_in_test_out[1]['data']
+
+    # Now that we have these, we just need to feed the normal schedule, except we need
+    # to send this data instead
+    mid_result = calculate_read_out(schedule=schedule, vec=(vec, vec), data_in=sipo_outs_data, sanitize=False, mem_depth=mem_depth)
+    mid_result_data = {}
+    for pnum, info in mid_result.items():
+        mid_result_data[pnum] = info['data']
+
+    # Time for the last part
+    # out_ports = {port_num: port_sched for port_num, port_sched in schedule.items() if port_sched['type'] == Direction.OUT}
+    out_ports = {}
+    for port_num, port_sched in schedule.items():
+        # Need to ignore vec constraints as well
+        if not isinstance(port_num, int):
+            continue
+        if port_sched['type'] == Direction.OUT:
+            out_ports[port_num] = port_sched
+    piso_outs = {}
+    piso_outs_data = {}
+
+    for pnum, port_sched in out_ports.items():
+        piso_outs[pnum] = {'time': [],
+                           'data': []}
+
+        vec_in_config = port_sched['vec_in_config']
+        vec_out_config = port_sched['vec_out_config']
+        sub_test = {
+            0: {
+                'type': Direction.IN,
+                'name': f"port_{pnum}_sub_in",
+                'config': vec_in_config
+            },
+            1: {
+                'type': Direction.OUT,
+                'name': f"port_{pnum}_sub_out",
+                'config': vec_out_config
+            }
+        }
+
+        send_data = {0: mid_result_data[pnum]}
+
+        sub_in_test_out = calculate_read_out(sub_test, vec=(vec, 1),
+                                             data_in=send_data)
+        piso_outs[pnum] = sub_in_test_out[1]
+        piso_outs_data[pnum] = sub_in_test_out[1]['data']
+
+    return piso_outs
+
+
+def calculate_read_out(schedule, vec=(1, 1), data_in=None, sanitize=True, mem_depth=2048):
+    '''Use this function to create a list of
+        (data, timestamp)
+    '''
+    # Start with two port
+    memory = [0 for i in range(mem_depth)]
+
+    data_ins = {}
+    data_outs = {}
+    all_sequences = {}
+
+    vec_in, vec_out = vec
+
+    for port_num, port_sched in schedule.items():
+
+        # Ignore the dynamic portion for these purposes...
+        if not isinstance(port_sched, dict):
+            continue
+
+        config = port_sched['config']
+
+        port_addr_seq = generate_affine_sequence(dimensionality=config['dimensionality'],
+                                                 extents=config['extents'],
+                                                 strides=config['address']['strides'],
+                                                 offset=config['address']['offset'])
+
+        port_sched_seq = generate_affine_sequence(dimensionality=config['dimensionality'],
+                                                  extents=config['extents'],
+                                                  strides=config['schedule']['strides'],
+                                                  offset=config['schedule']['offset'])
+
+        if port_sched['type'] == Direction.IN:
+            # check if data in is None first...
+            if data_in is None:
+                data_size_ = get_data_sizes_alone(port_sched)
+                # data_ins[port_num] = iter([list(range(z_ * vec_in, z_ * vec_in + vec_in)) for z_ in range(2048 // vec_in)])
+                data_ins[port_num] = iter([list(range(z_ * vec_in, z_ * vec_in + vec_in)) for z_ in range(data_size_ // vec_in)])
+            else:
+                data_ins[port_num] = iter(data_in[port_num])
+        else:
+            data_outs[port_num] = {'time': [],
+                                   'data': []}
+
+        # Use iters so we can just call next very easily
+        all_sequences[port_num] = {'addr': iter(port_addr_seq),
+                                   'sched': iter(port_sched_seq)}
+
+    # Now we have the sequences of all ports
+    # Just need to find the smallest current schedule sequence value, advance
+    # the time step to then, and then perform all actions at the timestep
+    timestep = -1
+    curr_seqs = {}
+    seqs_done = {}
+    for pnum, seqs in all_sequences.items():
+        curr_seqs[pnum] = (next(seqs['sched']), next(seqs['addr']))
+        seqs_done[pnum] = False
+    more_events = True
+    while more_events:
+        new_timestep = None
+        # Get smallest timestep
+        for pnum, seqs in curr_seqs.items():
+            if seqs_done[pnum] is True:
+                continue
+            sched, addr = seqs
+            if new_timestep is None or sched < new_timestep:
+                new_timestep = sched
+        assert new_timestep > timestep
+        timestep = new_timestep
+        # Now perform all actions at the timestep
+        new_curr_seqs = {}
+        for pnum, seqs in curr_seqs.items():
+            if seqs_done[pnum] is True:
+                continue
+            sched, addr = seqs
+            # If this should happen, perform either read or write
+            this_seqs = all_sequences[pnum]
+            if sched == timestep:
+                # print(f"Triggered timestep match on {pnum} with sched {sched}")
+                if schedule[pnum]['type'] == Direction.IN:
+                    data_to_write = next(data_ins[pnum])
+                    for z_ in range(vec_in):
+                        memory[addr * vec_in + z_] = data_to_write[z_]
+                else:
+                    # data_outs[pnum].append((sched, memory[addr]))
+                    data_outs[pnum]['time'].append(sched)
+                    # data_outs[pnum]['data'].append(memory[addr])
+                    new_data = []
+                    for z_ in range(vec_out):
+                        new_data.append(memory[addr * vec_out + z_])
+                    # print(f"TIMESTEP: {timestep}\tADDR:{addr}\tDATA:{new_data}")
+                    data_outs[pnum]['data'].append(new_data)
+                    # quit()
+                try:
+                    new_curr_seqs[pnum] = (next(this_seqs['sched']), next(this_seqs['addr']))
+                except StopIteration:
+                    seqs_done[pnum] = True
+            else:
+                new_curr_seqs[pnum] = seqs
+        curr_seqs = new_curr_seqs
+        # Now calcualte if we are done based on all dones
+        more_events = False
+        for p_, sd_ in seqs_done.items():
+            if sd_ is False:
+                more_events = True
+
+    if sanitize is True:
+        assert vec_out == 1, f"vec_out is not 1, cannot sanitize"
+        for pnum, info in data_outs.items():
+            data_outs[pnum]['data'] = [sl[0] for sl in data_outs[pnum]['data']]
+
+    return data_outs
+
+
+def get_data_sizes_alone(schedule: dict = None):
+    # A schedule will have a bunch of ports - can always analyze the extens of the config to
+    # get the total sizes
+    assert schedule is not None
+
+    use_port_schedule = schedule['config']
+
+    # Get direction
+    if schedule['type'] == Direction.IN:
+        if 'vec_in_config' in schedule:
+            use_port_schedule = schedule['vec_in_config']
+    else:
+        if 'vec_out_config' in schedule:
+            use_port_schedule = schedule['vec_out_config']
+
+    dim_ = use_port_schedule['dimensionality']
+    extents = use_port_schedule['extents']
+    num_data = 1
+    for i_ in range(dim_):
+        # Now have full extent data, add it to map
+        num_data = num_data * extents[i_]
+    return num_data
+
+
+def get_data_sizes(schedule: dict = None, num_ports=2):
+    # A schedule will have a bunch of ports - can always analyze the extens of the config to
+    # get the total sizes
+    assert schedule is not None
+    div = num_ports // 2
+
+    # sizes_map = {}
+    sizes_map = []
+    for port_num, port_schedule in schedule.items():
+
+        if type(port_num) is not int:
+            continue
+
+        use_port_schedule = port_schedule['config']
+
+        if port_num < div:
+            new_port_num = port_num
+            port_plus_arg = f"w{new_port_num}_num_data"
+            if 'vec_in_config' in port_schedule:
+                use_port_schedule = port_schedule['vec_in_config']
+        else:
+            new_port_num = port_num - div
+            port_plus_arg = f"r{new_port_num}_num_data"
+            if 'vec_out_config' in port_schedule:
+                use_port_schedule = port_schedule['vec_out_config']
+
+        dim_ = use_port_schedule['dimensionality']
+        extents = use_port_schedule['extents']
+        num_data = 1
+        for i_ in range(dim_):
+            num_data = num_data * extents[i_]
+        # Now have full extent data, add it to map
+        sizes_map.append((port_plus_arg, num_data))
+    return sizes_map
+
+
+def read_dump_sw(sw):
+    sw_list = None
+    with open(sw, 'r') as sw_file:
+        sw_list = sw_file.readlines()
+    sw_list_final = []
+    for line in sw_list:
+        sw_list_final.append(int(line.strip()))
+    return sw_list_final
+
+
+def read_dump_hw(hw, hex=True):
+    hw_list_pre = None
+    hw_list_final = []
+    with open(hw, 'r') as hw_file:
+        hw_list_pre = hw_file.readlines()
+    # Now we need to trim stuff with x or X
+    # and write the hex into integers
+    for line in hw_list_pre:
+        line_strip = line.strip()
+        if 'x' in line_strip or 'X' in line_strip:
+            break
+        hw_list_final.append(int(line_strip, base=16))
+    return hw_list_final
+
+
+def verify_gold(dir, mflowgen=False):
+    # Read in both...
+    outdir = os.path.join(dir, "outputs")
+    if mflowgen is True:
+        golddir = os.path.join(dir, "inputs", "gold")
+    else:
+        golddir = os.path.join(dir, "gold")
+    indir = os.path.join(dir, "inputs")
+
+    static = False
+    # Check if this is a static or dynamic test
+    # by checking the PARGS
+    pargs_file = os.path.join(indir, "PARGS.txt")
+    pargs_lines = None
+    with open(pargs_file, 'r') as pargs_file_handle:
+        pargs_lines = pargs_file_handle.readlines()
+    for line_ in pargs_lines:
+        if 'static=1' in line_:
+            static = True
+
+    print(f"Test is static: {static}")
+
+    # Iterate through the files in the gold dir
+    for filename in os.listdir(golddir):
+        # Get both version and compare them...
+        if 'time' in filename and static is False:
+            continue
+        sw_path = os.path.join(golddir, filename)
+        hw_path = os.path.join(outdir, filename)
+        sw_version = read_dump_sw(sw_path)
+        hw_version = read_dump_hw(hw_path)
+        if len(sw_version) != len(hw_version):
+            return False
+        for i in range(len(sw_version)):
+            if sw_version[i] != hw_version[i]:
+                return False
+    return True
 
 
 if __name__ == "__main__":

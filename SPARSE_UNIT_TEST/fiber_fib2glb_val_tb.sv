@@ -80,6 +80,8 @@ module fiber_fib2glb_val_tb;
     .read_scanner_dense(1'b0),
     // .read_scanner_dim_size(16'b0),
     .read_scanner_do_repeat(1'b0),
+    .read_scanner_glb_addr_base(16'd800),
+    .read_scanner_glb_addr_stride(16'd100),
     .read_scanner_inner_dim_offset(16'b0),
     .read_scanner_lookup(1'b1),
     .read_scanner_pos_out_ready(pos_out_0_ready),
@@ -105,7 +107,7 @@ module fiber_fib2glb_val_tb;
     .write_scanner_init_blank(1'b0),
     .write_scanner_lowest_level(1'b1),
     // .write_scanner_spacc_mode(1'b0),
-    .write_scanner_stop_lvl(16'b0),
+    // .write_scanner_stop_lvl(16'b0),
     .write_scanner_tile_en(tile_en),
     .addr_to_mem(memory_addr_to_mem_p0),
     .data_to_mem(memory_0_data_in_p0),
@@ -138,18 +140,19 @@ module fiber_fib2glb_val_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    glb_stream_read #(
         .FILE_NAME("coord_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
-    ) coord_out_0_inst (
+    ) stream_out_0_inst (
         .clk(clk),
         .rst_n(rst_n),
         .data(rs_blk),
         .ready(rs_blk_ready),
         .valid(rs_blk_valid),
         .done(done[1]),
-        .flush(flush)
+        .flush(flush),
+        .seg_mode(0)
     );
 
     sram_sp memory_0 (

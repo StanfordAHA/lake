@@ -105,6 +105,8 @@ class ReducePECluster(MemoryController):
         self.ext_pe_data_in_valid_in = []
         self.ext_pe_data_in_ready_out = []
         self.pe_bit_in = []
+        self.pe_bit_in_valid_in = []
+        self.pe_bit_in_ready_out = []
         for i in range(3):
             tmp_pe_data_in = self.var(f"pe_data{i}", self.data_width + 1, packed=True)
             # external data input
@@ -126,10 +128,17 @@ class ReducePECluster(MemoryController):
 
         # The 1-bit data I/O
         for i in range(3):
-            tmp_pe_data_in = self.input(f"bit{i}", 1)
-            tmp_pe_data_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+            tmp_pe_bit_in = self.input(f"bit{i}", 1)
+            tmp_pe_bit_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+            tmp_pe_bit_in.add_attribute(HybridPortAddr())
+            tmp_pe_bit_in_valid_in = self.input(f"bit{i}_valid", 1)
+            tmp_pe_bit_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+            tmp_pe_bit_in_ready_out = self.output(f"bit{i}_ready", 1)
+            tmp_pe_bit_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
-            self.pe_bit_in.append(tmp_pe_data_in)
+            self.pe_bit_in.append(tmp_pe_bit_in)
+            self.pe_bit_in_valid_in.append(tmp_pe_bit_in_valid_in)
+            self.pe_bit_in_ready_out.append(tmp_pe_bit_in_ready_out)
 
         # PE results output to other primitives external to this cluster
         self._pe_data_out = self.output("res", self.data_width + 1, packed=True)
@@ -144,15 +153,22 @@ class ReducePECluster(MemoryController):
 
         self._pe_data_out_p = self.output("res_p", 1)
         self._pe_data_out_p.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
+        self._pe_data_out_p.add_attribute(HybridPortAddr())
+
+        self._pe_valid_out_p = self.output("res_p_valid", 1)
+        self._pe_valid_out_p.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._pe_ready_in_p = self.input("res_p_ready", 1)
+        self._pe_ready_in_p.add_attribute(ControlSignalAttr(is_control=True))
 
         # Instantiate the PE here
         self.onyxpe = OnyxPE(data_width=16,
-                            fifo_depth=self.fifo_depth,
-                            defer_fifos=self.defer_fifo,
-                            ext_pe_prefix=self.pe_prefix,
-                            pe_ro=True,
-                            do_config_lift=False,
-                            perf_debug=perf_debug)
+                             fifo_depth=self.fifo_depth,
+                             defer_fifos=self.defer_fifo,
+                             ext_pe_prefix=self.pe_prefix,
+                             pe_ro=True,
+                             do_config_lift=False,
+                             perf_debug=perf_debug)
 
         self.add_child("pe",
                        self.onyxpe,
@@ -169,20 +185,28 @@ class ReducePECluster(MemoryController):
                        data2_valid=self.ext_pe_data_in_valid_in[2],
                        data2_ready=self.ext_pe_data_in_ready_out[2],
                        bit0=self.pe_bit_in[0],
+                       bit0_valid=self.pe_bit_in_valid_in[0],
+                       bit0_ready=self.pe_bit_in_ready_out[0],
                        bit1=self.pe_bit_in[1],
+                       bit1_valid=self.pe_bit_in_valid_in[1],
+                       bit1_ready=self.pe_bit_in_ready_out[1],
                        bit2=self.pe_bit_in[2],
+                       bit2_valid=self.pe_bit_in_valid_in[2],
+                       bit2_ready=self.pe_bit_in_ready_out[2],
                        res=self._pe_data_out,
                        res_valid=self._pe_valid_out,
                        res_ready=self._pe_ready_in,
-                       res_p=self._pe_data_out_p)
+                       res_p=self._pe_data_out_p,
+                       res_p_valid=self._pe_valid_out_p,
+                       res_p_ready=self._pe_ready_in_p)
 
         # Select between the internal/external signal connection for the PE
         self.wire(self.pe_data_in[0], kts.ternary(self._pe_in_external,
-                                                   self.ext_pe_data_in[0],
-                                                   self.reduce_data_to_pe[0]))
+                                                  self.ext_pe_data_in[0],
+                                                  self.reduce_data_to_pe[0]))
         self.wire(self.pe_data_in[1], kts.ternary(self._pe_in_external,
-                                                   self.ext_pe_data_in[1],
-                                                   self.reduce_data_to_pe[1]))
+                                                  self.ext_pe_data_in[1],
+                                                  self.reduce_data_to_pe[1]))
         # Reduce does not use the third input of the pe, just wire it to the external inputs
         self.wire(self.pe_data_in[2], self.ext_pe_data_in[2])
 

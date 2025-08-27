@@ -294,7 +294,7 @@ class StrgUBTBOnly(Generator):
                     # see kratos issue #177
                     else:
                         self._data_out[i] = \
-                            self._tb[i] \
+                            self._tb[i]\
                             [self._tb_read_addr[i][clog2(self.tb_height) + clog2(self.fetch_width) - 1, clog2(self.fetch_width)]] \
                             [self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
                 else:

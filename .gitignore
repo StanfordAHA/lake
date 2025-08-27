@@ -7,6 +7,12 @@
 *.csv
 *.json
 
+##########
+# Images #
+##########
+*.jpg
+*.png
+
 ###############
 # Build Files #
 ###############
@@ -38,3 +44,4 @@ dump/
 clockwork
 
 *egg-info*
+TEST

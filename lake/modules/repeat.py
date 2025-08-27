@@ -113,9 +113,9 @@ class Repeat(MemoryController):
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output coord
-            self._done_signal = sticky_flag(self, (self._ref_data_out == MemoryController.DONE_PROXY) &
-                                                    self._ref_valid_out,
-                                                    name='done_indicator')
+            self._done_signal = sticky_flag(self, ((self._ref_data_out == MemoryController.DONE_PROXY) &
+                                                   self._ref_valid_out),
+                                            name='done_indicator')
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
 
 # ==============================
@@ -367,17 +367,17 @@ class Repeat(MemoryController):
         #                                           (kts.ternary(self._proc_fifo_valid,
         #                                                         ~self._proc_fifo_out_eos | self._ref_maybe, kts.const(0, 1)))) | (self._spacc_mode & self._repsig_done) | (self._blank_repeat_stop & ~self._ref_fifo_full)) & ~self._proc_done)
         PASS_REPEAT.output(self._proc_fifo_pop, kts.ternary(self._proc_done,
-                                                           self._repsig_done & ~self._ref_fifo_full,
-                                                           kts.ternary(self._proc_stop,
-                                                                      self._last_pushed_data | (self._repsig_stop & ~self._ref_fifo_full & ~self._last_pushed_data),
-                                                                      self._repsig_stop & ~self._ref_fifo_full)))
+                                                            self._repsig_done & ~self._ref_fifo_full,
+                                                            kts.ternary(self._proc_stop,
+                                                                        self._last_pushed_data | (self._repsig_stop & ~self._ref_fifo_full & ~self._last_pushed_data),
+                                                                        self._repsig_stop & ~self._ref_fifo_full)))
         # Only pop the repsig fifo if there's room in the output fifo and join of input fifos (and not EOS)
         # PASS_REPEAT.output(self._repsig_fifo_pop, ~self._ref_fifo_full & (((self._repsig_fifo_valid & ~self._repsig_fifo_out_eos) & self._proc_fifo_valid & ~self._proc_done) | self._blank_repeat_stop))
         PASS_REPEAT.output(self._repsig_fifo_pop, kts.ternary(self._repsig_done,
-                                                             self._proc_done & ~self._ref_fifo_full,
-                                                             kts.ternary(self._repsig_stop,
-                                                                        (self._proc_data_seen | (self._proc_stop & ~self._last_pushed_data)) & ~self._ref_fifo_full,
-                                                                        (self._proc_data_seen & ~self._ref_fifo_full) | (self._proc_stop & ~self._last_pushed_data))))
+                                                              self._proc_done & ~self._ref_fifo_full,
+                                                              kts.ternary(self._repsig_stop,
+                                                                          (self._proc_data_seen | (self._proc_stop & ~self._last_pushed_data)) & ~self._ref_fifo_full,
+                                                                          (self._proc_data_seen & ~self._ref_fifo_full) | (self._proc_stop & ~self._last_pushed_data))))
 
         PASS_REPEAT.output(self._proc_fifo_inject_push, 0)
         PASS_REPEAT.output(self._proc_fifo_inject_data, 0)

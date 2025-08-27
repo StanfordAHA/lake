@@ -777,8 +777,8 @@ class WriteScanner(MemoryController):
         BLOCK_1_WR.output(self._addr_to_fifo, self._block_writes)
         BLOCK_1_WR.output(self._ID_to_fifo, kts.const(0, 16))
         BLOCK_1_WR.output(self._push_to_outs, kts.ternary(self._filter_not_match,
-                                                0,
-                                                self._block_wr_fifo_valid & (self._block_writes < self._block_size)))
+                                                          0,
+                                                          self._block_wr_fifo_valid & (self._block_writes < self._block_size)))
         BLOCK_1_WR.output(self._inc_seg_addr, 0)
         BLOCK_1_WR.output(self._clr_seg_addr, 0)
         BLOCK_1_WR.output(self._inc_coord_addr, 0)
@@ -827,8 +827,8 @@ class WriteScanner(MemoryController):
         BLOCK_2_WR.output(self._addr_to_fifo, self._block_writes)
         BLOCK_2_WR.output(self._ID_to_fifo, kts.const(1, 16))
         BLOCK_2_WR.output(self._push_to_outs, kts.ternary(self._filter_not_match,
-                                                0,
-                                                self._block_wr_fifo_valid & (self._block_writes < self._block_size)))
+                                                          0,
+                                                          self._block_wr_fifo_valid & (self._block_writes < self._block_size)))
         BLOCK_2_WR.output(self._inc_seg_addr, 0)
         BLOCK_2_WR.output(self._clr_seg_addr, 0)
         BLOCK_2_WR.output(self._inc_coord_addr, 0)
@@ -993,15 +993,15 @@ class WriteScanner(MemoryController):
         # UL_EMIT
         #######
         UL_EMIT.output(self._data_to_fifo, kts.ternary(self._stop_in,
-                                                            self._seg_ctr,
-                                                            self._data_infifo_data_in))
+                                                       self._seg_ctr,
+                                                       self._data_infifo_data_in))
         UL_EMIT.output(self._op_to_fifo, 1)
         UL_EMIT.output(self._addr_to_fifo, kts.ternary(self._stop_in,
-                                                            self._seg_addr,
-                                                            self._coord_addr))
+                                                       self._seg_addr,
+                                                       self._coord_addr))
         UL_EMIT.output(self._ID_to_fifo, kts.ternary(self._stop_in,
-                                                        kts.const(0, 16),
-                                                        kts.const(1, 16)))
+                                                     kts.const(0, 16),
+                                                     kts.const(1, 16)))
         UL_EMIT.output(self._push_to_outs, self._data_infifo_valid_in & self._join_out_ready & ~self._data_done_in)
         UL_EMIT.output(self._inc_seg_addr, self._stop_in & self._join_out_ready & ~self._data_done_in)
         UL_EMIT.output(self._clr_seg_addr, 0)

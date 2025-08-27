@@ -21,6 +21,7 @@ import random
 random.seed(15)
 import string
 
+FA_ID = 1885
 
 def init_module():
     data_width = 16
@@ -178,8 +179,11 @@ def module_iter_basic(test_name, add_test=""):
     print(ir)
     TX_NUM = len(ib)
     ib_c = []
-    for i in ib:
-        ib_c += i
+    for i in range(len(ib)):
+        if i % 2 == 0:
+            ib_c.append(FA_ID)
+        ib_c += ib[i]
+
     ir_c = []
     for i in ir:
         ir_c += i
