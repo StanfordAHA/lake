@@ -1,6 +1,7 @@
 from lake.utils.spec_enum import Direction, LFComparisonOperator
 
 import os
+import math
 
 APPS_NEEDING_HACKS = [
     "scalar_reduction_fp",
@@ -15,6 +16,9 @@ APPS_NEEDING_HACKS = [
     "avgpool_layer_fp",
     "mat_vec_mul_fp",
     "get_apply_e8m0_scale_fp",
+
+    # FIXME: Change this to path balance pond test
+    "pointwise_mu_io",
 ]
 
 
@@ -97,6 +101,10 @@ def hack_rv_config(test_name, node_name=None):
         rv_config = get_single_mem_line_buffer(
             in_size=int(halide_gen_args_dict["vec_height"])
         )
+
+
+    elif test_name == "pointwise_mu_io":
+        rv_config = get_path_balancing_pond(balance_length=8, total_stream_length=1024)
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
     return rv_config
@@ -511,5 +519,68 @@ def get_single_mem_line_buffer(in_size=784):
     raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
 
     linear_test['constraints'] = [raw_1]
+
+    return linear_test
+
+
+
+def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096):
+    '''
+    Helper function to create config for pond behaving as a chain of interconnect FIFOs for path balancing
+    Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
+    MEM port mapping: 0: port_w0, 1: port_w1, 2: port_r0, 3: port_r1
+    '''
+    total_fifo_depth = balance_length * interconnect_fifo_depth
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 1,
+            'extents': [total_stream_length],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+
+    linear_test[3] = {
+        'name': 'port_r1',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 1,
+            'extents': [total_stream_length],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    # TODO: Need to double check these constraints
+    # Cannot read until "balance_length" writes have happened
+    raw_scalar_1 = balance_length
+    raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
+
+    # Cannot write more than "total_fifo_depth" ahead of read ("FIFOs" are full)
+    war_scalar_1 = total_fifo_depth
+    war_1 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.GT.value, war_scalar_1)
+
+    linear_test['constraints'] = [raw_1, war_1]
+    # linear_test['constraints'] = [raw_1]
 
     return linear_test
