@@ -2,6 +2,7 @@ from lake.utils.spec_enum import Direction, LFComparisonOperator
 
 import os
 import math
+import json
 
 APPS_NEEDING_HACKS = [
     "scalar_reduction_fp",
@@ -16,9 +17,6 @@ APPS_NEEDING_HACKS = [
     "avgpool_layer_fp",
     "mat_vec_mul_fp",
     "get_apply_e8m0_scale_fp",
-
-    # FIXME: Change this to path balance pond test
-    "pointwise_mu_io",
 ]
 
 
@@ -102,9 +100,18 @@ def hack_rv_config(test_name, node_name=None):
             in_size=int(halide_gen_args_dict["vec_height"])
         )
 
+    # Global hack for path balancing with ponds
+    elif "_path_balance_pond" in node_name:
+        pe_id = node_name.split("_path_balance_pond")[0]
+        app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
+        assert os.path.exists(app_path_balancing_json_file), f"Cannot find path balancing json file: {app_path_balancing_json_file}"
+        with open(app_path_balancing_json_file, "r") as f:
+            path_balancing_metadata = json.load(f)
 
-    elif test_name == "pointwise_mu_io":
-        rv_config = get_path_balancing_pond(balance_length=8, total_stream_length=1024)
+        balance_length = path_balancing_metadata["balance_lengths"][pe_id]
+        total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
+        print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}\033[0m")
+        rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length)
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
     return rv_config
@@ -530,7 +537,12 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
     MEM port mapping: 0: port_w0, 1: port_w1, 2: port_r0, 3: port_r1
     '''
+    POND_DEPTH = 32
     total_fifo_depth = balance_length * interconnect_fifo_depth
+    if total_fifo_depth > POND_DEPTH:
+        print(f"\033[91mERROR: balance_length {balance_length} is too large to be balanced by a single pond\033[0m")
+        assert False
+
     linear_test = {}
 
     linear_test[0] = {
@@ -581,6 +593,5 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     war_1 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.GT.value, war_scalar_1)
 
     linear_test['constraints'] = [raw_1, war_1]
-    # linear_test['constraints'] = [raw_1]
 
     return linear_test
