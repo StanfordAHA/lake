@@ -95,10 +95,12 @@ def hack_rv_config(test_name, node_name=None):
     elif test_name == "get_apply_e8m0_scale_fp":
         # Configure mem tiles to buffer 32 channels of all pixels
         # vec_height is pixels per channel and vec_width is total number of channels
-        rv_config = get_single_mem_line_buffer(
-            buffer_size=int(halide_gen_args_dict["vec_height"]),
-            num_lines=int(halide_gen_args_dict["vec_width"]) // int(halide_gen_args_dict["mu_i"])
-        )
+        print(f"configure node_name: {node_name}")
+        if "mem_mu2tree" in node_name:
+            rv_config = get_single_mem_line_buffer(
+                buffer_size=int(halide_gen_args_dict["vec_height"]),
+                num_lines=int(halide_gen_args_dict["vec_width"]) // int(halide_gen_args_dict["mu_i"])
+            )
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
     return rv_config
@@ -506,19 +508,44 @@ def get_single_mem_line_buffer(buffer_size=28 * 28, num_lines=2):
         'vec_constraints': []
     }
 
+    linear_test[4] = {
+        'name': 'port_r1',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [buffer_size, num_lines],
+            'address': {
+                'strides': [1, buffer_size],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
     port_data_in_0 = 0
     port_data_out_0 = 3
+    port_data_out_1 = 4
 
     # Only read out data when buffer_size data has been written
-    raw_scalar_1 = -(buffer_size - 1)
+    raw_scalar_1 = -buffer_size
+    # This means: rd[0] - buffer_size < wr[0]
     raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
 
-    # raw_scalar_2 = 0
-    # raw_2 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_2)
+    # Should be 0, but configure a magic number 12 to actually contraint read after write. Needs investigation.
+    raw_scalar_2 = 12
+    raw_2 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_2)
 
-    war_scalar_1 = 8
-    war_1 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.GT.value, war_scalar_1)
+    mem_tile_size = 4 * 1024 // 2 # 4KB's word size
 
-    linear_test['constraints'] = [raw_1, war_1]
+    war_scalar_1 = -((mem_tile_size - buffer_size) // buffer_size)
+    war_1 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.LT.value, war_scalar_1)
+
+    war_scalar_2 = -(mem_tile_size // buffer_size)
+    war_2 = (port_data_in_0, 1, port_data_out_1, 1, LFComparisonOperator.LT.value, war_scalar_2)
+
+    linear_test['constraints'] = [raw_1, raw_2, war_1, war_2]
 
     return linear_test
