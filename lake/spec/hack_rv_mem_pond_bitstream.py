@@ -543,6 +543,8 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         print(f"\033[91mERROR: balance_length {balance_length} is too large to be balanced by a single pond\033[0m")
         assert False
 
+    assert balance_length >= 1, f"ERROR: balance_length has to be at least 1"
+
     linear_test = {}
 
     linear_test[0] = {
@@ -585,7 +587,7 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
 
     # TODO: Need to double check these constraints
     # Cannot read until "balance_length" writes have happened
-    raw_scalar_1 = balance_length
+    raw_scalar_1 = balance_length-1
     raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
 
     # Cannot write more than "total_fifo_depth" ahead of read ("FIFOs" are full)
