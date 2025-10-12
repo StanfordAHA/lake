@@ -551,10 +551,10 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         'name': 'port_w0',
         'type': Direction.IN,
         'config': {
-            'dimensionality': 1,
-            'extents': [total_stream_length],
+            'dimensionality': 2,
+            'extents': [balance_length, math.ceil(total_stream_length // balance_length)],
             'address': {
-                'strides': [1],
+                'strides': [1, balance_length],
                 'offset': 0
             },
             'schedule': {}
@@ -569,10 +569,10 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         'name': 'port_r1',
         'type': Direction.OUT,
         'config': {
-            'dimensionality': 1,
-            'extents': [total_stream_length],
+            'dimensionality': 2,
+            'extents': [balance_length, math.ceil(total_stream_length // balance_length)],
             'address': {
-                'strides': [1],
+                'strides': [1, balance_length],
                 'offset': 0
             },
             'schedule': {}
@@ -587,8 +587,10 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
 
     # TODO: Need to double check these constraints
     # Cannot read until "balance_length" writes have happened
-    raw_scalar_1 = balance_length-1
-    raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
+    # raw_scalar_1 = balance_length-1
+    # raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
+
+    raw_1 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, 0)
 
     # Cannot write more than "total_fifo_depth" ahead of read ("FIFOs" are full)
     war_scalar_1 = total_fifo_depth
