@@ -95,12 +95,21 @@ def hack_rv_config(test_name, node_name=None):
     elif test_name == "get_apply_e8m0_scale_fp":
         # Configure mem tiles to buffer 32 channels of all pixels
         # vec_height is pixels per channel and vec_width is total number of channels
+        img_size = int(halide_gen_args_dict["vec_height"])
+        total_channels = int(halide_gen_args_dict["vec_width"])
+        mu_OC = int(halide_gen_args_dict["mu_i"])
         print(f"configure node_name: {node_name}")
         if "mem_mu2tree" in node_name:
             rv_config = get_single_mem_line_buffer(
-                buffer_size=int(halide_gen_args_dict["vec_height"]),
-                num_lines=int(halide_gen_args_dict["vec_width"]) // int(halide_gen_args_dict["mu_i"])
+                buffer_size=img_size,
+                num_lines=total_channels // mu_OC
             )
+        elif "mem_quantized_output_pair" in node_name:
+            # // 2 because of data packing and x2 because of bogus data
+            rv_config = get_interleave_mem(single_input_stream_size=img_size * total_channels // mu_OC // 2 * 2)
+        elif "mem_scale_output_broadcast" in node_name:
+            # Stream scale to ensure it's multiple of 32 (2, packing x 2, two tiles x 8 cross bank & tile)
+            rv_config = get_filter_scale_mem(img_size=img_size, total_channels=total_channels, mu_OC=mu_OC)
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
     return rv_config
@@ -547,5 +556,140 @@ def get_single_mem_line_buffer(buffer_size=28 * 28, num_lines=2):
     war_2 = (port_data_in_0, 1, port_data_out_1, 1, LFComparisonOperator.LT.value, war_scalar_2)
 
     linear_test['constraints'] = [raw_1, raw_2, war_1, war_2]
+
+    return linear_test
+
+
+def get_interleave_mem(single_input_stream_size=512):
+    '''
+    Helper function to interleave two data streams like output GLB IOs
+    input num 0 first, input num 1 second
+    '''
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [4, single_input_stream_size // 4],
+            'address': {
+                'strides': [16, 64],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[1] = {
+        'name': 'port_w1',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [4, single_input_stream_size // 4],
+            'address': {
+                'strides': [16, 64],
+                'offset': 8
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [8, single_input_stream_size // 4],
+            'address': {
+                'strides': [8, 64],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_in_1 = 1
+    port_data_out_0 = 3
+
+    raw_scalar_0 = 1
+    raw_0 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
+
+    raw_scalar_1 = 1
+    raw_1 = (port_data_out_0, 1, port_data_in_1, 1, LFComparisonOperator.LT.value, raw_scalar_1)
+
+    # waw_scalar_0 = 0
+    # waw_0 = (port_data_in_1, 0, port_data_in_0, 0, LFComparisonOperator.GT.value, waw_scalar_0)
+
+    linear_test['constraints'] = [raw_0, raw_1]
+
+    return linear_test
+
+
+def get_filter_scale_mem(img_size, total_channels, mu_OC=32):
+    '''
+    Helper function to align scale data to width of two GLB tiles
+    Basicaly img_size should be multiple of 32
+    '''
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            # Inner // 2 because of data packing
+            # Outer // 2 because of block size is 2 * mu_OC
+            'extents': [img_size // 2, total_channels // mu_OC // 2],
+            'address': {
+                'strides': [1, img_size // 2],
+                'offset': 0
+            },
+            'schedule': {},
+            'filter': {
+                'offset': [img_size + 1],
+                'dimensionality': [2],
+                'strides': [2, img_size * 2]
+            }
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [img_size // 2, total_channels // mu_OC // 2],
+            'address': {
+                'strides': [1, img_size // 2],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    raw_scalar_0 = 12
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_0)
+
+    linear_test['constraints'] = [raw_0]
 
     return linear_test
