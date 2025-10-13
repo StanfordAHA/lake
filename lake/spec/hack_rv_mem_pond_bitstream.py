@@ -546,15 +546,16 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     assert balance_length >= 1, f"ERROR: balance_length has to be at least 1"
 
     linear_test = {}
+    dim1 = math.ceil(total_stream_length // balance_length // 2)
 
     linear_test[0] = {
         'name': 'port_w0',
         'type': Direction.IN,
         'config': {
-            'dimensionality': 2,
-            'extents': [balance_length, math.ceil(total_stream_length // balance_length)],
+            'dimensionality': 3,
+            'extents': [balance_length, dim1, 2],
             'address': {
-                'strides': [1, balance_length],
+                'strides': [1, balance_length, dim1],
                 'offset': 0
             },
             'schedule': {}
@@ -569,10 +570,10 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         'name': 'port_r1',
         'type': Direction.OUT,
         'config': {
-            'dimensionality': 2,
-            'extents': [balance_length, math.ceil(total_stream_length // balance_length)],
+            'dimensionality': 3,
+            'extents': [balance_length, dim1, 2],
             'address': {
-                'strides': [1, balance_length],
+                'strides': [1, balance_length, dim1],
                 'offset': 0
             },
             'schedule': {}
