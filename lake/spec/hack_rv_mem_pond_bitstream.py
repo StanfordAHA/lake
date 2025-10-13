@@ -548,7 +548,6 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
 
     assert balance_length >= 1, f"ERROR: balance_length has to be at least 1"
 
-    # TODO: If this doesn't work across the board, track min. balance length in path_balancing.json and use that to make the decision
     assert total_stream_length % balance_length == 0, f"ERROR: total_stream_length has to be divisible by balance_length"
     dim1 = total_stream_length // balance_length
     dim2 = 1
