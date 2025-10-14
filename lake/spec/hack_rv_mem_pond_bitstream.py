@@ -607,9 +607,9 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     port_data_in_0 = 0
     port_data_out_0 = 3
 
-    # TODO: Need to double check these constraints
     # Attempt to keep wr_ptr "balance_lengths" ahead of rd_ptr.
     # NOTE: Since this constraint is on dim1, in reality, the distance between wr_ptr and rd_ptr is [1, ~2*balance_length)
+    # The "avg. behavior" is wr_ptr is balance_length ahead of rd_ptr, but it can be as low as 1
     raw_1 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, 0)
 
     # Cannot write more than "total_fifo_depth" ahead of read ("FIFOs" are full)
