@@ -710,7 +710,6 @@ def get_filter_scale_mem(img_size, total_channels, mu_OC=32):
     return linear_test
 
 
-
 def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096):
     '''
     Helper function to create config for pond behaving as a chain of interconnect FIFOs for path balancing
@@ -719,7 +718,7 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     '''
     POND_DEPTH = 32
     EXTENT_COUNTER_WIDTH = 11
-    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH-1)  # Counter is signed so max extent is 2^10
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
 
     total_fifo_depth = balance_length * interconnect_fifo_depth
     if total_fifo_depth > POND_DEPTH:
@@ -746,7 +745,6 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         extents = [balance_length, dim1]
         strides = [1, balance_length]
 
-
     linear_test = {}
 
     linear_test[0] = {
@@ -765,7 +763,6 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         'vec_out_config': {},
         'vec_constraints': []
     }
-
 
     linear_test[3] = {
         'name': 'port_r1',
