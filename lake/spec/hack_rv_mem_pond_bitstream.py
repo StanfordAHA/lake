@@ -17,6 +17,8 @@ APPS_NEEDING_HACKS = [
     "avgpool_layer_fp",
     "mat_vec_mul_fp",
     "get_apply_e8m0_scale_fp",
+    "maxpooling_dense_rv_fp",
+    "fully_connected_layer_fp",
 ]
 
 
@@ -112,6 +114,22 @@ def hack_rv_config(test_name, node_name=None):
         elif "mem_scale_output_broadcast" in node_name:
             # Stream scale to ensure it's multiple of 32 (2, packing x 2, two tiles x 8 cross bank & tile)
             rv_config = get_filter_scale_mem(img_size=img_size, total_channels=total_channels, mu_OC=mu_OC)
+
+    elif test_name == "maxpooling_dense_rv_fp":
+        # Line buffer with two read ports
+        rv_config = get_mem_line_buffer_dual_port(
+            line_size=int(halide_gen_args_dict["in_img"]),
+            num_lines=int(halide_gen_args_dict["in_img"]) * int(halide_gen_args_dict["n_ic"]) // int(halide_gen_args_dict["unroll"])
+        )
+
+    elif test_name == "fully_connected_layer_fp":
+        # Have accum ponds
+        print(f"configure node_name: {node_name}")
+        matrix_width = int(halide_gen_args_dict['matrix_width'])
+        matrix_height = int(halide_gen_args_dict['matrix_height'])
+        num_partial_reduction = matrix_width // int(halide_gen_args_dict['glb_i'])
+        rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction,
+                                   num_output_pixels=matrix_height)
 
     # Global hack for path balancing with ponds
     elif "_path_balance_pond" in node_name:
@@ -571,6 +589,83 @@ def get_single_mem_line_buffer(buffer_size=28 * 28, num_lines=2):
     war_2 = (port_data_in_0, 1, port_data_out_1, 1, LFComparisonOperator.LT.value, war_scalar_2)
 
     linear_test['constraints'] = [raw_1, raw_2, war_1, war_2]
+
+    return linear_test
+
+
+def get_mem_line_buffer_dual_port(line_size=64, num_lines=198):
+    '''
+    Helper function to create line buffer schedule for sliding window reduction
+    Has two read ports: one with one line of delay and the other with two lines of delay
+    '''
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [line_size, num_lines],
+            'address': {
+                'strides': [1, line_size],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    # Port 0 connects to last three PEs with two lines of delay
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [line_size, num_lines],
+            'address': {
+                'strides': [1, line_size],
+                'offset': -2 * line_size
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    # Port 1 connects to middle three PEs with one line of delay
+    linear_test[4] = {
+        'name': 'port_r1',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [line_size, num_lines],
+            'address': {
+                'strides': [1, line_size],
+                'offset': -line_size
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    port_data_out_1 = 4
+    raw_scalar = -(line_size - 1)
+
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+    raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+
+    war_0 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.GT.value, 2048 // line_size)
+    war_1 = (port_data_in_0, 1, port_data_out_1, 1, LFComparisonOperator.GT.value, 2048 // line_size)
+
+    linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
 
     return linear_test
 
