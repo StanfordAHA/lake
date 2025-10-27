@@ -17,6 +17,8 @@ APPS_NEEDING_HACKS = [
     "avgpool_layer_fp",
     "mat_vec_mul_fp",
     "get_apply_e8m0_scale_fp",
+    "maxpooling_dense_rv_fp",
+    "fully_connected_layer_fp",
 ]
 
 
@@ -96,9 +98,38 @@ def hack_rv_config(test_name, node_name=None):
 
     elif test_name == "get_apply_e8m0_scale_fp":
         # Configure mem tiles to buffer 32 channels of all pixels
-        rv_config = get_single_mem_line_buffer(
-            in_size=int(halide_gen_args_dict["vec_height"])
+        # vec_height is pixels per channel and vec_width is total number of channels
+        img_size = int(halide_gen_args_dict["vec_height"])
+        total_channels = int(halide_gen_args_dict["vec_width"])
+        mu_OC = int(halide_gen_args_dict["mu_i"])
+        print(f"configure node_name: {node_name}")
+        if "mem_mu2tree" in node_name:
+            rv_config = get_single_mem_line_buffer(
+                buffer_size=img_size,
+                num_lines=total_channels // mu_OC
+            )
+        elif "mem_quantized_output_pair" in node_name:
+            # // 2 because of data packing and x2 because of bogus data
+            rv_config = get_interleave_mem(single_input_stream_size=img_size * total_channels // mu_OC // 2 * 2)
+        elif "mem_scale_output_broadcast" in node_name:
+            # Stream scale to ensure it's multiple of 32 (2, packing x 2, two tiles x 8 cross bank & tile)
+            rv_config = get_filter_scale_mem(img_size=img_size, total_channels=total_channels, mu_OC=mu_OC)
+
+    elif test_name == "maxpooling_dense_rv_fp":
+        # Line buffer with two read ports
+        rv_config = get_mem_line_buffer_dual_port(
+            line_size=int(halide_gen_args_dict["in_img"]),
+            num_lines=int(halide_gen_args_dict["in_img"]) * int(halide_gen_args_dict["n_ic"]) // int(halide_gen_args_dict["unroll"])
         )
+
+    elif test_name == "fully_connected_layer_fp":
+        # Have accum ponds
+        print(f"configure node_name: {node_name}")
+        matrix_width = int(halide_gen_args_dict['matrix_width'])
+        matrix_height = int(halide_gen_args_dict['matrix_height'])
+        num_partial_reduction = matrix_width // int(halide_gen_args_dict['glb_i'])
+        rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction,
+                                   num_output_pixels=matrix_height)
 
     # Global hack for path balancing with ponds
     elif "_path_balance_pond" in node_name:
@@ -477,7 +508,7 @@ def get_single_mem_stride(in_img_x=32, in_img_y=64, stride=4):
     return linear_test
 
 
-def get_single_mem_line_buffer(in_size=784):
+def get_single_mem_line_buffer(buffer_size=28 * 28, num_lines=2):
     '''
     Helper function to create config for line buffer MEM
     MEM port mapping: 0: port_w0, 1: port_w1, 2: port_w2, 3: port_r0, 4: port_r1, 5: port_r2
@@ -489,10 +520,10 @@ def get_single_mem_line_buffer(in_size=784):
         'name': 'port_w0',
         'type': Direction.IN,
         'config': {
-            'dimensionality': 1,
-            'extents': [in_size],
+            'dimensionality': 2,
+            'extents': [buffer_size, num_lines],
             'address': {
-                'strides': [1],
+                'strides': [1, buffer_size],
                 'offset': 0
             },
             'schedule': {}
@@ -506,11 +537,28 @@ def get_single_mem_line_buffer(in_size=784):
         'name': 'port_r0',
         'type': Direction.OUT,
         'config': {
-            'dimensionality': 1,
-            'extents': [in_size * 2],
+            'dimensionality': 2,
+            'extents': [buffer_size, num_lines],
             'address': {
-                'strides': [1],
-                'offset': -in_size
+                'strides': [1, buffer_size],
+                'offset': -buffer_size
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[4] = {
+        'name': 'port_r1',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [buffer_size, num_lines],
+            'address': {
+                'strides': [1, buffer_size],
+                'offset': 0
             },
             'schedule': {}
         },
@@ -521,14 +569,240 @@ def get_single_mem_line_buffer(in_size=784):
 
     port_data_in_0 = 0
     port_data_out_0 = 3
+    port_data_out_1 = 4
 
-    raw_scalar_1 = -in_size
+    # Only read out data when buffer_size data has been written
+    raw_scalar_1 = -buffer_size
+    # This means: rd[0] - buffer_size < wr[0]
     raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
 
-    linear_test['constraints'] = [raw_1]
+    # Should be 0, but configure a magic number 12 to actually contraint read after write. Needs investigation.
+    raw_scalar_2 = 12
+    raw_2 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_2)
+
+    mem_tile_size = 4 * 1024 // 2 # 4KB's word size
+
+    war_scalar_1 = -((mem_tile_size - buffer_size) // buffer_size)
+    war_1 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.LT.value, war_scalar_1)
+
+    war_scalar_2 = -(mem_tile_size // buffer_size)
+    war_2 = (port_data_in_0, 1, port_data_out_1, 1, LFComparisonOperator.LT.value, war_scalar_2)
+
+    linear_test['constraints'] = [raw_1, raw_2, war_1, war_2]
 
     return linear_test
 
+
+def get_mem_line_buffer_dual_port(line_size=64, num_lines=198):
+    '''
+    Helper function to create line buffer schedule for sliding window reduction
+    Has two read ports: one with one line of delay and the other with two lines of delay
+    '''
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [line_size, num_lines],
+            'address': {
+                'strides': [1, line_size],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    # Port 0 connects to last three PEs with two lines of delay
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [line_size, num_lines],
+            'address': {
+                'strides': [1, line_size],
+                'offset': -2 * line_size
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    # Port 1 connects to middle three PEs with one line of delay
+    linear_test[4] = {
+        'name': 'port_r1',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [line_size, num_lines],
+            'address': {
+                'strides': [1, line_size],
+                'offset': -line_size
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    port_data_out_1 = 4
+    raw_scalar = -(line_size - 1)
+
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+    raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+
+    war_0 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.GT.value, 2048 // line_size)
+    war_1 = (port_data_in_0, 1, port_data_out_1, 1, LFComparisonOperator.GT.value, 2048 // line_size)
+
+    linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
+
+    return linear_test
+
+
+def get_interleave_mem(single_input_stream_size=512):
+    '''
+    Helper function to interleave two data streams like output GLB IOs
+    input num 0 first, input num 1 second
+    '''
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [4, single_input_stream_size // 4],
+            'address': {
+                'strides': [16, 64],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[1] = {
+        'name': 'port_w1',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [4, single_input_stream_size // 4],
+            'address': {
+                'strides': [16, 64],
+                'offset': 8
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [8, single_input_stream_size // 4],
+            'address': {
+                'strides': [8, 64],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_in_1 = 1
+    port_data_out_0 = 3
+
+    raw_scalar_0 = 1
+    raw_0 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
+
+    raw_scalar_1 = 1
+    raw_1 = (port_data_out_0, 1, port_data_in_1, 1, LFComparisonOperator.LT.value, raw_scalar_1)
+
+    # waw_scalar_0 = 0
+    # waw_0 = (port_data_in_1, 0, port_data_in_0, 0, LFComparisonOperator.GT.value, waw_scalar_0)
+
+    linear_test['constraints'] = [raw_0, raw_1]
+
+    return linear_test
+
+
+def get_filter_scale_mem(img_size, total_channels, mu_OC=32):
+    '''
+    Helper function to align scale data to width of two GLB tiles
+    Basicaly img_size should be multiple of 32
+    '''
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            # Inner // 2 because of data packing
+            # Outer // 2 because of block size is 2 * mu_OC
+            'extents': [img_size // 2, total_channels // mu_OC // 2],
+            'address': {
+                'strides': [1, img_size // 2],
+                'offset': 0
+            },
+            'schedule': {},
+            'filter': {
+                'offset': [img_size + 1],
+                'dimensionality': [2],
+                'strides': [2, img_size * 2]
+            }
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [img_size // 2, total_channels // mu_OC // 2],
+            'address': {
+                'strides': [1, img_size // 2],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    raw_scalar_0 = 12
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_0)
+
+    linear_test['constraints'] = [raw_0]
+
+    return linear_test
 
 
 def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096):
@@ -539,7 +813,7 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     '''
     POND_DEPTH = 32
     EXTENT_COUNTER_WIDTH = 11
-    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH-1)  # Counter is signed so max extent is 2^10
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
 
     total_fifo_depth = balance_length * interconnect_fifo_depth
     if total_fifo_depth > POND_DEPTH:
@@ -566,7 +840,6 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         extents = [balance_length, dim1]
         strides = [1, balance_length]
 
-
     linear_test = {}
 
     linear_test[0] = {
@@ -585,7 +858,6 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         'vec_out_config': {},
         'vec_constraints': []
     }
-
 
     linear_test[3] = {
         'name': 'port_r1',
