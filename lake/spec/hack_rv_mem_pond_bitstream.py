@@ -45,13 +45,18 @@ def hack_rv_config(test_name, node_name=None):
                                    num_output_pixels=1)
 
     elif test_name == "vector_reduction_fp":
-        # Only have one Pond
         # "HALIDE_GEN_ARGS" example: "vec_width=256 vec_height=2 glb_i=8 glb_o=1 tree_stages=3"
         vec_len = int(halide_gen_args_dict['vec_width'])
         num_vecs = int(halide_gen_args_dict['vec_height'])
         num_partial_reduction = vec_len // int(halide_gen_args_dict['glb_i'])
-        rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction,
-                                   num_output_pixels=num_vecs)
+        # Configure filter mem to demux reduction results into two ponds
+        if "filter_mem" in node_name:
+            rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * num_vecs)
+        # Configure accum pond, each handling half of the reduction results
+        elif "accum_pond" in node_name:
+            rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=num_vecs)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
 
     elif test_name == "mem_transpose_test":
         # Only have one MEM
@@ -93,8 +98,14 @@ def hack_rv_config(test_name, node_name=None):
         matrix_width = int(halide_gen_args_dict['matrix_width'])
         matrix_height = int(halide_gen_args_dict['matrix_height'])
         num_partial_reduction = matrix_width // int(halide_gen_args_dict['glb_i'])
-        rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction,
-                                   num_output_pixels=matrix_height)
+        # Configure filter mem to demux reduction results into two ponds
+        if "filter_mem" in node_name:
+            rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * matrix_height)
+        # Configure accum pond, each handling half of the reduction results
+        elif "accum_pond" in node_name:
+            rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=matrix_height)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
 
     elif test_name == "get_apply_e8m0_scale_fp":
         # Configure mem tiles to buffer 32 channels of all pixels
@@ -128,8 +139,14 @@ def hack_rv_config(test_name, node_name=None):
         matrix_width = int(halide_gen_args_dict['matrix_width'])
         matrix_height = int(halide_gen_args_dict['matrix_height'])
         num_partial_reduction = matrix_width // int(halide_gen_args_dict['glb_i'])
-        rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction,
-                                   num_output_pixels=matrix_height)
+        # Configure filter mem to demux reduction results into two ponds
+        if "filter_mem" in node_name:
+            rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * matrix_height)
+        # Configure accum pond, each handling half of the reduction results
+        elif "accum_pond" in node_name:
+            rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=matrix_height)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
 
     # Global hack for path balancing with ponds
     elif "_path_balance_pond" in node_name:
@@ -804,6 +821,107 @@ def get_filter_scale_mem(img_size, total_channels, mu_OC=32):
 
     return linear_test
 
+def get_filter_mem_two_streams(input_stream_size=512):
+    '''
+    Helper function to create config for filter mem to demux reduction results into two interleaving streams
+    '''
+
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    CYCLES_PER_DATA = 2
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    port_data_out_1 = 4
+
+    assert input_stream_size % CYCLES_PER_DATA == 0, f"ERROR: input_stream_size has to be even for interleaving"
+
+    dim_1 = input_stream_size // CYCLES_PER_DATA
+    dim_2 = 1
+    while dim_1 > MAX_EXTENT:
+        assert dim_1 % 2 == 0, f"ERROR: Dim1 always has to be divisible by 2 when increasing dimensionality."
+        dim_1 //= 2
+        dim_2 *= 2
+        assert dim_2 <= MAX_EXTENT, f"ERROR: Cannot map filter mem to two streams using 3D extents with input_stream_size: {input_stream_size}. Higher dimensionality is required."
+
+    if dim_2 > 1:
+        input_dimensionality = 3
+        input_extents = [CYCLES_PER_DATA, dim_1, dim_2]
+        input_strides = [1, CYCLES_PER_DATA, dim_1]
+        output_dimensionality = 2
+        output_extents = [dim_1, dim_2]
+        output_strides = [CYCLES_PER_DATA, dim_1]
+    else:
+        input_dimensionality = 2
+        input_extents = [CYCLES_PER_DATA, dim_1]
+        input_strides = [1, CYCLES_PER_DATA]
+        output_dimensionality = 1
+        output_extents = [dim_1]
+        output_strides = [CYCLES_PER_DATA]
+
+    linear_test = {}
+
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': input_dimensionality,
+            'extents': input_extents,
+            'address': {
+                'strides': input_strides,
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': output_dimensionality,
+            'extents': output_extents,
+            'address': {
+                'strides': output_strides,
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[4] = {
+        'name': 'port_r1',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': output_dimensionality,
+            'extents': output_extents,
+            'address': {
+                'strides': output_strides,
+                'offset': 1
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    port_data_out_1 = 4
+
+    # The scalar has to be a magic number 3 to actually contraint read after write...
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 1, LFComparisonOperator.LT.value, 3)
+    raw_1 = (port_data_out_1, 0, port_data_in_0, 1, LFComparisonOperator.LT.value, 3)
+
+    linear_test['constraints'] = [raw_0, raw_1]
+    return linear_test
 
 def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096):
     '''
