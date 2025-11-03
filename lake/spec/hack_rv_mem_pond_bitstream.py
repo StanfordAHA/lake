@@ -49,6 +49,7 @@ def hack_rv_config(test_name, node_name=None):
         vec_len = int(halide_gen_args_dict['vec_width'])
         num_vecs = int(halide_gen_args_dict['vec_height'])
         num_partial_reduction = vec_len // int(halide_gen_args_dict['glb_i'])
+        assert num_partial_reduction % 2 == 0, f"ERROR: num_partial_reduction has to be even for two ponds"
         # Configure filter mem to demux reduction results into two ponds
         if "filter_mem" in node_name:
             rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * num_vecs)
@@ -87,10 +88,16 @@ def hack_rv_config(test_name, node_name=None):
         # Configure accum pond
         # input port: num_0
         # output port: update: num_0, spill: num_1
-        if "output_cgra_stencil" in node_name:
-            avgpool_kernel_reduction = int(halide_gen_args_dict["in_img"]) * int(halide_gen_args_dict["in_img"])
-            num_out_channels_per_lane = int(halide_gen_args_dict["n_ic"]) // int(halide_gen_args_dict["glb_i"])
-            rv_config = get_vec_accum_pond(num_partial_reduction=avgpool_kernel_reduction, num_output_pixels=num_out_channels_per_lane)
+        avgpool_kernel_reduction = int(halide_gen_args_dict["in_img"]) * int(halide_gen_args_dict["in_img"])
+        num_out_channels_per_lane = int(halide_gen_args_dict["n_ic"]) // int(halide_gen_args_dict["glb_i"])
+        assert avgpool_kernel_reduction % 2 == 0, f"ERROR: avgpool_kernel_reduction has to be even for two ponds"
+        # Configure filter mem to demux reduction results into two ponds
+        if "filter_mem" in node_name:
+            rv_config = get_filter_mem_two_streams(input_stream_size=avgpool_kernel_reduction * num_out_channels_per_lane)
+        elif "accum_pond" in node_name:
+            rv_config = get_vec_accum_pond(num_partial_reduction=avgpool_kernel_reduction // 2, num_output_pixels=num_out_channels_per_lane)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
 
     elif test_name == "mat_vec_mul_fp":
         # Have accum ponds
@@ -98,6 +105,7 @@ def hack_rv_config(test_name, node_name=None):
         matrix_width = int(halide_gen_args_dict['matrix_width'])
         matrix_height = int(halide_gen_args_dict['matrix_height'])
         num_partial_reduction = matrix_width // int(halide_gen_args_dict['glb_i'])
+        assert num_partial_reduction % 2 == 0, f"ERROR: num_partial_reduction has to be even for two ponds"
         # Configure filter mem to demux reduction results into two ponds
         if "filter_mem" in node_name:
             rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * matrix_height)
@@ -232,18 +240,12 @@ def get_accum_pond(num_partial_reduction=64, num_output_pixels=1):
     pr1 = 2
     pr2 = 3
 
-    pr1_raw_idx = 0
-    pw1_raw_idx = 0
-    raw_r1_comp = LFComparisonOperator.LT.value
     # Allows the reads to start early to read out the initial zero value in pond
     raw_r1_scalar = -1
-    raw_r1_constraint = (pr1, pr1_raw_idx, pw, pw1_raw_idx, raw_r1_comp, raw_r1_scalar)
+    raw_r1_constraint = (pr1, 0, pw, 0, LFComparisonOperator.LT.value, raw_r1_scalar)
 
-    pr2_raw_idx = 0
-    pw2_raw_idx = 0
-    raw_r2_comp = LFComparisonOperator.LT.value
     raw_r2_scalar = num_partial_reduction
-    raw_r2_constraint = (pr2, pr2_raw_idx, pw, pw2_raw_idx, raw_r2_comp, raw_r2_scalar)
+    raw_r2_constraint = (pr2, 0, pw, 0, LFComparisonOperator.LT.value, raw_r2_scalar)
 
     # Just have read follow write
     linear_test['constraints'] = [raw_r1_constraint, raw_r2_constraint]
@@ -833,7 +835,7 @@ def get_filter_mem_two_streams(input_stream_size=512):
     port_data_out_0 = 3
     port_data_out_1 = 4
 
-    assert input_stream_size % CYCLES_PER_DATA == 0, f"ERROR: input_stream_size has to be even for interleaving"
+    stream_is_even = (input_stream_size % CYCLES_PER_DATA == 0)
 
     dim_1 = input_stream_size // CYCLES_PER_DATA
     dim_2 = 1
@@ -848,15 +850,26 @@ def get_filter_mem_two_streams(input_stream_size=512):
         input_extents = [CYCLES_PER_DATA, dim_1, dim_2]
         input_strides = [1, CYCLES_PER_DATA, dim_1]
         output_dimensionality = 2
-        output_extents = [dim_1, dim_2]
+        output_extents_0 = [dim_1, dim_2]
+        output_extents_1 = [dim_1, dim_2]
         output_strides = [CYCLES_PER_DATA, dim_1]
     else:
-        input_dimensionality = 2
-        input_extents = [CYCLES_PER_DATA, dim_1]
-        input_strides = [1, CYCLES_PER_DATA]
-        output_dimensionality = 1
-        output_extents = [dim_1]
-        output_strides = [CYCLES_PER_DATA]
+        if stream_is_even:
+            input_dimensionality = 2
+            input_extents = [CYCLES_PER_DATA, dim_1]
+            input_strides = [1, CYCLES_PER_DATA]
+            output_dimensionality = 1
+            output_extents_0 = [dim_1]
+            output_extents_1 = [dim_1]
+            output_strides = [CYCLES_PER_DATA]
+        else:
+            input_dimensionality = 2
+            input_extents = [CYCLES_PER_DATA, dim_1]
+            input_strides = [1, CYCLES_PER_DATA]
+            output_dimensionality = 1
+            output_extents_0 = [dim_1 + 1]
+            output_extents_1 = [dim_1]
+            output_strides = [CYCLES_PER_DATA]
 
     linear_test = {}
 
@@ -883,7 +896,7 @@ def get_filter_mem_two_streams(input_stream_size=512):
         'type': Direction.OUT,
         'config': {
             'dimensionality': output_dimensionality,
-            'extents': output_extents,
+            'extents': output_extents_0,
             'address': {
                 'strides': output_strides,
                 'offset': 0
@@ -900,7 +913,7 @@ def get_filter_mem_two_streams(input_stream_size=512):
         'type': Direction.OUT,
         'config': {
             'dimensionality': output_dimensionality,
-            'extents': output_extents,
+            'extents': output_extents_1,
             'address': {
                 'strides': output_strides,
                 'offset': 1
