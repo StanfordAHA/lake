@@ -823,6 +823,7 @@ def get_filter_scale_mem(img_size, total_channels, mu_OC=32):
 
     return linear_test
 
+
 def get_filter_mem_two_streams(input_stream_size=512):
     '''
     Helper function to create config for filter mem to demux reduction results into two interleaving streams
@@ -872,7 +873,6 @@ def get_filter_mem_two_streams(input_stream_size=512):
             output_strides = [CYCLES_PER_DATA]
 
     linear_test = {}
-
 
     linear_test[0] = {
         'name': 'port_w0',
@@ -935,6 +935,7 @@ def get_filter_mem_two_streams(input_stream_size=512):
 
     linear_test['constraints'] = [raw_0, raw_1]
     return linear_test
+
 
 def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096):
     '''
