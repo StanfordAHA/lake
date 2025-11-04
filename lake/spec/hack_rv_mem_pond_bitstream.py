@@ -17,6 +17,7 @@ APPS_NEEDING_HACKS = [
     "avgpool_layer_fp",
     "mat_vec_mul_fp",
     "get_apply_e8m0_scale_fp",
+    "get_e8m0_scale_tree_fp",
     "maxpooling_dense_rv_fp",
     "fully_connected_layer_fp",
 ]
@@ -131,8 +132,26 @@ def hack_rv_config(test_name, node_name=None):
             # // 2 because of data packing and x2 because of bogus data
             rv_config = get_interleave_mem(single_input_stream_size=img_size * total_channels // mu_OC // 2 * 2)
         elif "mem_scale_output_broadcast" in node_name:
-            # Stream scale to ensure it's multiple of 32 (2, packing x 2, two tiles x 8 cross bank & tile)
+            # Filter scale to only stream valid scales to GLB output IO
             rv_config = get_filter_scale_mem(img_size=img_size, total_channels=total_channels, mu_OC=mu_OC)
+
+    elif test_name == "get_e8m0_scale_tree_fp":
+        # Configure mem tiles to buffer 32 channels of all pixels
+        # vec_height is pixels per channel and vec_width is total number of channels
+        img_size = int(halide_gen_args_dict["vec_height"])
+        total_channels = int(halide_gen_args_dict["vec_width"])
+        mu_OC = int(halide_gen_args_dict["mu_i"])
+        print(f"configure node_name: {node_name}")
+        if "mem_mu2tree" in node_name:
+            rv_config = get_single_mem_line_buffer(
+                buffer_size=img_size,
+                num_lines=total_channels // mu_OC
+            )
+        elif "mem_scale_filter" in node_name:
+            # Filter scale to only stream valid scales to GLB output IO
+            rv_config = get_filter_scale_mem(img_size=img_size, total_channels=total_channels, mu_OC=mu_OC, packed=False)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
 
     elif test_name == "maxpooling_dense_rv_fp":
         # Line buffer with two read ports
@@ -766,11 +785,24 @@ def get_interleave_mem(single_input_stream_size=512):
     return linear_test
 
 
-def get_filter_scale_mem(img_size, total_channels, mu_OC=32):
+def get_filter_scale_mem(img_size, total_channels, mu_OC=32, packed=True):
     '''
     Helper function to align scale data to width of two GLB tiles
     Basicaly img_size should be multiple of 32
     '''
+
+    if packed:
+        # Inner // 2 because of data packing
+        # Outer // 2 because of block size is 2 * mu_OC
+        extents = [img_size // 2, total_channels // mu_OC // 2]
+        address_strides = [1, img_size // 2]
+        filter_offset = [img_size + 1]
+        filter_strides = [2, img_size * 2]
+    else:
+        extents = [img_size, total_channels // mu_OC // 2]
+        address_strides = [1, img_size]
+        filter_offset = [img_size]
+        filter_strides = [1, img_size * 2]
 
     linear_test = {}
 
@@ -779,18 +811,16 @@ def get_filter_scale_mem(img_size, total_channels, mu_OC=32):
         'type': Direction.IN,
         'config': {
             'dimensionality': 2,
-            # Inner // 2 because of data packing
-            # Outer // 2 because of block size is 2 * mu_OC
-            'extents': [img_size // 2, total_channels // mu_OC // 2],
+            'extents': extents,
             'address': {
-                'strides': [1, img_size // 2],
+                'strides': address_strides,
                 'offset': 0
             },
             'schedule': {},
             'filter': {
-                'offset': [img_size + 1],
+                'offset': filter_offset,
                 'dimensionality': [2],
-                'strides': [2, img_size * 2]
+                'strides': filter_strides
             }
         },
         'vec_in_config': {},
@@ -803,9 +833,9 @@ def get_filter_scale_mem(img_size, total_channels, mu_OC=32):
         'type': Direction.OUT,
         'config': {
             'dimensionality': 2,
-            'extents': [img_size // 2, total_channels // mu_OC // 2],
+            'extents': extents,
             'address': {
-                'strides': [1, img_size // 2],
+                'strides': address_strides,
                 'offset': 0
             },
             'schedule': {}
@@ -981,7 +1011,6 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     else:
         port_data_out_0 = 2
 
-
     linear_test = {}
 
     linear_test[port_data_in_0] = {
@@ -1017,7 +1046,6 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         'vec_out_config': {},
         'vec_constraints': []
     }
-
 
     # Attempt to keep wr_ptr "balance_lengths" ahead of rd_ptr.
     # NOTE: Since this constraint is on dim1, in reality, the distance between wr_ptr and rd_ptr is [1, ~2*balance_length)
