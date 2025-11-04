@@ -166,8 +166,9 @@ def hack_rv_config(test_name, node_name=None):
 
         balance_length = path_balancing_metadata["balance_lengths"][pe_id]
         total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
-        print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}\033[0m")
-        rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length)
+        pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id]
+        print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
+        rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
     return rv_config
@@ -937,7 +938,7 @@ def get_filter_mem_two_streams(input_stream_size=512):
     return linear_test
 
 
-def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096):
+def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096, pe_to_pond=True):
     '''
     Helper function to create config for pond behaving as a chain of interconnect FIFOs for path balancing
     Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
@@ -972,9 +973,18 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         extents = [balance_length, dim1]
         strides = [1, balance_length]
 
+    port_data_in_0 = 0
+
+    # If PE to pond, need to use pond_output_num1 to drive output onto the swtichbox interconnect
+    if pe_to_pond:
+        port_data_out_0 = 3
+    else:
+        port_data_out_0 = 2
+
+
     linear_test = {}
 
-    linear_test[0] = {
+    linear_test[port_data_in_0] = {
         'name': 'port_w0',
         'type': Direction.IN,
         'config': {
@@ -991,7 +1001,7 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         'vec_constraints': []
     }
 
-    linear_test[3] = {
+    linear_test[port_data_out_0] = {
         'name': 'port_r1',
         'type': Direction.OUT,
         'config': {
@@ -1008,8 +1018,6 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
         'vec_constraints': []
     }
 
-    port_data_in_0 = 0
-    port_data_out_0 = 3
 
     # Attempt to keep wr_ptr "balance_lengths" ahead of rd_ptr.
     # NOTE: Since this constraint is on dim1, in reality, the distance between wr_ptr and rd_ptr is [1, ~2*balance_length)
