@@ -685,7 +685,7 @@ def get_interleave_mem(single_input_stream_size=512):
             'dimensionality': 2,
             'extents': [4, single_input_stream_size // 4],
             'address': {
-                'strides': [16, 64],
+                'strides': [8, 32],
                 'offset': 0
             },
             'schedule': {}
@@ -702,8 +702,8 @@ def get_interleave_mem(single_input_stream_size=512):
             'dimensionality': 2,
             'extents': [4, single_input_stream_size // 4],
             'address': {
-                'strides': [16, 64],
-                'offset': 8
+                'strides': [8, 32],
+                'offset': 4
             },
             'schedule': {}
         },
@@ -719,7 +719,7 @@ def get_interleave_mem(single_input_stream_size=512):
             'dimensionality': 2,
             'extents': [8, single_input_stream_size // 4],
             'address': {
-                'strides': [8, 64],
+                'strides': [4, 32],
                 'offset': 0
             },
             'schedule': {}
@@ -733,6 +733,7 @@ def get_interleave_mem(single_input_stream_size=512):
     port_data_in_1 = 1
     port_data_out_0 = 3
 
+    # raw_scalar should be 0 but set a magic number 1 to actually contraint read after write. Needs investigation.
     raw_scalar_0 = 1
     raw_0 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
 

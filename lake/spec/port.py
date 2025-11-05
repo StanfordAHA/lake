@@ -492,7 +492,7 @@ class Port(Component):
                             self._write_can_commit_set[i] = 0
                             # if (self._linear_wcb_write == kts.const(i, self._linear_wcb_write.width)) & self._new_address & ub_interface['valid'] & self._sg_step_in:
                             # Once the stream is finished, we no longer need a new address w/ incoming valid/step
-                            if (self._linear_wcb_write == kts.const(i, self._linear_wcb_write.width)) & ((self._new_address & ub_interface['valid'] & self._sg_step_in) | self._finished):
+                            if (self._linear_wcb_write == kts.const(i, self._linear_wcb_write.width)) & ((self._new_address & self._sg_step_in) | self._finished):
                                 self._write_can_commit_set[i] = 1
                     self.add_code(sticky_set_comb)
 
@@ -510,7 +510,7 @@ class Port(Component):
                         self._new_address = 0
                         # self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & ub_interface['valid']
                         # Only a new address if we have already written - this accounts for write addresses that don't start at 0
-                        self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & ub_interface['valid'] & self._already_written
+                        self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & self._already_written
 
                     self.add_code(new_address_comb)
 
