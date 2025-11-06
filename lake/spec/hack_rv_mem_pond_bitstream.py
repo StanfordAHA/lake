@@ -17,7 +17,7 @@ APPS_NEEDING_HACKS = [
     "avgpool_layer_fp",
     "mat_vec_mul_fp",
     "get_apply_e8m0_scale_fp",
-    "get_e8m0_scale_tree_fp",
+    "get_e8m0_scale_tree_mu_input",
     "maxpooling_dense_rv_fp",
     "fully_connected_layer_fp",
 ]
@@ -135,7 +135,7 @@ def hack_rv_config(test_name, node_name=None):
             # Filter scale to only stream valid scales to GLB output IO
             rv_config = get_filter_scale_mem(img_size=img_size, total_channels=total_channels, mu_OC=mu_OC)
 
-    elif test_name == "get_e8m0_scale_tree_fp":
+    elif test_name == "get_e8m0_scale_tree_mu_input":
         # Configure mem tiles to buffer 32 channels of all pixels
         # vec_height is pixels per channel and vec_width is total number of channels
         img_size = int(halide_gen_args_dict["vec_height"])
@@ -723,7 +723,7 @@ def get_interleave_mem(single_input_stream_size=512):
             'dimensionality': 2,
             'extents': [4, single_input_stream_size // 4],
             'address': {
-                'strides': [16, 64],
+                'strides': [1, 8],
                 'offset': 0
             },
             'schedule': {}
@@ -740,8 +740,8 @@ def get_interleave_mem(single_input_stream_size=512):
             'dimensionality': 2,
             'extents': [4, single_input_stream_size // 4],
             'address': {
-                'strides': [16, 64],
-                'offset': 8
+                'strides': [1, 8],
+                'offset': 4
             },
             'schedule': {}
         },
@@ -754,10 +754,10 @@ def get_interleave_mem(single_input_stream_size=512):
         'name': 'port_r0',
         'type': Direction.OUT,
         'config': {
-            'dimensionality': 2,
-            'extents': [8, single_input_stream_size // 4],
+            'dimensionality': 3,
+            'extents': [2, 4, single_input_stream_size // 4],
             'address': {
-                'strides': [8, 64],
+                'strides': [4, 1, 8],
                 'offset': 0
             },
             'schedule': {}
@@ -771,16 +771,20 @@ def get_interleave_mem(single_input_stream_size=512):
     port_data_in_1 = 1
     port_data_out_0 = 3
 
+    # raw_scalar should be 0 but set a magic number 1 to actually contraint read after write. Needs investigation.
     raw_scalar_0 = 1
-    raw_0 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
+    raw_0 = (port_data_out_0, 2, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
 
     raw_scalar_1 = 1
-    raw_1 = (port_data_out_0, 1, port_data_in_1, 1, LFComparisonOperator.LT.value, raw_scalar_1)
+    raw_1 = (port_data_out_0, 2, port_data_in_1, 1, LFComparisonOperator.LT.value, raw_scalar_1)
 
     # waw_scalar_0 = 0
     # waw_0 = (port_data_in_1, 0, port_data_in_0, 0, LFComparisonOperator.GT.value, waw_scalar_0)
+    war_0 = (port_data_in_0, 1, port_data_out_0, 2, LFComparisonOperator.GT.value, 128)
+    war_1 = (port_data_in_1, 1, port_data_out_0, 2, LFComparisonOperator.GT.value, 128)
 
-    linear_test['constraints'] = [raw_0, raw_1]
+    # linear_test['constraints'] = [raw_0, raw_1]
+    linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
 
     return linear_test
 
