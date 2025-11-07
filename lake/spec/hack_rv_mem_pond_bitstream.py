@@ -141,7 +141,7 @@ def hack_rv_config(test_name, node_name=None):
 
         balance_length = path_balancing_metadata["balance_lengths"][pe_id]
         total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
-        pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id]
+        pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id][0] # Get boolean value
         print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
         rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
 
