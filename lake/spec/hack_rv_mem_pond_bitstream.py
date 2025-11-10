@@ -36,7 +36,22 @@ def hack_rv_config(test_name, node_name=None):
     assert HALIDE_GEN_ARGS is not None, f"HALIDE_GEN_ARGS has to be set for hack_rv_config"
     halide_gen_args_dict = dict(item.split('=') for item in HALIDE_GEN_ARGS.strip().split())
 
-    if test_name in ["scalar_reduction_fp", "scalar_max_fp", "stable_softmax_pass2_fp", "scalar_avg_fp", "layer_norm_pass2_fp"]:
+
+    # Global hack for path balancing with ponds
+    if "_path_balance_pond" in node_name:
+        pe_id = node_name.split("_path_balance_pond")[0]
+        app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
+        assert os.path.exists(app_path_balancing_json_file), f"Cannot find path balancing json file: {app_path_balancing_json_file}"
+        with open(app_path_balancing_json_file, "r") as f:
+            path_balancing_metadata = json.load(f)
+
+        balance_length = path_balancing_metadata["balance_lengths"][pe_id]
+        total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
+        pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id][0] # Get boolean value
+        print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
+        rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
+
+    elif test_name in ["scalar_reduction_fp", "scalar_max_fp", "stable_softmax_pass2_fp", "scalar_avg_fp", "layer_norm_pass2_fp"]:
         # Only have one Pond
         # "HALIDE_GEN_ARGS" example: "vec_width=256 vec_height=2 glb_i=8 glb_o=1 tree_stages=3"
         vec_len = int(halide_gen_args_dict['vec_width']) * int(halide_gen_args_dict['vec_height'])
@@ -131,19 +146,6 @@ def hack_rv_config(test_name, node_name=None):
         rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction,
                                    num_output_pixels=matrix_height)
 
-    # Global hack for path balancing with ponds
-    elif "_path_balance_pond" in node_name:
-        pe_id = node_name.split("_path_balance_pond")[0]
-        app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
-        assert os.path.exists(app_path_balancing_json_file), f"Cannot find path balancing json file: {app_path_balancing_json_file}"
-        with open(app_path_balancing_json_file, "r") as f:
-            path_balancing_metadata = json.load(f)
-
-        balance_length = path_balancing_metadata["balance_lengths"][pe_id]
-        total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
-        pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id][0] # Get boolean value
-        print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
-        rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
     return rv_config
@@ -823,23 +825,30 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
 
     assert balance_length >= 1, f"ERROR: balance_length has to be at least 1"
 
-    assert total_stream_length % balance_length == 0, f"ERROR: total_stream_length has to be divisible by balance_length"
-    dim1 = total_stream_length // balance_length
-    dim2 = 1
-    while dim1 > MAX_EXTENT:
-        assert dim1 % 2 == 0, f"ERROR: Dim1 always has to be divisible by 2 when increasing dimensionality."
-        dim1 //= 2
-        dim2 *= 2
-        assert dim2 <= MAX_EXTENT, f"ERROR: Cannot map path balancing pond using 3D extents with balance_length: {balance_length}, total_stream_length: {total_stream_length}. Higher dimensionality is required."
+    if balance_length > 1:
 
-    if dim2 > 1:
-        dimensionality = 3
-        extents = [balance_length, dim1, dim2]
-        strides = [1, balance_length, dim1]
+        assert total_stream_length % balance_length == 0, f"ERROR: total_stream_length has to be divisible by balance_length"
+        dim1 = total_stream_length // balance_length
+        dim2 = 1
+        while dim1 > MAX_EXTENT:
+            assert dim1 % 2 == 0, f"ERROR: Dim1 always has to be divisible by 2 when increasing dimensionality."
+            dim1 //= 2
+            dim2 *= 2
+            assert dim2 <= MAX_EXTENT, f"ERROR: Cannot map path balancing pond using 3D extents with balance_length: {balance_length}, total_stream_length: {total_stream_length}. Higher dimensionality is required."
+
+        if dim2 > 1:
+            dimensionality = 3
+            extents = [balance_length, dim1, dim2]
+            strides = [1, balance_length, dim1]
+        else:
+            dimensionality = 2
+            extents = [balance_length, dim1]
+            strides = [1, balance_length]
     else:
-        dimensionality = 2
-        extents = [balance_length, dim1]
-        strides = [1, balance_length]
+        assert total_stream_length <= MAX_EXTENT , f"ERROR: total_stream_length exceeds max extent for 1D pond configuration."
+        dimensionality = 1
+        extents = [total_stream_length]
+        strides = [1]
 
     port_data_in_0 = 0
 
@@ -890,7 +899,10 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     # Attempt to keep wr_ptr "balance_lengths" ahead of rd_ptr.
     # NOTE: Since this constraint is on dim1, in reality, the distance between wr_ptr and rd_ptr is [1, ~2*balance_length)
     # The "avg. behavior" is wr_ptr is balance_length ahead of rd_ptr, but it can be as low as 1
-    raw_1 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, 0)
+    if balance_length > 1:
+        raw_1 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, 0)
+    else:
+        raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, 0)
 
     # Cannot write more than "total_fifo_depth" ahead of read ("FIFOs" are full)
     war_scalar_1 = total_fifo_depth
