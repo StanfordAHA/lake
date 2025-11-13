@@ -826,7 +826,6 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     assert balance_length >= 1, f"ERROR: balance_length has to be at least 1"
 
     if balance_length > 1:
-
         assert total_stream_length % balance_length == 0, f"ERROR: total_stream_length has to be divisible by balance_length"
         dim1 = total_stream_length // balance_length
         dim2 = 1
@@ -906,8 +905,16 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
 
     # Cannot write more than "total_fifo_depth" ahead of read ("FIFOs" are full)
     war_scalar_1 = total_fifo_depth
-    war_1 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.GT.value, war_scalar_1)
+    if balance_length > 1:
+        two_dim_war_scalar_1 = math.floor(POND_DEPTH / balance_length)
+        # war_1 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.GT.value, 3)
+        war_1 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.GT.value, two_dim_war_scalar_1)
+    else:
+        # war_1 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.GT.value, 3)
+        # war_1 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.GT.value, war_scalar_1 + 1)
+        war_1 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.GT.value, 31)
 
-    linear_test['constraints'] = [raw_1, war_1]
+    # linear_test['constraints'] = [raw_1, war_1]
+    linear_test['constraints'] = [raw_1]
 
     return linear_test
