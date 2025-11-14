@@ -18,6 +18,7 @@ APPS_NEEDING_HACKS = [
     "mat_vec_mul_fp",
     "get_apply_e8m0_scale_fp",
     "get_e8m0_scale_tree_mu_input",
+    "get_e8m0_scale_accum_gb_input",
     "maxpooling_dense_rv_fp",
     "fully_connected_layer_fp",
 ]
@@ -150,6 +151,25 @@ def hack_rv_config(test_name, node_name=None):
         elif "mem_scale_filter" in node_name:
             # Filter scale to only stream valid scales to GLB output IO
             rv_config = get_filter_scale_mem(img_size=img_size, total_channels=total_channels, mu_OC=mu_OC, packed=False)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
+
+    elif test_name == "get_e8m0_scale_accum_gb_input":
+        print(f"configure node_name: {node_name}")
+        # Configure filter mem and accum pond
+        # Configure accum pond
+        # input port: num_0
+        # output port: update: num_0, spill: num_1
+        head_dim = int(halide_gen_args_dict["head_dim"])
+        seq_heads_prod = int(halide_gen_args_dict["seq_heads_prod"])
+        block_size = 64
+        num_out_scales_per_lane = seq_heads_prod // block_size * head_dim // int(halide_gen_args_dict["glb_i"])
+        assert block_size % 2 == 0, f"ERROR: num_partial_reduction has to be even for two ponds"
+        # Configure filter mem to demux reduction results into two ponds
+        if "filter_mem" in node_name:
+            rv_config = get_filter_mem_two_streams(input_stream_size=block_size * num_out_scales_per_lane)
+        elif "accum_pond" in node_name:
+            rv_config = get_vec_accum_pond(num_partial_reduction=block_size // 2, num_output_pixels=num_out_scales_per_lane)
         else:
             raise ValueError(f"Invalid node name: {node_name}")
 
