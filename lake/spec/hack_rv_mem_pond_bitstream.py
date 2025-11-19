@@ -8,7 +8,7 @@ APPS_NEEDING_HACKS = [
     "scalar_reduction_fp",
     "vector_reduction_fp",
     "scalar_max_fp",
-    "stable_softmax_pass2_fp",
+    "stable_softmax_pass1_fp",
     "scalar_avg_fp",
     "layer_norm_pass2_fp",
     "mem_transpose_test",
@@ -38,7 +38,7 @@ def hack_rv_config(test_name, node_name=None):
     assert HALIDE_GEN_ARGS is not None, f"HALIDE_GEN_ARGS has to be set for hack_rv_config"
     halide_gen_args_dict = dict(item.split('=') for item in HALIDE_GEN_ARGS.strip().split())
 
-    if test_name in ["scalar_reduction_fp", "scalar_max_fp", "stable_softmax_pass2_fp", "scalar_avg_fp", "layer_norm_pass2_fp"]:
+    if test_name in ["scalar_reduction_fp", "scalar_max_fp", "scalar_avg_fp", "layer_norm_pass2_fp"]:
         # Only have one Pond
         # "HALIDE_GEN_ARGS" example: "vec_width=256 vec_height=2 glb_i=8 glb_o=1 tree_stages=3"
         vec_len = int(halide_gen_args_dict['vec_width']) * int(halide_gen_args_dict['vec_height'])
@@ -46,7 +46,7 @@ def hack_rv_config(test_name, node_name=None):
         rv_config = get_accum_pond(num_partial_reduction=num_partial_reduction,
                                    num_output_pixels=1)
 
-    elif test_name == "vector_reduction_fp":
+    elif test_name in ["vector_reduction_fp", "stable_softmax_pass1_fp"]:
         # "HALIDE_GEN_ARGS" example: "vec_width=256 vec_height=2 glb_i=8 glb_o=1 tree_stages=3"
         vec_len = int(halide_gen_args_dict['vec_width'])
         num_vecs = int(halide_gen_args_dict['vec_height'])
