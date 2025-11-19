@@ -175,9 +175,12 @@ def hack_rv_config(test_name, node_name=None):
 
     elif test_name == "maxpooling_dense_rv_fp":
         # Line buffer with two read ports
+        in_img = int(halide_gen_args_dict["in_img"])
+        n_ic = int(halide_gen_args_dict["n_ic"])
+        unroll = int(halide_gen_args_dict["unroll"])
         rv_config = get_mem_line_buffer_dual_port(
-            line_size=int(halide_gen_args_dict["in_img"]),
-            num_lines=int(halide_gen_args_dict["in_img"]) * int(halide_gen_args_dict["n_ic"]) // int(halide_gen_args_dict["unroll"])
+            line_size=in_img,
+            num_lines=(in_img - 1) * n_ic // unroll
         )
 
     elif test_name == "fully_connected_layer_fp":
