@@ -819,7 +819,8 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
 
     total_fifo_depth = balance_length * interconnect_fifo_depth
-    if total_fifo_depth > POND_DEPTH:
+    if balance_length > POND_DEPTH:
+    # if total_fifo_depth > POND_DEPTH:
         print(f"\033[91mERROR: balance_length {balance_length} is too large to be balanced by a single pond\033[0m")
         assert False
 
