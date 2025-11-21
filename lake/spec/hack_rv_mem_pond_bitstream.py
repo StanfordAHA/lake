@@ -9,6 +9,7 @@ APPS_NEEDING_HACKS = [
     "vector_reduction_fp",
     "scalar_max_fp",
     "stable_softmax_pass1_fp",
+    "stable_softmax_pass3_fp",
     "scalar_avg_fp",
     "layer_norm_pass2_fp",
     "mem_transpose_test",
@@ -195,6 +196,29 @@ def hack_rv_config(test_name, node_name=None):
         # Configure accum pond, each handling half of the reduction results
         elif "accum_pond" in node_name:
             rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=matrix_height)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
+
+    elif test_name == "stable_softmax_pass3_fp":
+        print(f"configure node_name: {node_name}")
+        vec_len = int(halide_gen_args_dict['vec_width'])
+        num_vecs = int(halide_gen_args_dict['vec_height'])
+        glb_i = int(halide_gen_args_dict['glb_i'])
+        num_partial_reduction = vec_len // glb_i
+        inputs_per_lane = vec_len * num_vecs // glb_i
+        assert num_partial_reduction % 2 == 0, f"ERROR: num_partial_reduction has to be even for two ponds"
+        # Category 1: filter mem
+        if "filter_mem" in node_name:
+            rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * num_vecs)
+        # Category 2: accum pond
+        elif "accum_pond" in node_name:
+            rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=num_vecs)
+        # Category 3: 1/sum buffer mem
+        elif "output_cgra_stencil" in node_name:
+            rv_config = get_broadcast_mem(input_stream_size=num_vecs, replicate_factor=vec_len // glb_i)
+        # Category 4: input buffer mem
+        elif "tile_input_stencil" in node_name:
+            rv_config = get_mem_dual_read(input_stream_size=inputs_per_lane)
         else:
             raise ValueError(f"Invalid node name: {node_name}")
 
@@ -654,6 +678,137 @@ def get_single_mem_line_buffer(buffer_size=28 * 28, num_lines=2):
 
     return linear_test
 
+def get_broadcast_mem(input_stream_size=128, replicate_factor=4):
+    '''
+    Input: input_stream_size
+    Output: repeatedly read each element replicate_factor times
+    Replicate factor should be vec_len // glb_i unroll
+    MEM port mapping: 0: port_w0, 3: port_r0
+    '''
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 1,
+            'extents': [input_stream_size],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [replicate_factor, input_stream_size],
+            'address': {
+                'strides': [0, 1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    raw_scalar_1 = 4
+    raw_1 = (port_data_out_0, 1, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
+
+    linear_test['constraints'] = [raw_1]
+
+    return linear_test
+
+def get_mem_dual_read(input_stream_size=128):
+    '''
+    Single write port, dual read ports
+    '''
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 1,
+            'extents': [input_stream_size],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 1,
+            'extents': [input_stream_size],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[4] = {
+        'name': 'port_r1',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 1,
+            'extents': [input_stream_size],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    port_data_out_1 = 4
+
+    # Only read out data when buffer_size data has been written
+    # Should be 0, but configure a magic number 12 to actually contraint read after write. Needs investigation.
+    # From Max: since there is a delay from the iterator updating to the write being committed to memory, you actually have to set up the dependency
+    # based on the size of the SIPO X the pattern X the real RAW dep
+    raw_scalar = 12
+    raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+    raw_2 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+
+    mem_tile_size = 4 * 1024 // 2 # 4KB's word size
+    war_scalar = -mem_tile_size
+    war_1 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.LT.value, war_scalar)
+    war_2 = (port_data_in_0, 0, port_data_out_1, 0, LFComparisonOperator.LT.value, war_scalar)
+
+    linear_test['constraints'] = [raw_1, raw_2, war_1, war_2]
+
+    return linear_test
 
 def get_mem_line_buffer_dual_port(line_size=64, num_lines=198):
     '''
