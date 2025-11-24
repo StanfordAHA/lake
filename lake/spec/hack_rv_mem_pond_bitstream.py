@@ -10,6 +10,7 @@ APPS_NEEDING_HACKS = [
     "scalar_max_fp",
     "stable_softmax_pass1_fp",
     "stable_softmax_pass3_fp",
+    "layer_norm_pass1_fp",
     "scalar_avg_fp",
     "layer_norm_pass2_fp",
     "mem_transpose_test",
@@ -199,7 +200,7 @@ def hack_rv_config(test_name, node_name=None):
         else:
             raise ValueError(f"Invalid node name: {node_name}")
 
-    elif test_name == "stable_softmax_pass3_fp":
+    elif test_name in ["stable_softmax_pass3_fp", "layer_norm_pass1_fp"]:
         print(f"configure node_name: {node_name}")
         vec_len = int(halide_gen_args_dict['vec_width'])
         num_vecs = int(halide_gen_args_dict['vec_height'])
@@ -219,6 +220,17 @@ def hack_rv_config(test_name, node_name=None):
         # Category 4: input buffer mem
         elif "tile_input_stencil" in node_name:
             rv_config = get_mem_dual_read(input_stream_size=inputs_per_lane)
+        elif "_path_balance_pond" in node_name:
+            pe_id = node_name.split("_path_balance_pond")[0]
+            app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
+            assert os.path.exists(app_path_balancing_json_file), f"Cannot find path balancing json file: {app_path_balancing_json_file}"
+            with open(app_path_balancing_json_file, "r") as f:
+                path_balancing_metadata = json.load(f)
+            balance_length = path_balancing_metadata["balance_lengths"][pe_id]
+            total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
+            pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id]
+            print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
+            rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
         else:
             raise ValueError(f"Invalid node name: {node_name}")
 
@@ -685,6 +697,11 @@ def get_broadcast_mem(input_stream_size=128, replicate_factor=4):
     Replicate factor should be vec_len // glb_i unroll
     MEM port mapping: 0: port_w0, 3: port_r0
     '''
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    # TODO: tile the loop to reduce extent
+    assert input_stream_size <= MAX_EXTENT, f"ERROR: input_stream_size has to be less than or equal to {MAX_EXTENT}"
+    assert replicate_factor <= MAX_EXTENT, f"ERROR: replicate_factor has to be less than or equal to {MAX_EXTENT}"
 
     linear_test = {}
 
@@ -736,16 +753,47 @@ def get_mem_dual_read(input_stream_size=128):
     '''
     Single write port, dual read ports
     '''
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    port_data_out_1 = 4
+
+    dim_1 = input_stream_size
+    dim_2 = 1
+    while dim_1 > MAX_EXTENT:
+        assert dim_1 % 2 == 0, f"ERROR: Dim1 always has to be divisible by 2 when increasing dimensionality."
+        dim_1 //= 2
+        dim_2 *= 2
+        assert dim_2 <= MAX_EXTENT, f"ERROR: Cannot map filter mem to two streams using 3D extents with input_stream_size: {input_stream_size}. Higher dimensionality is required."
+
+    if dim_2 > 1:
+        input_dimensionality = 2
+        input_extents = [dim_1, dim_2]
+        input_strides = [1, dim_1]
+        output_dimensionality = 2
+        output_extents_0 = [dim_1, dim_2]
+        output_extents_1 = [dim_1, dim_2]
+        output_strides = [1, dim_1]
+    else:
+        input_dimensionality = 1
+        input_extents = [dim_1]
+        input_strides = [1]
+        output_dimensionality = 1
+        output_extents_0 = [dim_1]
+        output_extents_1 = [dim_1]
+        output_strides = [1]
+
     linear_test = {}
 
     linear_test[0] = {
         'name': 'port_w0',
         'type': Direction.IN,
         'config': {
-            'dimensionality': 1,
-            'extents': [input_stream_size],
+            'dimensionality': input_dimensionality,
+            'extents': input_extents,
             'address': {
-                'strides': [1],
+                'strides': input_strides,
                 'offset': 0
             },
             'schedule': {}
@@ -759,10 +807,10 @@ def get_mem_dual_read(input_stream_size=128):
         'name': 'port_r0',
         'type': Direction.OUT,
         'config': {
-            'dimensionality': 1,
-            'extents': [input_stream_size],
+            'dimensionality': output_dimensionality,
+            'extents': output_extents_0,
             'address': {
-                'strides': [1],
+                'strides': output_strides,
                 'offset': 0
             },
             'schedule': {}
@@ -776,10 +824,10 @@ def get_mem_dual_read(input_stream_size=128):
         'name': 'port_r1',
         'type': Direction.OUT,
         'config': {
-            'dimensionality': 1,
-            'extents': [input_stream_size],
+            'dimensionality': output_dimensionality,
+            'extents': output_extents_1,
             'address': {
-                'strides': [1],
+                'strides': output_strides,
                 'offset': 0
             },
             'schedule': {}
@@ -793,20 +841,17 @@ def get_mem_dual_read(input_stream_size=128):
     port_data_out_0 = 3
     port_data_out_1 = 4
 
-    # Only read out data when buffer_size data has been written
-    # Should be 0, but configure a magic number 12 to actually contraint read after write. Needs investigation.
-    # From Max: since there is a delay from the iterator updating to the write being committed to memory, you actually have to set up the dependency
-    # based on the size of the SIPO X the pattern X the real RAW dep
-    raw_scalar = 12
-    raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
-    raw_2 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+    # The scalar has to be 3 to actually contraint read after write
+    raw_scalar = 6
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+    raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
 
     mem_tile_size = 4 * 1024 // 2 # 4KB's word size
     war_scalar = -mem_tile_size
-    war_1 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.LT.value, war_scalar)
-    war_2 = (port_data_in_0, 0, port_data_out_1, 0, LFComparisonOperator.LT.value, war_scalar)
+    war_0 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.LT.value, war_scalar)
+    war_1 = (port_data_in_0, 0, port_data_out_1, 0, LFComparisonOperator.LT.value, war_scalar)
 
-    linear_test['constraints'] = [raw_1, raw_2, war_1, war_2]
+    linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
 
     return linear_test
 
