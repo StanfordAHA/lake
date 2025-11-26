@@ -11,6 +11,8 @@ APPS_NEEDING_HACKS = [
     "stable_softmax_pass1_fp",
     "stable_softmax_pass3_fp",
     "layer_norm_pass1_fp",
+    "gelu_pass1_mu_input_fp",
+    "gelu_pass2_fp",
     "scalar_avg_fp",
     "layer_norm_pass2_fp",
     "mem_transpose_test",
@@ -231,6 +233,20 @@ def hack_rv_config(test_name, node_name=None):
             pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id]
             print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
             rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
+
+    elif test_name in ["gelu_pass1_mu_input_fp", "gelu_pass2_fp"]:
+        print(f"configure node_name: {node_name}")
+        vec_len = int(halide_gen_args_dict['vec_width'])
+        num_vecs = int(halide_gen_args_dict['vec_height'])
+        if "input_buffer_mem" in node_name:
+            if test_name == "gelu_pass1_mu_input_fp":
+                mu_i = int(halide_gen_args_dict['mu_i'])
+                rv_config = get_mem_dual_read(input_stream_size=vec_len * num_vecs // mu_i)
+            elif test_name == "gelu_pass2_fp":
+                glb_i = int(halide_gen_args_dict['glb_i'])
+                rv_config = get_mem_dual_read(input_stream_size=vec_len * num_vecs // glb_i)
         else:
             raise ValueError(f"Invalid node name: {node_name}")
 
@@ -841,7 +857,7 @@ def get_mem_dual_read(input_stream_size=128):
     port_data_out_0 = 3
     port_data_out_1 = 4
 
-    # The scalar has to be 3 to actually contraint read after write
+    # The scalar has to be 6 to actually contraint read after write
     raw_scalar = 6
     raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
     raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
