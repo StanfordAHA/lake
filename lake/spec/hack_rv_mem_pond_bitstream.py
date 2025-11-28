@@ -710,6 +710,7 @@ def get_single_mem_line_buffer(buffer_size=28 * 28, num_lines=2):
 
     return linear_test
 
+
 def get_broadcast_mem(input_stream_size=128, replicate_factor=4, raw_scalar=4):
     '''
     Input: input_stream_size
@@ -768,6 +769,7 @@ def get_broadcast_mem(input_stream_size=128, replicate_factor=4, raw_scalar=4):
     linear_test['constraints'] = [raw_1]
 
     return linear_test
+
 
 def get_mem_dual_read(input_stream_size=128):
     '''
@@ -874,6 +876,7 @@ def get_mem_dual_read(input_stream_size=128):
     linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
 
     return linear_test
+
 
 def get_mem_line_buffer_dual_port(line_size=64, num_lines=198):
     '''
