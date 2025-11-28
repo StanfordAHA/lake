@@ -11,10 +11,10 @@ APPS_NEEDING_HACKS = [
     "stable_softmax_pass1_fp",
     "stable_softmax_pass3_fp",
     "layer_norm_pass1_fp",
+    "layer_norm_pass2_fp",
     "gelu_pass1_mu_input_fp",
     "gelu_pass2_fp",
     "scalar_avg_fp",
-    "layer_norm_pass2_fp",
     "mem_transpose_test",
     "mem_slice_test",
     "mem_filter_test",
@@ -42,7 +42,7 @@ def hack_rv_config(test_name, node_name=None):
     assert HALIDE_GEN_ARGS is not None, f"HALIDE_GEN_ARGS has to be set for hack_rv_config"
     halide_gen_args_dict = dict(item.split('=') for item in HALIDE_GEN_ARGS.strip().split())
 
-    if test_name in ["scalar_reduction_fp", "scalar_max_fp", "scalar_avg_fp", "layer_norm_pass2_fp"]:
+    if test_name in ["scalar_reduction_fp", "scalar_max_fp", "scalar_avg_fp"]:
         # Only have one Pond
         # "HALIDE_GEN_ARGS" example: "vec_width=256 vec_height=2 glb_i=8 glb_o=1 tree_stages=3"
         vec_len = int(halide_gen_args_dict['vec_width']) * int(halide_gen_args_dict['vec_height'])
@@ -202,7 +202,7 @@ def hack_rv_config(test_name, node_name=None):
         else:
             raise ValueError(f"Invalid node name: {node_name}")
 
-    elif test_name in ["stable_softmax_pass3_fp", "layer_norm_pass1_fp"]:
+    elif test_name in ["stable_softmax_pass3_fp", "layer_norm_pass1_fp", "layer_norm_pass2_fp"]:
         print(f"configure node_name: {node_name}")
         vec_len = int(halide_gen_args_dict['vec_width'])
         num_vecs = int(halide_gen_args_dict['vec_height'])
@@ -218,7 +218,11 @@ def hack_rv_config(test_name, node_name=None):
             rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=num_vecs)
         # Category 3: 1/sum buffer mem
         elif "output_cgra_stencil" in node_name:
-            rv_config = get_broadcast_mem(input_stream_size=num_vecs, replicate_factor=vec_len // glb_i)
+            if test_name == "layer_norm_pass2_fp":
+                raw_scalar = 6
+            else:
+                raw_scalar = 4
+            rv_config = get_broadcast_mem(input_stream_size=num_vecs, replicate_factor=vec_len // glb_i, raw_scalar=raw_scalar)
         # Category 4: input buffer mem
         elif "tile_input_stencil" in node_name:
             rv_config = get_mem_dual_read(input_stream_size=inputs_per_lane)
@@ -706,7 +710,7 @@ def get_single_mem_line_buffer(buffer_size=28 * 28, num_lines=2):
 
     return linear_test
 
-def get_broadcast_mem(input_stream_size=128, replicate_factor=4):
+def get_broadcast_mem(input_stream_size=128, replicate_factor=4, raw_scalar=4):
     '''
     Input: input_stream_size
     Output: repeatedly read each element replicate_factor times
@@ -758,7 +762,7 @@ def get_broadcast_mem(input_stream_size=128, replicate_factor=4):
     port_data_in_0 = 0
     port_data_out_0 = 3
 
-    raw_scalar_1 = 4
+    raw_scalar_1 = raw_scalar
     raw_1 = (port_data_out_0, 1, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
 
     linear_test['constraints'] = [raw_1]
