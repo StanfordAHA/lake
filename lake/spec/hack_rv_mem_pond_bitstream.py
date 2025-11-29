@@ -821,6 +821,20 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
     EXTENT_COUNTER_WIDTH = 11
     MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
 
+    def unique_factors_skip_one(n):
+        factors = set()
+
+        i = 1
+        while i * i <= n:
+            if n % i == 0:
+                if i != 1:
+                    factors.add(i)
+                if n // i != 1:
+                    factors.add(n // i)
+            i += 1
+
+        return sorted(factors)
+
     total_fifo_depth = balance_length * interconnect_fifo_depth
     if balance_length > POND_DEPTH:
     # if total_fifo_depth > POND_DEPTH:
@@ -829,14 +843,20 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
 
     assert balance_length >= 1, f"ERROR: balance_length has to be at least 1"
 
+
     if balance_length > 1:
         assert total_stream_length % balance_length == 0, f"ERROR: total_stream_length has to be divisible by balance_length"
         dim1 = total_stream_length // balance_length
         dim2 = 1
         while dim1 > MAX_EXTENT:
-            assert dim1 % 2 == 0, f"ERROR: Dim1 always has to be divisible by 2 when increasing dimensionality."
-            dim1 //= 2
-            dim2 *= 2
+            divisors_to_try = unique_factors_skip_one(dim1)
+            # Use smallest divisor >= 2 to keep dim2 small
+            divisor = divisors_to_try[0]
+
+            # assert dim1 % 2 == 0, f"ERROR: Dim1 always has to be divisible by 2 when increasing dimensionality."
+            assert dim1 % divisor == 0, f"ERROR: Dim1 has to be divisible by divisor {divisor} when increasing dimensionality."
+            dim1 //= divisor
+            dim2 *= divisor
             assert dim2 <= MAX_EXTENT, f"ERROR: Cannot map path balancing pond using 3D extents with balance_length: {balance_length}, total_stream_length: {total_stream_length}. Higher dimensionality is required."
 
         if dim2 > 1:
