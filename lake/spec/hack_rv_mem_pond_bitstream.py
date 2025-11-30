@@ -25,6 +25,7 @@ APPS_NEEDING_HACKS = [
     "get_e8m0_scale_accum_gb_input",
     "maxpooling_dense_rv_fp",
     "fully_connected_layer_fp",
+    "tanh_fp",
 ]
 
 
@@ -257,6 +258,30 @@ def hack_rv_config(test_name, node_name=None):
             assert os.path.exists(app_path_balancing_json_file), f"Cannot find path balancing json file: {app_path_balancing_json_file}"
             with open(app_path_balancing_json_file, "r") as f:
                 path_balancing_metadata = json.load(f)
+            balance_length = path_balancing_metadata["balance_lengths"][pe_id]
+            total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
+            pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id]
+            print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
+            rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
+
+    elif test_name == "tanh_fp":
+        import re
+        print(f"configure node_name: {node_name}")
+        vec_len = int(halide_gen_args_dict['vec_len'])
+        glb_o = int(halide_gen_args_dict['glb_o'])
+        if "output_buffer" in node_name:
+            match = re.search(r"_stencil_(\d+)_write", node_name)
+            lane_idx = int(match.group(1)) if match else 0
+            rv_config = get_mem_single_read(input_stream_size=vec_len // glb_o, rv_stride=glb_o, filter_offset_scalar=lane_idx)
+        elif "_path_balance_pond" in node_name:
+            pe_id = node_name.split("_path_balance_pond")[0]
+            app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
+            assert os.path.exists(app_path_balancing_json_file), f"Cannot find path balancing json file: {app_path_balancing_json_file}"
+            with open(app_path_balancing_json_file, "r") as f:
+                path_balancing_metadata = json.load(f)
+
             balance_length = path_balancing_metadata["balance_lengths"][pe_id]
             total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
             pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id]
@@ -885,6 +910,104 @@ def get_mem_dual_read(input_stream_size=128):
     war_1 = (port_data_in_0, 0, port_data_out_1, 0, LFComparisonOperator.LT.value, war_scalar)
 
     linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
+
+    return linear_test
+
+def get_mem_single_read(input_stream_size=128, rv_stride=1, filter_offset_scalar=0):
+    '''
+    Single write port, single read port
+    '''
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    dim_1 = input_stream_size
+    dim_2 = 1
+    while dim_1 > MAX_EXTENT:
+        assert dim_1 % 2 == 0, f"ERROR: Dim1 always has to be divisible by 2 when increasing dimensionality."
+        dim_1 //= 2
+        dim_2 *= 2
+        assert dim_2 <= MAX_EXTENT, f"ERROR: Cannot map filter mem to two streams using 3D extents with input_stream_size: {input_stream_size}. Higher dimensionality is required."
+
+    if dim_2 > 1:
+        input_dimensionality = 2
+        input_extents = [dim_1, dim_2]
+        input_strides = [1, dim_1]
+        output_dimensionality = 2
+        output_extents_0 = [dim_1, dim_2]
+        output_strides = [1, dim_1]
+        # Optionally use filter feature
+        filter_offset = [filter_offset_scalar]
+        filter_dimensionality = [input_dimensionality]
+        filter_strides = [rv_stride, dim_1 * rv_stride]
+    else:
+        input_dimensionality = 1
+        input_extents = [dim_1]
+        input_strides = [1]
+        output_dimensionality = 1
+        output_extents_0 = [dim_1]
+        output_strides = [1]
+        # Optionally use filter feature
+        filter_offset = [filter_offset_scalar]
+        filter_dimensionality = [input_dimensionality]
+        filter_strides = [rv_stride]
+
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': input_dimensionality,
+            'extents': input_extents,
+            'address': {
+                'strides': input_strides,
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+    if rv_stride > 1:
+        linear_test[0]['config']['filter'] = {
+            'offset': filter_offset,
+            'dimensionality': filter_dimensionality,
+            'strides': filter_strides
+        }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': output_dimensionality,
+            'extents': output_extents_0,
+            'address': {
+                'strides': output_strides,
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    # The scalar has to be 6 to actually contraint read after write
+    raw_scalar = 6
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+
+    mem_tile_size = 4 * 1024 // 2 # 4KB's word size
+    war_scalar = -mem_tile_size
+    war_0 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.LT.value, war_scalar)
+
+    linear_test['constraints'] = [raw_0, war_0]
 
     return linear_test
 
