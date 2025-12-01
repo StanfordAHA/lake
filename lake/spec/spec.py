@@ -1477,7 +1477,7 @@ class Spec():
 
         test_name = os.environ.get("TEST_NAME_FOR_HACKING_CHECK", None)
         use_pond_path_balancing = os.getenv("POND_PATH_BALANCING", "0") != "0"
-        override = test_name in APPS_NEEDING_HACKS or use_pond_path_balancing
+        override = (test_name in APPS_NEEDING_HACKS or use_pond_path_balancing) and "rom_" not in node_name
         if override is True:
             application = hack_rv_config(test_name, node_name=node_name)
             print("HARDCODED APPLICATION")
