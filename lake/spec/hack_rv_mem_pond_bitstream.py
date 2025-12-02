@@ -24,6 +24,7 @@ APPS_NEEDING_HACKS = [
     "get_e8m0_scale_tree_mu_input",
     "get_e8m0_scale_accum_gb_input",
     "maxpooling_dense_rv_fp",
+    "maxpooling_dense_rv_mem_buf_fp",
     "fully_connected_layer_fp",
     "tanh_fp",
 ]
@@ -185,8 +186,51 @@ def hack_rv_config(test_name, node_name=None):
         unroll = int(halide_gen_args_dict["unroll"])
         rv_config = get_mem_line_buffer_dual_port(
             line_size=in_img,
-            num_lines=(in_img - 1) * n_ic // unroll
+            num_lines=(in_img - 1) * n_ic // unroll,
+            offset_r0=-2*in_img,
+            offset_r1=-in_img,
         )
+
+    elif test_name == "maxpooling_dense_rv_mem_buf_fp":
+        print(f"configure node_name: {node_name}")
+        if "mem" in node_name:
+            # Line buffer with two read ports
+            in_img = int(halide_gen_args_dict["in_img"])
+            n_ic = int(halide_gen_args_dict["n_ic"])
+            unroll = int(halide_gen_args_dict["unroll"])
+            mem_idx = node_name.split("_")[-1]
+            assert mem_idx in ["0", "1", "2", "3"], f"Invalid mem_idx: {mem_idx}"
+            if mem_idx == "0":
+                offset_r0 = -1
+                offset_r1 = -2
+            elif mem_idx == "1":
+                offset_r0 = -in_img
+                offset_r1 = -(in_img + 1)
+            elif mem_idx == "2":
+                offset_r0 = -(in_img + 2)
+                offset_r1 = -2 * in_img
+            elif mem_idx == "3":
+                offset_r0 = -(2 * in_img + 1)
+                offset_r1 = -(2 * in_img + 2)
+            rv_config = get_mem_line_buffer_dual_port(
+                line_size=in_img,
+                num_lines=(in_img - 1) * n_ic // unroll,
+                offset_r0=offset_r0,
+                offset_r1=offset_r1
+            )
+        elif "_path_balance_pond" in node_name:
+            pe_id = node_name.split("_path_balance_pond")[0]
+            app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
+            assert os.path.exists(app_path_balancing_json_file), f"Cannot find path balancing json file: {app_path_balancing_json_file}"
+            with open(app_path_balancing_json_file, "r") as f:
+                path_balancing_metadata = json.load(f)
+            balance_length = path_balancing_metadata["balance_lengths"][pe_id]
+            total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
+            pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id]
+            print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
+            rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
+        else:
+            raise ValueError(f"Invalid node name: {node_name}")
 
     elif test_name == "fully_connected_layer_fp":
         # Have accum ponds
@@ -1012,7 +1056,7 @@ def get_mem_single_read(input_stream_size=128, rv_stride=1, filter_offset_scalar
     return linear_test
 
 
-def get_mem_line_buffer_dual_port(line_size=64, num_lines=198):
+def get_mem_line_buffer_dual_port(line_size=64, num_lines=198, offset_r0=-64, offset_r1=-128):
     '''
     Helper function to create line buffer schedule for sliding window reduction
     Has two read ports: one with one line of delay and the other with two lines of delay
@@ -1046,7 +1090,7 @@ def get_mem_line_buffer_dual_port(line_size=64, num_lines=198):
             'extents': [line_size, num_lines],
             'address': {
                 'strides': [1, line_size],
-                'offset': -2 * line_size
+                'offset': offset_r0
             },
             'schedule': {}
         },
@@ -1064,7 +1108,7 @@ def get_mem_line_buffer_dual_port(line_size=64, num_lines=198):
             'extents': [line_size, num_lines],
             'address': {
                 'strides': [1, line_size],
-                'offset': -line_size
+                'offset': offset_r1
             },
             'schedule': {}
         },
@@ -1076,10 +1120,12 @@ def get_mem_line_buffer_dual_port(line_size=64, num_lines=198):
     port_data_in_0 = 0
     port_data_out_0 = 3
     port_data_out_1 = 4
-    raw_scalar = -(line_size - 1)
+    # Add a magic number 6 to constraint read after write when offset is very small
+    raw_scalar_0 = offset_r0 + 6
+    raw_scalar_1 = offset_r1 + 6
 
-    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
-    raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_0)
+    raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
 
     war_0 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.GT.value, 2048 // line_size)
     war_1 = (port_data_in_0, 1, port_data_out_1, 1, LFComparisonOperator.GT.value, 2048 // line_size)
