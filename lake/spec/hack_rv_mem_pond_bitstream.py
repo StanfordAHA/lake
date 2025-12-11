@@ -27,7 +27,8 @@ APPS_NEEDING_HACKS = [
     "maxpooling_dense_rv_mem_buf_fp",
     "fully_connected_layer_fp",
     "tanh_fp",
-    "camera_pipeline_2x2_dense_rv"
+    "camera_pipeline_2x2_dense_rv",
+    "pe_mem_flush_test",
 ]
 
 
@@ -496,6 +497,15 @@ def hack_rv_config(test_name, node_name=None):
 
         if rv_config is None:
             raise ValueError(f"Invalid node name: {node_name}")
+
+    elif test_name == "pe_mem_flush_test":
+        print(f"configure node_name: {node_name}")
+        input_width = int(halide_gen_args_dict["input_width"])
+        input_height = int(halide_gen_args_dict["input_height"])
+        unroll = int(halide_gen_args_dict["myunroll"])
+        stream_size_per_lane = input_width * input_height // unroll
+        assert stream_size_per_lane * 2 // 1024 <= 4, f"ERROR: stream_size_per_lane {stream_size_per_lane} is too large to be mapped to 4KB's MEM tile size"
+        rv_config = get_mem_single_read(input_stream_size=stream_size_per_lane)
 
     # Global hack for path balancing with ponds
     elif "_path_balance_pond" in node_name:
