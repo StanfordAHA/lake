@@ -28,6 +28,8 @@ APPS_NEEDING_HACKS = [
     "maxpooling_dense_rv_mem_buf_fp",
     "fully_connected_layer_fp",
     "tanh_fp",
+    "camera_pipeline_2x2_dense_rv",
+    "pe_mem_flush_test",
 ]
 
 
@@ -334,6 +336,177 @@ def hack_rv_config(test_name, node_name=None):
             rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
         else:
             raise ValueError(f"Invalid node name: {node_name}")
+
+    elif test_name == "camera_pipeline_2x2_dense_rv":
+        print(f"configure node_name: {node_name}")
+
+        # Category 1: line buffer
+        if node_name in [
+            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_2_garnet",
+            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_4_garnet",
+            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_6_garnet"
+        ]:
+            rv_config = get_mem_line_buffer_single_port(line_size=33, num_lines=48, offset_r0=-33)
+        elif node_name == "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_5_garnet":
+            rv_config = get_mem_line_buffer_single_port(line_size=33, num_lines=48, offset_r0=-67)
+        elif node_name in [
+            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_3_garnet",
+            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_7_garnet"
+        ]:
+            rv_config = get_mem_line_buffer_single_port(line_size=33, num_lines=48, offset_r0=-67)
+        elif node_name == "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_bank_8_garnet":
+            rv_config = get_mem_line_buffer_dual_port(line_size=33, num_lines=48, offset_r0=-33, offset_r1=-67)
+
+        # Category 2: demosaic RGB stencil MEM
+        if node_name == "b_b_stencil$ub_b_b_stencil_BANK_0_garnet_dup_1": #m1
+            rv_config = get_demosaic_rgb_stencil_mem_single_port(
+                    in_line_size=29,
+                    in_num_lines=45,
+                    out_line_size=33,
+                    out_num_lines=49,
+                    filter_offset_scalar=102,
+                    address_offset_scalar=-135
+                )
+            return rv_config
+        # elif node_name == "r_r_stencil$ub_r_r_stencil_BANK_0_garnet_dup_4": #m48
+        #     rv_config = get_demosaic_rgb_stencil_mem_single_port(
+        #             in_line_size=29,
+        #             in_num_lines=45,
+        #             out_line_size=33,
+        #             out_num_lines=49,
+        #             filter_offset_scalar=102,
+        #             address_offset_scalar=-134
+        #         )
+        #     return rv_config
+        elif node_name == "g_r_stencil$ub_g_r_stencil_BANK_0_garnet_dup_1": #m15
+            rv_config = get_demosaic_rgb_stencil_mem_single_port(
+                    in_line_size=29,
+                    in_num_lines=45,
+                    out_line_size=33,
+                    out_num_lines=49,
+                    filter_offset_scalar=102,
+                    address_offset_scalar=-135
+                )
+            return rv_config
+        # elif node_name == "r_r_stencil$ub_r_r_stencil_BANK_0_garnet_dup_2": #m46
+        #     rv_config = get_demosaic_rgb_stencil_mem_single_port(
+        #             in_line_size=29,
+        #             in_num_lines=45,
+        #             out_line_size=33,
+        #             out_num_lines=49,
+        #             filter_offset_scalar=102,
+        #             address_offset_scalar=-134
+        #         )
+        #     return rv_config
+
+        for name_pattern in [
+            "g_gb_stencil$ub_g_gb_stencil_BANK_0_garnet",
+            "g_gr_stencil$ub_g_gr_stencil_BANK_0_garnet"
+        ]:
+            if name_pattern in node_name:
+                rv_config = get_demosaic_rgb_stencil_mem_single_port(
+                    in_line_size=30,
+                    in_num_lines=46,
+                    out_line_size=33,
+                    out_num_lines=49,
+                    filter_offset_scalar=68,
+                    address_offset_scalar=-101
+                )
+                break
+
+        # for name_pattern in [
+        #     "b_b_stencil$ub_b_b_stencil_BANK_0_garnet",
+        # ]:
+        #     if name_pattern in node_name:
+        #         rv_config = get_demosaic_rgb_stencil_mem_single_port(
+        #             in_line_size=29,
+        #             in_num_lines=45,
+        #             out_line_size=33,
+        #             out_num_lines=49,
+        #             filter_offset_scalar=102,
+        #             address_offset_scalar=-134
+        #         )
+        #         break
+
+        for name_pattern in [
+            "g_b_stencil$ub_g_b_stencil_BANK_0_garnet",
+            "g_r_stencil$ub_g_r_stencil_BANK_0_garnet",
+            "r_r_stencil$ub_r_r_stencil_BANK_0_garnet",
+            "b_b_stencil$ub_b_b_stencil_BANK_0_garnet",
+        ]:
+            if name_pattern in node_name:
+                rv_config = get_demosaic_rgb_stencil_mem_single_port(
+                    in_line_size=29,
+                    in_num_lines=45,
+                    out_line_size=33,
+                    out_num_lines=49,
+                    filter_offset_scalar=102,
+                    address_offset_scalar=-135
+                )
+                break
+
+        if "r_gr_stencil$ub_r_gr_stencil_BANK_0_garnet" in node_name:
+            rv_config = get_demosaic_rgb_stencil_mem_single_port(
+                in_line_size=28,
+                in_num_lines=44,
+                out_line_size=33,
+                out_num_lines=48,
+                filter_offset_scalar=103,
+                address_offset_scalar=-136,
+                raw_scalar_guard_offset=2
+            )
+
+        # Category 3: static cycle dma emulator MEM
+        if "static_cycle_dma_emulator_mem_" in node_name:
+            clkwrk_idx = int(node_name.split("static_cycle_dma_emulator_mem_")[-1])
+            if clkwrk_idx in [0, 3]:
+                rv_config = get_static_cycle_dma_emulator_mem(
+                    cycle_start_addr=0,
+                    cycle_stride_outer=1,
+                    input_extent_inner=33,
+                    input_extent_outer=48
+                )
+            elif clkwrk_idx == 1:
+                rv_config = get_static_cycle_dma_emulator_mem(
+                    cycle_start_addr=33,
+                    cycle_stride_outer=1,
+                    input_extent_inner=33,
+                    input_extent_outer=48
+                )
+            elif clkwrk_idx == 2:
+                rv_config = get_static_cycle_dma_emulator_mem(
+                    cycle_start_addr=1,
+                    cycle_stride_outer=1,
+                    input_extent_inner=33,
+                    input_extent_outer=48
+                )
+            else:
+                raise ValueError(f"Invalid node name: {node_name} for static cycle dma emulator MEM tiles")
+
+        elif "_path_balance_pond" in node_name:
+            pe_id = node_name.split("_path_balance_pond")[0]
+            app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
+            assert os.path.exists(app_path_balancing_json_file), f"Cannot find path balancing json file: {app_path_balancing_json_file}"
+            with open(app_path_balancing_json_file, "r") as f:
+                path_balancing_metadata = json.load(f)
+
+            balance_length = path_balancing_metadata["balance_lengths"][pe_id]
+            total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
+            pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id]
+            print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
+            rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
+
+        if rv_config is None:
+            raise ValueError(f"Invalid node name: {node_name}")
+
+    elif test_name == "pe_mem_flush_test":
+        print(f"configure node_name: {node_name}")
+        input_width = int(halide_gen_args_dict["input_width"])
+        input_height = int(halide_gen_args_dict["input_height"])
+        unroll = int(halide_gen_args_dict["myunroll"])
+        stream_size_per_lane = input_width * input_height // unroll
+        assert stream_size_per_lane * 2 // 1024 <= 4, f"ERROR: stream_size_per_lane {stream_size_per_lane} is too large to be mapped to 4KB's MEM tile size"
+        rv_config = get_mem_single_read(input_stream_size=stream_size_per_lane)
 
     # Global hack for path balancing with ponds
     elif "_path_balance_pond" in node_name:
@@ -1128,13 +1301,63 @@ def get_mem_line_buffer_dual_port(line_size=64, num_lines=198, offset_r0=-64, of
     raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_0)
     raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
 
-    war_0 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.GT.value, 2048 // line_size)
-    war_1 = (port_data_in_0, 1, port_data_out_1, 1, LFComparisonOperator.GT.value, 2048 // line_size)
-
-    linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
+    linear_test['constraints'] = [raw_0, raw_1]
 
     return linear_test
 
+def get_mem_line_buffer_single_port(line_size=64, num_lines=198, offset_r0=-64):
+    '''
+    Helper function to create line buffer schedule for sliding window reduction
+    Has two read ports: one with one line of delay and the other with two lines of delay
+    '''
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [line_size, num_lines],
+            'address': {
+                'strides': [1, line_size],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    # Port 0 connects to last three PEs with two lines of delay
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [line_size, num_lines],
+            'address': {
+                'strides': [1, line_size],
+                'offset': offset_r0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    # Add a magic number 6 to constraint read after write when offset is very small
+    raw_scalar_0 = offset_r0 + 6
+
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_0)
+
+    linear_test['constraints'] = [raw_0]
+
+    return linear_test
 
 def get_interleave_mem(single_input_stream_size=512):
     '''
@@ -1398,6 +1621,128 @@ def get_filter_mem_two_streams(input_stream_size=512):
     linear_test['constraints'] = [raw_0, raw_1]
     return linear_test
 
+def get_demosaic_rgb_stencil_mem_single_port(
+        in_line_size=126,
+        in_num_lines=94,
+        out_line_size=129,
+        out_num_lines=96,
+        filter_offset_scalar=130,
+        address_offset_scalar=-259,
+        raw_scalar_guard_offset=1
+    ):
+    '''
+    Helper function to create config for demosaic RGB stencil MEM
+    '''
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [in_line_size, in_num_lines],
+            'address': {
+                'strides': [1, out_line_size],
+                'offset': 0
+            },
+            'schedule': {},
+            'filter': {
+                'offset': [filter_offset_scalar],
+                'dimensionality': [2],
+                'strides': [1, out_line_size]
+            }
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [out_line_size, out_num_lines],
+            'address': {
+                'strides': [1, out_line_size],
+                'offset': address_offset_scalar
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    # Add conservative raw_scalar to guard raw constraints
+    # Can be released if run at full rate with path balancing
+    raw_scalar_0 = address_offset_scalar // out_line_size + raw_scalar_guard_offset
+    raw_0 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
+
+    linear_test['constraints'] = [raw_0]
+
+    return linear_test
+
+def get_static_cycle_dma_emulator_mem(
+    cycle_start_addr=0,
+    cycle_stride_outer=1,
+    input_extent_inner=33,
+    input_extent_outer=48
+):
+    '''
+    Helper function to create config to emulate static load DMA's cycle controller configs.
+    It assumes a 2D configuration with inner cycle stride of 1 and outer cycle stride > 1.
+    It generates extra dummy data between outer loop to achieve padding effect.
+    So output extent will be larger than input extent.
+    '''
+    linear_test = {}
+
+    linear_test[0] = linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [input_extent_inner, input_extent_outer],
+            'address': {
+                'strides': [1, input_extent_inner + cycle_stride_outer - 1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [input_extent_inner + cycle_stride_outer - 1, input_extent_outer],
+            'address': {
+                'strides': [1, input_extent_inner + cycle_stride_outer - 1],
+                'offset': -cycle_start_addr
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    raw_scalar_0 = 0
+    raw_0 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
+
+    linear_test['constraints'] = [raw_0]
+
+    return linear_test
 
 def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096, pe_to_pond=True):
     '''
