@@ -820,7 +820,7 @@ class Spec():
         return
         # self._final_gen.add_attribute("sync-reset=flush")
         # if self.run_flush_pass is True:
-        #     kts.passes.auto_insert_sync_reset(self._final_gen.internal_generator)
+        # kts.passes.auto_insert_sync_reset(self._final_gen.internal_generator)
         # flush_port = self._final_gen.internal_generator.get_port("flush")
         # flush_port.add_attribute(ControlSignalAttr(True))
 

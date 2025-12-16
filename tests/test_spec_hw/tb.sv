@@ -96,6 +96,7 @@ module tb;
             .clk(clk),
             .rst_n(rst_n),
             .flush(flush),
+            .clk_en(1'b1),
             // config
             .config_memory(bitstream[0]),
             .config_memory_wen(bitstream_wen),
@@ -118,6 +119,7 @@ module tb;
             .clk(clk),
             .rst_n(rst_n),
             .flush(flush),
+            .clk_en(1'b1),
             // config
             .config_memory(bitstream[0]),
             .config_memory_wen(bitstream_wen),
@@ -148,6 +150,7 @@ module tb;
             .clk(clk),
             .rst_n(rst_n),
             .flush(flush),
+            .clk_en(1'b1),
             // config
             .config_memory(bitstream[0]),
             .config_memory_wen(bitstream_wen),

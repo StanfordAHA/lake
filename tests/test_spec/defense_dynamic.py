@@ -6,13 +6,13 @@ from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
-from lake.utils.util import get_data_sizes, TestPrepper, calculate_read_out_vec
+from lake.utils.util import get_data_sizes, TestPrepper, calculate_read_out
 from lake.top.tech_maps import GF_Tech_Map
 import argparse
 import os
 
 
-def build_four_port_wide_fetch_rv(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False,
+def build_four_port_wide_fetch_rv(storage_capacity=4096, data_width=16, dims: int = 6, vec_width=4, physical=False,
                                   reg_file=False, vec_capacity=2, opt_rv=False, add_filter_path=False) -> Spec:
 
     # TODO: Override this in garnet and not here...
@@ -154,6 +154,218 @@ def build_four_port_wide_fetch_rv(storage_capacity=1024, data_width=16, dims: in
         ls.connect(read_port_filter, stg_filter)
 
     return ls
+
+
+def get_quad_app():
+
+    linear_test = {}
+
+    data_length = 512
+
+    linear_test[0] = {
+        'type': Direction.IN,
+        'name': 'port_w0',
+        'config': {
+            'dimensionality': 1,
+            'extents': [data_length],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 4
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 2,
+            'extents': [4, data_length // 4],
+            'address': {
+                'strides': [1, 4],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 0
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 1,
+            'extents': [data_length // 4],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 4
+            }
+        },
+        'vec_constraints': []
+    }
+
+    linear_test[1] = {
+        'type': Direction.IN,
+        'name': 'port_w1',
+        'config': {
+            'dimensionality': 1,
+            'extents': [data_length],
+            'address': {
+                'strides': [1],
+                'offset': 1024
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 5
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 2,
+            'extents': [4, data_length // 4],
+            'address': {
+                'strides': [1, 4],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 0
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 1,
+            'extents': [data_length // 4],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 5
+            }
+        },
+        'vec_constraints': []
+    }
+
+
+    linear_test[2] = {
+        'type': Direction.OUT,
+        'name': 'port_r0',
+        'config': {
+            'dimensionality': 1,
+            'extents': [data_length],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 18
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 1,
+            'extents': [16],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 19
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 2,
+            'extents': [4, 16],
+            'address': {
+                'strides': [1, 4],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 20
+            }
+        },
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'type': Direction.OUT,
+        'name': 'port_r1',
+        'config': {
+            'dimensionality': 1,
+            'extents': [data_length],
+            'address': {
+                'strides': [1],
+                'offset': 1024
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 19
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 1,
+            'extents': [16],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 20
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 2,
+            'extents': [4, 16],
+            'address': {
+                'strides': [1, 4],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 21
+            }
+        },
+        'vec_constraints': []
+    }
+
+    pw = 0
+    pr = 2
+
+    pr_raw_idx = 0
+    pw_raw_idx = 0
+    raw_comp = LFComparisonOperator.LT.value
+    raw_scalar = 10
+    raw_constraint1 = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
+
+    pw_war_idx = 0
+    pr_war_idx = 0
+    war_comp = LFComparisonOperator.GT.value
+    war_scalar = 16
+    war_constraint1 = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
+
+    pw = 1
+    pr = 3
+
+    pr_raw_idx = 0
+    pw_raw_idx = 0
+    raw_comp = LFComparisonOperator.LT.value
+    raw_scalar = 10
+    raw_constraint2 = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
+
+    pw_war_idx = 0
+    pr_war_idx = 0
+    war_comp = LFComparisonOperator.GT.value
+    war_scalar = 16
+    war_constraint2 = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
+
+    # Just have read follow write
+    linear_test['constraints'] = [raw_constraint1, war_constraint1,
+                                  raw_constraint2, war_constraint2]
+
+    return linear_test
 
 
 def get_conv_2_1_app():
@@ -818,6 +1030,8 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
         lt = get_two_read_test()
     elif test == 'conv_2_1':
         lt = get_conv_2_1_app()
+    elif test == "quad":
+        lt = get_quad_app()
     else:
         raise NotImplementedError(f"Cannot run test: {test}")
 
@@ -825,7 +1039,8 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
         max_time = 6500
     else:
         max_time = 0
-        read_outs = calculate_read_out_vec(lt, vec=vec_width)
+        # read_outs = calculate_read_out_vec(lt, vec=vec_width)
+        read_outs = calculate_read_out(lt)
         # Now we have the output sequences
         # Need to write them out
         for pnum, sequences in read_outs.items():
@@ -887,7 +1102,7 @@ if __name__ == "__main__":
     parser.add_argument("--fetch_width", type=int, default=4)
     parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--dimensionality", type=int, default=6)
-    parser.add_argument("--test", type=str, default="linear")
+    parser.add_argument("--test", type=str, default="quad")
     parser.add_argument("--reg_file", action="store_true")
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
