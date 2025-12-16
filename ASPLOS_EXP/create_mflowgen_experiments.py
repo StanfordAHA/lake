@@ -1732,10 +1732,14 @@ def get_area_breakdown_file(file_path):
     id_match = ['port_id_',]
     port_match = ['port_inst_',]
     storage_match = ['storage',]
+    # storage_match = ['SingleBank',]
     memintfdec_match = ['memintfdec_inst_',]
     memoryport_match = ['memoryport_',]
+    config_memory_match = ['config_memory_instance']
     # Everything should be only 2 spaces in - so delete any line with more spaces
-    all_modules = [x for x in rest_of_file if x[0] == ' ' and x[1] == ' ' and x[2] != ' ']
+    # all_modules = [x for x in rest_of_file if x[0] == ' ' and x[1] == ' ' and x[2] != ' ']
+    all_modules = [x for x in rest_of_file if x[0] == ' ' and x[1] != ' ']
+    print(all_modules)
     top_line_breakdown = top_line.strip().split()
     total_area = float(top_line_breakdown[2])
     total_macro = float(top_line_breakdown[-2])
@@ -1746,9 +1750,10 @@ def get_area_breakdown_file(file_path):
     id_area = 0.0
     port_area = 0.0
     storage_area = 0.0
-    config_area = 0.0
+    # config_area = 0.0
     memintf_dec_area = 0.0
     memoryport_area = 0.0
+    config_memory_area = 0.0
 
     all_ports = {}
 
@@ -1766,6 +1771,10 @@ def get_area_breakdown_file(file_path):
             if _ in mod_tokens[match_idx]:
                 num_matches += 1
                 sg_area += float(mod_tokens[3])
+        for _ in config_memory_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                config_memory_area += float(mod_tokens[3])
         for _ in id_match:
             if _ in mod_tokens[match_idx]:
                 num_matches += 1
@@ -1804,7 +1813,7 @@ def get_area_breakdown_file(file_path):
 
         assert num_matches <= 1, f"Line ({mod}) matched too many items...{num_matches}"
 
-    config_area = total_area - (ag_area + sg_area + id_area + storage_area + port_area + memintf_dec_area + memoryport_area)
+    # config_area = total_area - (ag_area + sg_area + id_area + storage_area + port_area + memintf_dec_area + memoryport_area)
 
     area_dict = {
         'total': total_area,
@@ -1813,7 +1822,7 @@ def get_area_breakdown_file(file_path):
         'ID': id_area,
         'Port': port_area,
         'Storage': storage_area,
-        'Config': config_area,
+        'Config': config_memory_area,
         'MemintfDec': memintf_dec_area,
         'MemoryPort': memoryport_area
     }
@@ -1845,6 +1854,8 @@ if __name__ == "__main__":
     parser.add_argument("--collect_override", action="store_true")
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--run_builds", action="store_true")
+    parser.add_argument("--defense", action="store_true")
+    parser.add_argument("--dynamic", action="store_true")
     # parser.add_argument("--collect_power", action="store_true")
     parser.add_argument("--run_power", action="store_true")
     parser.add_argument("--opt_rv", action="store_true")
@@ -1886,6 +1897,8 @@ if __name__ == "__main__":
     opt_rv = args.opt_rv
     strict_filter = args.strict_filter
     synth_only = args.synth_only
+    defense = args.defense
+    dynamic = args.dynamic
     # collect_power = args.collect_power
 
     spst = args.spst
@@ -1951,6 +1964,16 @@ if __name__ == "__main__":
             for power in all_breakdowns_power:
                 all_power.append(power)
                 # all_power_summary.append(power_summary)
+
+            print(all_power[0])
+            with open("power_summary.csv", "w") as csv_file:
+                import csv
+                writer = csv.DictWriter(csv_file, fieldnames=all_power[0].keys())
+                writer.writeheader()
+                for power in all_power:
+                    writer.writerow(power)
+            assert False
+
             write_area_csv(all_summaries, collect_data_csv_path)
             # Do different experiments here...
             if experiment == "summary":
@@ -2149,7 +2172,15 @@ if __name__ == "__main__":
                     rtl_configure.write(f"{python_command}\n")
                     rtl_configure.write("\n")
                     rtl_configure.write("  - cd $CURR\n")
-                    rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/lakespec.sv outputs/design.v\n")
+
+                    if defense:
+                        if dynamic:
+                            rtl_configure.write(f"  - cp /home/mstrange/DEFENSE_VLOG/design_dynamic.v outputs/design.v\n")
+                        else:
+                            rtl_configure.write(f"  - cp /home/mstrange/DEFENSE_VLOG/design_static.v outputs/design.v\n")
+                    else:
+                        rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/lakespec.sv outputs/design.v\n")
+
                     rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/info.json outputs/info.json\n")
                     rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/tb.sv outputs/testbench.sv\n")
                     rtl_configure.write(f"  - cat $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/comp_args.txt $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/PARGS.txt > outputs/design.args\n")
