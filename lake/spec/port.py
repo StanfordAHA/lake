@@ -492,7 +492,7 @@ class Port(Component):
                             self._write_can_commit_set[i] = 0
                             # if (self._linear_wcb_write == kts.const(i, self._linear_wcb_write.width)) & self._new_address & ub_interface['valid'] & self._sg_step_in:
                             # Once the stream is finished, we no longer need a new address w/ incoming valid/step
-                            if (self._linear_wcb_write == kts.const(i, self._linear_wcb_write.width)) & ((self._new_address & ub_interface['valid'] & self._sg_step_in) | self._finished):
+                            if (self._linear_wcb_write == kts.const(i, self._linear_wcb_write.width)) & ((self._new_address & self._sg_step_in) | self._finished):
                                 self._write_can_commit_set[i] = 1
                     self.add_code(sticky_set_comb)
 
@@ -510,7 +510,7 @@ class Port(Component):
                         self._new_address = 0
                         # self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & ub_interface['valid']
                         # Only a new address if we have already written - this accounts for write addresses that don't start at 0
-                        self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & ub_interface['valid'] & self._already_written
+                        self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & self._already_written
 
                     self.add_code(new_address_comb)
 
@@ -646,7 +646,7 @@ class Port(Component):
 
                 # Now hook up the input and output ports
                 in_intf = self._sipo_strg_mp_in.get_port_intf()
-                print(in_intf)
+                # print(in_intf)
                 self.wire(assembled_port['data'], in_intf['write_data'])
                 self.wire(assembled_port['addr'], in_intf['addr'])
                 self.wire(assembled_port['en'], in_intf['write_en'])
@@ -704,7 +704,7 @@ class Port(Component):
                     self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'])
 
                 out_intf = self._sipo_strg_mp_out.get_port_intf()
-                print(out_intf)
+                # print(out_intf)
                 self.wire(assembled_port['data'], out_intf['read_data'])
                 self.wire(assembled_port['addr'], out_intf['addr'])
                 self.wire(assembled_port['en'], out_intf['read_en'])
@@ -794,11 +794,12 @@ class Port(Component):
                     addr_q_width = kts.clog2(self.get_fw())
                     pop_q_width = 1
                     # tag_width = kts.clog2(self._vec_capacity // 8)
-                    tag_width = 1
+                    # tag_width = 1
+                    tag_width = self.port_ag_width - kts.clog2(self.get_fw())
                     sub_addr_range = [kts.clog2(self._fw) - 1, 0]
                     tag_addr_range = [kts.clog2(self._fw) + tag_width - 1, kts.clog2(self._fw)]
 
-                    print(f"Tag width: {tag_width}")
+                    # print(f"Tag width: {tag_width}")
                     # exit()
 
                     # self.wire(self._addr_out, kts.concat(self._full_addr_in >> addr_q_width))
@@ -1253,7 +1254,7 @@ class Port(Component):
 
                 # Now hook up the input and output ports
                 piso_out_intf = self._piso_strg_mp_out.get_port_intf()
-                print(piso_out_intf)
+                # print(piso_out_intf)
                 self.wire(assembled_port['data'], piso_out_intf['read_data'])
                 self.wire(assembled_port['addr'], piso_out_intf['addr'])
                 self.wire(assembled_port['en'], piso_out_intf['read_en'])
@@ -1373,7 +1374,7 @@ class Port(Component):
                     self.wire(self._mp_intf['ready'], self._internal_ag_intf['step'])
 
                 piso_in_intf = self._piso_strg_mp_in.get_port_intf()
-                print(piso_in_intf)
+                # print(piso_in_intf)
                 self.wire(assembled_port['data'], piso_in_intf['write_data'])
                 self.wire(assembled_port['addr'], piso_in_intf['addr'])
                 self.wire(assembled_port['en'], piso_in_intf['write_en'])
