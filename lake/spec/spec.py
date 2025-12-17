@@ -489,8 +489,8 @@ class Spec():
                         self._final_gen.wire(port_id.ports.step, port.ports.sg_step_out)
                         self._final_gen.wire(port_id.ports.finished, port.ports.finished)
                     else:
-                        self._final_gen.wire(port_ag.ports.step, mid_grant & quali_step)
-                        self._final_gen.wire(port_id.ports.step, mid_grant & quali_step)
+                        self._final_gen.wire(port_ag.ports.step, mid_grant)
+                        self._final_gen.wire(port_id.ports.step, mid_grant)
                     # Wire the ID step
                 # If it is an OUT Port, we need to qualify the step with the grant line from the arbitration and the
                 # downstream ready (from the Port I guess)
@@ -516,8 +516,8 @@ class Spec():
                         self._final_gen.wire(port_id.ports.finished, port.ports.finished)
                         self._final_gen.wire(mid_grant, port.ports.grant)
                     else:
-                        self._final_gen.wire(port_ag.ports.step, mid_grant & quali_step)
-                        self._final_gen.wire(port_id.ports.step, mid_grant & quali_step)
+                        self._final_gen.wire(port_ag.ports.step, mid_grant)
+                        self._final_gen.wire(port_id.ports.step, mid_grant)
 
                 else:
                     raise NotImplementedError(f"Only support {Direction.IN} and {Direction.OUT}")
@@ -1470,19 +1470,17 @@ class Spec():
 
         return ret_map
 
-    def gen_bitstream(self, application, rewrite=True, over=False):
+    def gen_bitstream(self, application, rewrite=True, node_name=None):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.
            There may be other information that needs to go into the configuration, but that could be in the object hierarchy
         '''
 
         test_name = os.environ.get("TEST_NAME_FOR_HACKING_CHECK", None)
-        override = test_name in APPS_NEEDING_HACKS
+        use_pond_path_balancing = os.getenv("POND_PATH_BALANCING", "0") != "0"
+        override = test_name in APPS_NEEDING_HACKS or use_pond_path_balancing
         if override is True:
-            application = hack_rv_config(test_name)
+            application = hack_rv_config(test_name, node_name=node_name)
             print("HARDCODED APPLICATION")
-            print(application)
-        elif over is True:
-            print("HARDCODED APPLICATION - OVER")
             print(application)
         elif rewrite is True:
             print("Producing SPEC BITSTREAM with Application:")
@@ -1535,7 +1533,7 @@ class Spec():
                     if filter_config is not None:
                         filter_map['offset'] = port_config['filter']['offset']
                         filter_map['strides'] = port_config['filter']['strides']
-                    # print(filter_map)
+                    print(filter_map)
 
                 port_bs = port.gen_bitstream(vec_in=maps['vec_in_config'],
                                              vec_out=maps['vec_out_config'],

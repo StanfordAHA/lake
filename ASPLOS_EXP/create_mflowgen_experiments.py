@@ -1965,14 +1965,14 @@ if __name__ == "__main__":
                 all_power.append(power)
                 # all_power_summary.append(power_summary)
 
-            print(all_power[0])
-            with open("power_summary.csv", "w") as csv_file:
-                import csv
-                writer = csv.DictWriter(csv_file, fieldnames=all_power[0].keys())
-                writer.writeheader()
-                for power in all_power:
-                    writer.writerow(power)
-            assert False
+            # print(all_power[0])
+            # with open("power_summary.csv", "w") as csv_file:
+            #     import csv
+            #     writer = csv.DictWriter(csv_file, fieldnames=all_power[0].keys())
+            #     writer.writeheader()
+            #     for power in all_power:
+            #         writer.writerow(power)
+            # assert False
 
             write_area_csv(all_summaries, collect_data_csv_path)
             # Do different experiments here...
