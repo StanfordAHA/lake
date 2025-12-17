@@ -94,6 +94,7 @@ module tb;
         lakespec dut (
             // inputs
             .clk(clk),
+            .clk_en(1'b1),
             .rst_n(rst_n),
             .flush(flush),
             // config
@@ -116,6 +117,7 @@ module tb;
         lakespec dut (
             // inputs
             .clk(clk),
+            .clk_en(1'b1),
             .rst_n(rst_n),
             .flush(flush),
             // config
@@ -146,6 +148,7 @@ module tb;
         lakespec dut (
             // inputs
             .clk(clk),
+            .clk_en(1'b1),
             .rst_n(rst_n),
             .flush(flush),
             // config

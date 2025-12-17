@@ -817,12 +817,12 @@ class Spec():
             self.get_information(output_dir=output_dir)
 
     def add_flush(self):
-        return
-        # self._final_gen.add_attribute("sync-reset=flush")
-        # if self.run_flush_pass is True:
-        #     kts.passes.auto_insert_sync_reset(self._final_gen.internal_generator)
-        # flush_port = self._final_gen.internal_generator.get_port("flush")
-        # flush_port.add_attribute(ControlSignalAttr(True))
+        # return
+        self._final_gen.add_attribute("sync-reset=flush")
+        if self.run_flush_pass is True:
+            kts.passes.auto_insert_sync_reset(self._final_gen.internal_generator)
+        flush_port = self._final_gen.internal_generator.get_port("flush")
+        flush_port.add_attribute(ControlSignalAttr(True))
 
     def extract_compiler_information(self) -> None:
         pass
@@ -1470,7 +1470,7 @@ class Spec():
 
         return ret_map
 
-    def gen_bitstream(self, application, rewrite=True, node_name=None):
+    def gen_bitstream(self, application, rewrite=True, node_name=None, over=False):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.
            There may be other information that needs to go into the configuration, but that could be in the object hierarchy
         '''
@@ -1481,6 +1481,9 @@ class Spec():
         if override is True:
             application = hack_rv_config(test_name, node_name=node_name)
             print("HARDCODED APPLICATION")
+            print(application)
+        elif over:
+            print("HARDCODED APPLICATION OVERRIDE - MANUAL")
             print(application)
         elif rewrite is True:
             print("Producing SPEC BITSTREAM with Application:")

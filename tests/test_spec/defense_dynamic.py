@@ -19,7 +19,7 @@ def build_four_port_wide_fetch_rv(storage_capacity=1024, data_width=16, dims: in
     id_width = 11
     remote_storage = False
 
-    ls = Spec(name="lakespec", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
+    ls = Spec(name="lakespec", opt_rv=opt_rv, remote_storage=remote_storage,
               config_passthru=False, comply_17=True)
 
     # Don't opt timing on the in ports (which really just adds a fifo at the input which we don't need)
