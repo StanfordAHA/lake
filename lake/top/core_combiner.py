@@ -106,7 +106,7 @@ class CoreCombiner(Generator):
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)
 
-        print("Using tech map: ", self.tech_map_name)
+        print("Using tech map (lake): ", self.tech_map_name)
 
         if self.tech_map_name == 'TSMC':
             self.tech_map = TSMC_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns))
