@@ -1,3 +1,49 @@
+# 7.2.1 Streaming Memory Characteristics
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Experiments to sweep over port characteristics...
+# For FW 1, want to sweep over interface width
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/THESIS_BUILDS/PORT_EXP --design_filter thesis_sweep --physical --run_builds \
+    --static \
+    --fetch_width 1 \
+    --interface_width 8 16 32 64 \
+    --storage_capacity 8192 \
+    --frequency 700
+
+# For FW 2, 4, 8 want to sweep over interface width and vector capacity - (fetch_width * interface_width * vec_capacity) = total vec storage
+# Can later analyze with a fixed vec storage as well, see overheads associated with vec capacity too
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/THESIS_BUILDS/PORT_EXP --design_filter thesis_sweep --physical --run_builds \
+    --static \
+    --fetch_width 2 4 8 \
+    --vec_capacity 2 4 8 \
+    --interface_width 8 16 32 64 \
+    --storage_capacity 8192 \
+    --frequency 700
+
+# Experiments to sweep over IterationDomain characteristics...dimensionality and max extent
+# no point in trying different sets of max extent as it should not really impact the size of the adder used
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/THESIS_BUILDS/ITERATION_DOMAIN_EXP --design_filter thesis_sweep --physical --run_builds \
+    --static \
+    --fetch_width 1 \
+    --interface_width 16 \
+    --dimensionality 1 2 3 4 5 6 \
+    --max_extent 64 256 1024 4096 \
+    --storage_capacity 8192 \
+    --frequency 700
+
+# Experiments to sweep over AddressGenerator characteristics...dimensionality, max offset/stride are set by sequence value width
+# no point in trying different sets of max extent as it should not really impact the size of the adder used
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/THESIS_BUILDS/ADDRESS_GENERATOR_EXP --design_filter thesis_sweep --physical --run_builds \
+    --static \
+    --fetch_width 1 \
+    --interface_width 16 \
+    --dimensionality 1 2 3 4 5 6 \
+    --max_sequence_width 64 256 1024 4096 16384 \
+    --storage_capacity 8192 \
+    --frequency 700
+
+
+
+
 # # # This sweeps FW without changing num in ports num out ports
 # # python ASPLOS_EXP/create_all_experiments.py --fetch_width 2 4 8 --outdir MEK_fw --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports
 # # # Next few commands generate the same things but add in the extra ports

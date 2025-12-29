@@ -106,11 +106,16 @@ class CoreCombiner(Generator):
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)
 
+        print("Using tech map: ", self.tech_map_name)
+
         if self.tech_map_name == 'TSMC':
             self.tech_map = TSMC_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns))
         elif self.tech_map_name == 'Intel':
             self.tech_map = Intel_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns),
                                            async_reset=~MTB.get_async_reset())
+        elif self.tech_map_name == 'GF':
+            self.tech_map = GF_Tech_Map(depth=self.mem_depth,
+                                        width=int(self.mem_width / self.sram_columns))
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
