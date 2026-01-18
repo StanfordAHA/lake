@@ -15,6 +15,7 @@ APPS_NEEDING_HACKS = [
     "gelu_pass1_mu_input_fp",
     "gelu_pass2_fp",
     "add_gelu_pass1_mu_input_fp",
+    "add_gelu_pass2_fp",
     "scalar_avg_fp",
     "mem_transpose_test",
     "mem_slice_test",
@@ -288,7 +289,7 @@ def hack_rv_config(test_name, node_name=None):
         else:
             raise ValueError(f"Invalid node name: {node_name}")
 
-    elif test_name in ["gelu_pass1_mu_input_fp", "gelu_pass2_fp", "add_gelu_pass1_mu_input_fp"]:
+    elif test_name in ["gelu_pass1_mu_input_fp", "gelu_pass2_fp", "add_gelu_pass1_mu_input_fp", "add_gelu_pass2_fp"]:
         print(f"configure node_name: {node_name}")
         vec_len = int(halide_gen_args_dict['vec_width'])
         num_vecs = int(halide_gen_args_dict['vec_height'])
@@ -296,7 +297,7 @@ def hack_rv_config(test_name, node_name=None):
             if test_name in ["gelu_pass1_mu_input_fp", "add_gelu_pass1_mu_input_fp"]:
                 mu_i = int(halide_gen_args_dict['mu_i'])
                 rv_config = get_mem_dual_read(input_stream_size=vec_len * num_vecs // mu_i)
-            elif test_name == "gelu_pass2_fp":
+            elif test_name in ["gelu_pass2_fp", "add_gelu_pass2_fp"]:
                 glb_i = int(halide_gen_args_dict['glb_i'])
                 rv_config = get_mem_dual_read(input_stream_size=vec_len * num_vecs // glb_i)
         elif "_path_balance_pond" in node_name:
