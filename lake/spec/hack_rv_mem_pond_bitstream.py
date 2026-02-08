@@ -342,89 +342,36 @@ def hack_rv_config(test_name, node_name=None):
         if node_name in [
             "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_2_garnet",
             "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_4_garnet",
-            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_6_garnet"
+            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_6_garnet",
+            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_bank_8_garnet",
         ]:
-            rv_config = get_mem_line_buffer_single_port(line_size=33, num_lines=48, offset_r0=-33)
-        elif node_name == "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_5_garnet":
-            rv_config = get_mem_line_buffer_single_port(line_size=33, num_lines=48, offset_r0=-67)
-        elif node_name in [
-            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_3_garnet",
-            "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_BANK_7_garnet"
-        ]:
-            rv_config = get_mem_line_buffer_single_port(line_size=33, num_lines=48, offset_r0=-67)
-        elif node_name == "hw_input_global_wrapper_global_wrapper_stencil$ub_hw_input_global_wrapper_global_wrapper_stencil_bank_8_garnet":
             rv_config = get_mem_line_buffer_dual_port(line_size=33, num_lines=48, offset_r0=-33, offset_r1=-67)
 
         # Category 2: demosaic RGB stencil MEM
-        if node_name == "b_b_stencil$ub_b_b_stencil_BANK_0_garnet_dup_1": #m1
-            rv_config = get_demosaic_rgb_stencil_mem_single_port(
-                    in_line_size=29,
-                    in_num_lines=45,
-                    out_line_size=33,
-                    out_num_lines=49,
-                    filter_offset_scalar=102,
-                    address_offset_scalar=-135
-                )
-            return rv_config
-        # elif node_name == "r_r_stencil$ub_r_r_stencil_BANK_0_garnet_dup_4": #m48
-        #     rv_config = get_demosaic_rgb_stencil_mem_single_port(
-        #             in_line_size=29,
-        #             in_num_lines=45,
-        #             out_line_size=33,
-        #             out_num_lines=49,
-        #             filter_offset_scalar=102,
-        #             address_offset_scalar=-134
-        #         )
-        #     return rv_config
-        elif node_name == "g_r_stencil$ub_g_r_stencil_BANK_0_garnet_dup_1": #m15
-            rv_config = get_demosaic_rgb_stencil_mem_single_port(
-                    in_line_size=29,
-                    in_num_lines=45,
-                    out_line_size=33,
-                    out_num_lines=49,
-                    filter_offset_scalar=102,
-                    address_offset_scalar=-135
-                )
-            return rv_config
-        # elif node_name == "r_r_stencil$ub_r_r_stencil_BANK_0_garnet_dup_2": #m46
-        #     rv_config = get_demosaic_rgb_stencil_mem_single_port(
-        #             in_line_size=29,
-        #             in_num_lines=45,
-        #             out_line_size=33,
-        #             out_num_lines=49,
-        #             filter_offset_scalar=102,
-        #             address_offset_scalar=-134
-        #         )
-        #     return rv_config
-
         for name_pattern in [
             "g_gb_stencil$ub_g_gb_stencil_BANK_0_garnet",
             "g_gr_stencil$ub_g_gr_stencil_BANK_0_garnet"
         ]:
             if name_pattern in node_name:
-                rv_config = get_demosaic_rgb_stencil_mem_single_port(
-                    in_line_size=30,
-                    in_num_lines=46,
-                    out_line_size=33,
-                    out_num_lines=49,
-                    filter_offset_scalar=68,
-                    address_offset_scalar=-101
-                )
-                break
-
-        # for name_pattern in [
-        #     "b_b_stencil$ub_b_b_stencil_BANK_0_garnet",
-        # ]:
-        #     if name_pattern in node_name:
-        #         rv_config = get_demosaic_rgb_stencil_mem_single_port(
-        #             in_line_size=29,
-        #             in_num_lines=45,
-        #             out_line_size=33,
-        #             out_num_lines=49,
-        #             filter_offset_scalar=102,
-        #             address_offset_scalar=-134
-        #         )
-        #         break
+                if "_r6_" in node_name:
+                    rv_config = get_demosaic_rgb_stencil_mem_single_port(
+                        in_line_size=30,
+                        in_num_lines=46,
+                        out_line_size=33,
+                        out_num_lines=49,
+                        filter_offset_scalar=68,
+                        address_offset_scalar=-102
+                    )
+                else:
+                    rv_config = get_demosaic_rgb_stencil_mem_single_port(
+                        in_line_size=30,
+                        in_num_lines=46,
+                        out_line_size=33,
+                        out_num_lines=49,
+                        filter_offset_scalar=68,
+                        address_offset_scalar=-101
+                    )
+                return rv_config
 
         for name_pattern in [
             "g_b_stencil$ub_g_b_stencil_BANK_0_garnet",
@@ -433,15 +380,25 @@ def hack_rv_config(test_name, node_name=None):
             "b_b_stencil$ub_b_b_stencil_BANK_0_garnet",
         ]:
             if name_pattern in node_name:
-                rv_config = get_demosaic_rgb_stencil_mem_single_port(
+                if "_r48_" in node_name:
+                    rv_config = get_demosaic_rgb_stencil_mem_single_port(
                     in_line_size=29,
                     in_num_lines=45,
                     out_line_size=33,
                     out_num_lines=49,
                     filter_offset_scalar=102,
-                    address_offset_scalar=-135
+                    address_offset_scalar=-136
                 )
-                break
+                else:
+                    rv_config = get_demosaic_rgb_stencil_mem_single_port(
+                        in_line_size=29,
+                        in_num_lines=45,
+                        out_line_size=33,
+                        out_num_lines=49,
+                        filter_offset_scalar=102,
+                        address_offset_scalar=-135
+                    )
+                return rv_config
 
         if "r_gr_stencil$ub_r_gr_stencil_BANK_0_garnet" in node_name:
             rv_config = get_demosaic_rgb_stencil_mem_single_port(
@@ -457,29 +414,52 @@ def hack_rv_config(test_name, node_name=None):
         # Category 3: static cycle dma emulator MEM
         if "static_cycle_dma_emulator_mem_" in node_name:
             clkwrk_idx = int(node_name.split("static_cycle_dma_emulator_mem_")[-1])
-            if clkwrk_idx in [0, 3]:
-                rv_config = get_static_cycle_dma_emulator_mem(
-                    cycle_start_addr=0,
-                    cycle_stride_outer=1,
-                    input_extent_inner=33,
-                    input_extent_outer=48
-                )
-            elif clkwrk_idx == 1:
+            # if clkwrk_idx in [0, 3]:
+            #     rv_config = get_static_cycle_dma_emulator_mem(
+            #         cycle_start_addr=0,
+            #         cycle_stride_outer=1,
+            #         input_extent_inner=33,
+            #         input_extent_outer=48
+            #     )
+            if clkwrk_idx == 1:
                 rv_config = get_static_cycle_dma_emulator_mem(
                     cycle_start_addr=33,
                     cycle_stride_outer=1,
                     input_extent_inner=33,
                     input_extent_outer=48
                 )
-            elif clkwrk_idx == 2:
-                rv_config = get_static_cycle_dma_emulator_mem(
-                    cycle_start_addr=1,
-                    cycle_stride_outer=1,
-                    input_extent_inner=33,
-                    input_extent_outer=48
-                )
+            # elif clkwrk_idx == 2:
+            #     rv_config = get_static_cycle_dma_emulator_mem(
+            #         cycle_start_addr=1,
+            #         cycle_stride_outer=1,
+            #         input_extent_inner=33,
+            #         input_extent_outer=48
+            #     )
             else:
                 raise ValueError(f"Invalid node name: {node_name} for static cycle dma emulator MEM tiles")
+
+        # Category 4: shift FIFO MEM
+        if "shift_fifo_mem_" in node_name:
+            # rv_config = get_mem_dual_read(input_stream_size=33*48, r0_offset=-2, r1_offset=-1, raw_scalar_guard_offset=2) # raw violence
+            # rv_config = get_mem_dual_read(input_stream_size=33*48, r0_offset=-2, r1_offset=-1, raw_scalar_guard_offset=3) # raw violence
+            rv_config = get_mem_dual_read(input_stream_size=33*48, r0_offset=-2, r1_offset=-1)
+            return rv_config
+
+        # Category 5: input buffer mem for umax PEs
+        if "input_buffer_mem_for_umax_" in node_name:
+            rv_config = get_mem_single_read(input_stream_size=33*48)
+            return rv_config
+
+        # Category 6: broadcast mem
+        if "broadcast_mem" in node_name:
+            if "hw_input_global_wrapper_global_wrapper_stencil" in node_name:
+                rv_config = get_mem_dual_read(input_stream_size=33*48)
+                return rv_config
+            elif "g_gb_stencil" in node_name or "g_gr_stencil" in node_name:
+                rv_config = get_mem_dual_read(input_stream_size=33*48)
+                return rv_config
+            else:
+                raise ValueError(f"Invalid node name: {node_name} for broadcast mem")
 
         elif "_path_balance_pond" in node_name:
             pe_id = node_name.split("_path_balance_pond")[0]
@@ -1014,7 +994,7 @@ def get_broadcast_mem(input_stream_size=128, replicate_factor=4, raw_scalar=4):
     return linear_test
 
 
-def get_mem_dual_read(input_stream_size=128):
+def get_mem_dual_read(input_stream_size=128, r0_offset=0, r1_offset=0, raw_scalar_guard_offset=6):
     '''
     Single write port, dual read ports
     '''
@@ -1076,7 +1056,7 @@ def get_mem_dual_read(input_stream_size=128):
             'extents': output_extents_0,
             'address': {
                 'strides': output_strides,
-                'offset': 0
+                'offset': r0_offset
             },
             'schedule': {}
         },
@@ -1093,7 +1073,7 @@ def get_mem_dual_read(input_stream_size=128):
             'extents': output_extents_1,
             'address': {
                 'strides': output_strides,
-                'offset': 0
+                'offset': r1_offset
             },
             'schedule': {}
         },
@@ -1106,10 +1086,11 @@ def get_mem_dual_read(input_stream_size=128):
     port_data_out_0 = 3
     port_data_out_1 = 4
 
-    # The scalar has to be 6 to actually contraint read after write
-    raw_scalar = 6
-    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
-    raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+    # Add a guard scalar to actually contraint read after write
+    raw_scalar_r0 = raw_scalar_guard_offset + r0_offset
+    raw_scalar_r1 = raw_scalar_guard_offset + r1_offset
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_r0)
+    raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_r1)
 
     mem_tile_size = 4 * 1024 // 2 # 4KB's word size
     war_scalar = -mem_tile_size
@@ -1117,6 +1098,137 @@ def get_mem_dual_read(input_stream_size=128):
     war_1 = (port_data_in_0, 0, port_data_out_1, 0, LFComparisonOperator.LT.value, war_scalar)
 
     linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
+
+    return linear_test
+
+def get_mem_triple_read(input_stream_size=128, r0_offset=0, r1_offset=0, r2_offset=0, raw_scalar_guard_offset=6):
+    '''
+    Single write port, triple read ports
+    '''
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    port_data_out_1 = 4
+    port_data_out_2 = 5
+
+    dim_1 = input_stream_size
+    dim_2 = 1
+    while dim_1 > MAX_EXTENT:
+        assert dim_1 % 2 == 0, f"ERROR: Dim1 always has to be divisible by 2 when increasing dimensionality."
+        dim_1 //= 2
+        dim_2 *= 2
+        assert dim_2 <= MAX_EXTENT, f"ERROR: Cannot map filter mem to two streams using 3D extents with input_stream_size: {input_stream_size}. Higher dimensionality is required."
+
+    if dim_2 > 1:
+        input_dimensionality = 2
+        input_extents = [dim_1, dim_2]
+        input_strides = [1, dim_1]
+        output_dimensionality = 2
+        output_extents_0 = [dim_1, dim_2]
+        output_extents_1 = [dim_1, dim_2]
+        output_extents_2 = [dim_1, dim_2]
+        output_strides = [1, dim_1]
+    else:
+        input_dimensionality = 1
+        input_extents = [dim_1]
+        input_strides = [1]
+        output_dimensionality = 1
+        output_extents_0 = [dim_1]
+        output_extents_1 = [dim_1]
+        output_extents_2 = [dim_1]
+        output_strides = [1]
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': input_dimensionality,
+            'extents': input_extents,
+            'address': {
+                'strides': input_strides,
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': output_dimensionality,
+            'extents': output_extents_0,
+            'address': {
+                'strides': output_strides,
+                'offset': r0_offset
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[4] = {
+        'name': 'port_r1',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': output_dimensionality,
+            'extents': output_extents_1,
+            'address': {
+                'strides': output_strides,
+                'offset': r1_offset
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[5] = {
+        'name': 'port_r2',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': output_dimensionality,
+            'extents': output_extents_2,
+            'address': {
+                'strides': output_strides,
+                'offset': r2_offset
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+    port_data_out_1 = 4
+    port_data_out_2 = 5
+
+    # Add a guard scalar to actually contraint read after write
+    raw_scalar_r0 = raw_scalar_guard_offset + r0_offset
+    raw_scalar_r1 = raw_scalar_guard_offset + r1_offset
+    raw_scalar_r2 = raw_scalar_guard_offset + r2_offset
+    raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_r0)
+    raw_1 = (port_data_out_1, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_r1)
+    raw_2 = (port_data_out_2, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_r2)
+
+    mem_tile_size = 4 * 1024 // 2 # 4KB's word size
+    war_scalar = -mem_tile_size
+    war_0 = (port_data_in_0, 0, port_data_out_0, 0, LFComparisonOperator.LT.value, war_scalar)
+    war_1 = (port_data_in_0, 0, port_data_out_1, 0, LFComparisonOperator.LT.value, war_scalar)
+    war_2 = (port_data_in_0, 0, port_data_out_2, 0, LFComparisonOperator.LT.value, war_scalar)
+
+    linear_test['constraints'] = [raw_0, raw_1, raw_2, war_0, war_1, war_2]
 
     return linear_test
 
@@ -1663,15 +1775,36 @@ def get_demosaic_rgb_stencil_mem_single_port(
         'vec_constraints': []
     }
 
+    linear_test[4] = {
+        'name': 'port_r1',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [out_line_size, out_num_lines],
+            'address': {
+                'strides': [1, out_line_size],
+                'offset': address_offset_scalar
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
     port_data_in_0 = 0
     port_data_out_0 = 3
+    port_data_out_1 = 4
 
     # Add conservative raw_scalar to guard raw constraints
     # Can be released if run at full rate with path balancing
     raw_scalar_0 = address_offset_scalar // out_line_size + raw_scalar_guard_offset
     raw_0 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
 
-    linear_test['constraints'] = [raw_0]
+    raw_scalar_1 = address_offset_scalar // out_line_size + raw_scalar_guard_offset
+    raw_1 = (port_data_out_1, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_1)
+
+    linear_test['constraints'] = [raw_0, raw_1]
 
     return linear_test
 
@@ -1733,7 +1866,7 @@ def get_static_cycle_dma_emulator_mem(
 
     return linear_test
 
-def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096, pe_to_pond=True):
+def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_stream_length=4096, pe_to_pond=True, read_address_offset=0):
     '''
     Helper function to create config for pond behaving as a chain of interconnect FIFOs for path balancing
     Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
@@ -1803,7 +1936,7 @@ def get_path_balancing_pond(balance_length=2, interconnect_fifo_depth=2, total_s
             'extents': extents,
             'address': {
                 'strides': strides,
-                'offset': 0
+                'offset': read_address_offset
             },
             'schedule': {}
         },
