@@ -1637,6 +1637,68 @@ def get_filter_mem_two_streams(input_stream_size=512):
     linear_test['constraints'] = [raw_0, raw_1]
     return linear_test
 
+def get_filter_mem_transpose(
+        X: int,
+        Y: int,
+        output_glb_bank_idx: int,
+        lane_idx_within_bank: int,
+        unroll: int=32,
+    ):
+    '''
+    Helper function to create config for filter mem to transpose a 2D tensor
+    '''
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 1,
+            'extents': [X * Y // unroll // unroll],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {},
+            'filter': {
+                'offset': [4 * output_glb_bank_idx + lane_idx_within_bank],
+                'dimensionality': [1],
+                'strides': [unroll]
+            }
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 1,
+            'extents': [X * Y // unroll // unroll],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            "schedule": {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    # The scalar has to be a magic number 12 to actually contraint read after write.
+    raw_scalar = 12
+    raw = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+
+    linear_test['constraints'] = [raw]
+
+    return linear_test
+
 def get_demosaic_rgb_stencil_mem_single_port(
         in_line_size=126,
         in_num_lines=94,

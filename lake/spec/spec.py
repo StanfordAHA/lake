@@ -1490,6 +1490,14 @@ class Spec():
             rv_type = rv_params.get("type")
             if rv_type == "dual_read":
                 application = get_mem_dual_read(input_stream_size=rv_params["input_stream_size"])
+            elif rv_type == "filter_mem_transpose":
+                application = get_filter_mem_transpose(
+                    X=rv_params["X"],
+                    Y=rv_params["Y"],
+                    output_glb_bank_idx=rv_params["output_glb_bank_idx"],
+                    lane_idx_within_bank=rv_params["lane_idx_within_bank"],
+                    unroll=rv_params.get("unroll", 32),
+                )
             else:
                 raise ValueError(f"Unknown lake_rv_config type: {rv_type!r}")
             print("MODULAR APPLICATION")
