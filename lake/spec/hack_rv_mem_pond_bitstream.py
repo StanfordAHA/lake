@@ -315,6 +315,10 @@ def hack_rv_config(test_name, node_name=None):
             elif test_name in ["gelu_pass2_fp", "add_gelu_pass2_fp"]:
                 glb_i = int(halide_gen_args_dict['glb_i'])
                 rv_config = get_mem_dual_read(input_stream_size=vec_len * num_vecs // glb_i)
+        elif "mu_buffer_mem" in node_name:
+            if test_name in ["add_gelu_pass1_mu_input_fp"]:
+                mu_i = int(halide_gen_args_dict['mu_i'])
+                rv_config = get_mem_single_read(input_stream_size=vec_len * num_vecs // mu_i)
         elif "_path_balance_pond" in node_name:
             pe_id = node_name.split("_path_balance_pond")[0]
             app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
