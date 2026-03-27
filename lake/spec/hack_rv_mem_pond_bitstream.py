@@ -12,6 +12,7 @@ APPS_NEEDING_HACKS = [
     "stable_softmax_pass3_fp",
     "layer_norm_pass1_fp",
     "layer_norm_pass2_fp",
+    "rms_norm_pass1_fp",
     "gelu_pass1_mu_input_fp",
     "gelu_pass2_fp",
     "add_gelu_pass1_mu_input_fp",
@@ -266,7 +267,7 @@ def hack_rv_config(test_name, node_name=None):
         else:
             raise ValueError(f"Invalid node name: {node_name}")
 
-    elif test_name in ["stable_softmax_pass3_fp", "layer_norm_pass1_fp", "layer_norm_pass2_fp"]:
+    elif test_name in ["stable_softmax_pass3_fp", "layer_norm_pass1_fp", "layer_norm_pass2_fp", "rms_norm_pass1_fp"]:
         print(f"configure node_name: {node_name}")
         vec_len = int(halide_gen_args_dict['vec_width'])
         num_vecs = int(halide_gen_args_dict['vec_height'])
@@ -282,7 +283,7 @@ def hack_rv_config(test_name, node_name=None):
             rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=num_vecs)
         # Category 3: 1/sum buffer mem
         elif "output_cgra_stencil" in node_name:
-            if test_name == "layer_norm_pass2_fp":
+            if test_name in ["layer_norm_pass2_fp", "rms_norm_pass1_fp"]:
                 raw_scalar = 6
             else:
                 raw_scalar = 4
