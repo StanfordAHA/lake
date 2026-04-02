@@ -1382,19 +1382,56 @@ def get_mem_line_buffer_single_port(line_size=64, num_lines=198, offset_r0=-64):
 
 def get_interleave_mem(single_input_stream_size=512):
     '''
-    Helper function to interleave two data streams like output GLB IOs
-    input num 0 first, input num 1 second
+    Helper function to interleave two data streams like output GLB IOs.
+    Input num 0 first, input num 1 second.
+    Auto-splits extents when single_input_stream_size exceeds the extent
+    counter width, following the same pattern as get_filter_mem_two_streams.
     '''
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)
+    SIPO_WORD_WIDTH = 4
+
+    port_data_in_0 = 0
+    port_data_in_1 = 1
+    port_data_out_0 = 3
+
+    dim_1 = single_input_stream_size // SIPO_WORD_WIDTH
+    dim_2 = 1
+    while dim_1 > MAX_EXTENT:
+        assert dim_1 % 2 == 0, f"ERROR: dim_1 always has to be divisible by 2 when increasing dimensionality."
+        dim_1 //= 2
+        dim_2 *= 2
+        assert dim_2 <= MAX_EXTENT, f"ERROR: Cannot map interleave mem with single_input_stream_size: {single_input_stream_size}. Higher dimensionality is required."
+
+    if dim_2 > 1:
+        write_dimensionality = 3
+        write_extents = [SIPO_WORD_WIDTH, dim_1, dim_2]
+        write_strides = [1, 2 * SIPO_WORD_WIDTH, dim_1 * 2 * SIPO_WORD_WIDTH]
+        read_dimensionality = 4
+        read_extents = [2, SIPO_WORD_WIDTH, dim_1, dim_2]
+        read_strides = [SIPO_WORD_WIDTH, 1, 2 * SIPO_WORD_WIDTH, dim_1 * 2 * SIPO_WORD_WIDTH]
+        raw_dim_w = 2
+        raw_dim_r = 3
+    else:
+        write_dimensionality = 2
+        write_extents = [SIPO_WORD_WIDTH, dim_1]
+        write_strides = [1, 2 * SIPO_WORD_WIDTH]
+        read_dimensionality = 3
+        read_extents = [2, SIPO_WORD_WIDTH, dim_1]
+        read_strides = [SIPO_WORD_WIDTH, 1, 2 * SIPO_WORD_WIDTH]
+        raw_dim_w = 1
+        raw_dim_r = 2
+
     linear_test = {}
 
     linear_test[0] = {
         'name': 'port_w0',
         'type': Direction.IN,
         'config': {
-            'dimensionality': 2,
-            'extents': [4, single_input_stream_size // 4],
+            'dimensionality': write_dimensionality,
+            'extents': write_extents,
             'address': {
-                'strides': [1, 8],
+                'strides': write_strides,
                 'offset': 0
             },
             'schedule': {}
@@ -1408,11 +1445,11 @@ def get_interleave_mem(single_input_stream_size=512):
         'name': 'port_w1',
         'type': Direction.IN,
         'config': {
-            'dimensionality': 2,
-            'extents': [4, single_input_stream_size // 4],
+            'dimensionality': write_dimensionality,
+            'extents': write_extents,
             'address': {
-                'strides': [1, 8],
-                'offset': 4
+                'strides': write_strides,
+                'offset': SIPO_WORD_WIDTH
             },
             'schedule': {}
         },
@@ -1425,10 +1462,10 @@ def get_interleave_mem(single_input_stream_size=512):
         'name': 'port_r0',
         'type': Direction.OUT,
         'config': {
-            'dimensionality': 3,
-            'extents': [2, 4, single_input_stream_size // 4],
+            'dimensionality': read_dimensionality,
+            'extents': read_extents,
             'address': {
-                'strides': [4, 1, 8],
+                'strides': read_strides,
                 'offset': 0
             },
             'schedule': {}
@@ -1438,23 +1475,15 @@ def get_interleave_mem(single_input_stream_size=512):
         'vec_constraints': []
     }
 
-    port_data_in_0 = 0
-    port_data_in_1 = 1
-    port_data_out_0 = 3
-
-    # raw_scalar should be 0 but set a magic number 1 to actually contraint read after write. Needs investigation.
     raw_scalar_0 = 1
-    raw_0 = (port_data_out_0, 2, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
+    raw_0 = (port_data_out_0, raw_dim_r, port_data_in_0, raw_dim_w, LFComparisonOperator.LT.value, raw_scalar_0)
 
     raw_scalar_1 = 1
-    raw_1 = (port_data_out_0, 2, port_data_in_1, 1, LFComparisonOperator.LT.value, raw_scalar_1)
+    raw_1 = (port_data_out_0, raw_dim_r, port_data_in_1, raw_dim_w, LFComparisonOperator.LT.value, raw_scalar_1)
 
-    # waw_scalar_0 = 0
-    # waw_0 = (port_data_in_1, 0, port_data_in_0, 0, LFComparisonOperator.GT.value, waw_scalar_0)
-    war_0 = (port_data_in_0, 1, port_data_out_0, 2, LFComparisonOperator.GT.value, 128)
-    war_1 = (port_data_in_1, 1, port_data_out_0, 2, LFComparisonOperator.GT.value, 128)
+    war_0 = (port_data_in_0, raw_dim_w, port_data_out_0, raw_dim_r, LFComparisonOperator.GT.value, 128)
+    war_1 = (port_data_in_1, raw_dim_w, port_data_out_0, raw_dim_r, LFComparisonOperator.GT.value, 128)
 
-    # linear_test['constraints'] = [raw_0, raw_1]
     linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
 
     return linear_test

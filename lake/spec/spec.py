@@ -1498,6 +1498,10 @@ class Spec():
                     lane_idx_within_bank=rv_params["lane_idx_within_bank"],
                     unroll=rv_params.get("unroll", 32),
                 )
+            elif rv_type == "get_filter_mem_two_streams":
+                application = get_filter_mem_two_streams(input_stream_size=rv_params["input_stream_size"])
+            elif rv_type == "get_interleave_mem":
+                application = get_interleave_mem(single_input_stream_size=rv_params["single_input_stream_size"])
             else:
                 raise ValueError(f"Unknown lake_rv_config type: {rv_type!r}")
             print("MODULAR APPLICATION")
