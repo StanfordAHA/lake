@@ -1,4 +1,7 @@
 """Unit tests for Spec.extract_compiler_information and its helpers."""
+import json
+import os
+import tempfile
 import pytest
 from lake.spec.spec import Spec
 from lake.spec.port import Port
@@ -353,3 +356,182 @@ class TestCollateralKeys:
         collateral = ls.extract_compiler_information(
             controller_name_map={stg: 'sram'})
         assert set(collateral.keys()) == LAKE_COLLATERAL_KEYS
+
+
+# ---------------------------------------------------------------------------
+# Multi-storage "mem"-level Spec matching LakeCollateral("mem")
+# ---------------------------------------------------------------------------
+
+def _build_mem_level_spec():
+    """Build a 3-storage agg/sram/tb Spec matching clockwork's LakeCollateral("mem").
+
+    Topology: 2 input ports -> agg (2 banks) -> sram (1 bank) -> tb (2 banks) -> 2 output ports
+    fetch_width=4, iteration_level=6, iter_level_map with 3-dim controllers.
+    """
+    ls = Spec()
+
+    # Two input ports (ext_data_width=16, int_data_width=64 for fetch_width=4)
+    in_port_0 = Port(ext_data_width=16, int_data_width=64,
+                     vec_capacity=2,
+                     runtime=Runtime.STATIC, direction=Direction.IN)
+    in_port_1 = Port(ext_data_width=16, int_data_width=64,
+                     vec_capacity=2,
+                     runtime=Runtime.STATIC, direction=Direction.IN)
+    ls.register(in_port_0, in_port_1)
+
+    # Two output ports (ext_data_width=16, int_data_width=64 for fetch_width=4)
+    out_port_0 = Port(ext_data_width=16, int_data_width=64,
+                      vec_capacity=2,
+                      runtime=Runtime.STATIC, direction=Direction.OUT)
+    out_port_1 = Port(ext_data_width=16, int_data_width=64,
+                      vec_capacity=2,
+                      runtime=Runtime.STATIC, direction=Direction.OUT)
+    ls.register(out_port_0, out_port_1)
+
+    # Controllers for input ports (6-dim matching LakeCollateral("mem"))
+    for port in [in_port_0, in_port_1]:
+        id_ = IterationDomain(dimensionality=6, extent_width=16)
+        ag_ = AddressGenerator(dimensionality=6)
+        sg_ = ScheduleGenerator(dimensionality=6)
+        ls.register(id_, ag_, sg_)
+        ls.connect(port, id_)
+        ls.connect(port, ag_)
+        ls.connect(port, sg_)
+
+    # Controllers for output ports (6-dim matching LakeCollateral("mem"))
+    for port in [out_port_0, out_port_1]:
+        id_ = IterationDomain(dimensionality=6, extent_width=16)
+        ag_ = AddressGenerator(dimensionality=6)
+        sg_ = ScheduleGenerator(dimensionality=6)
+        ls.register(id_, ag_, sg_)
+        ls.connect(port, id_)
+        ls.connect(port, ag_)
+        ls.connect(port, sg_)
+
+    # Agg (2 banks, capacity=8, word_width=1 word, in_port_width=1, out_port_width=4)
+    agg = SingleBankStorage(capacity=8)
+    agg_wr_mp_0 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=0)
+    agg_wr_mp_1 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=0)
+    ls.register(agg, agg_wr_mp_0, agg_wr_mp_1)
+    ls.connect(in_port_0, agg_wr_mp_0)
+    ls.connect(in_port_1, agg_wr_mp_1)
+    ls.connect(agg_wr_mp_0, agg)
+    ls.connect(agg_wr_mp_1, agg)
+
+    # Sram (1 bank, capacity=512, word_width=4, in/out_port_width=4)
+    sram = SingleBankStorage(capacity=512)
+    sram_rw_mp = MemoryPort(data_width=64, mptype=MemoryPortType.RW, delay=0)
+    ls.register(sram, sram_rw_mp)
+    # sram connects to agg (read side) and tb (write side) — shared RW port
+    # For topology detection: sram_rw_mp bridges agg and sram
+    ls.connect(sram_rw_mp, sram)
+
+    # Tb (2 banks, capacity=8, word_width=1, in_port_width=4, out_port_width=1)
+    tb = SingleBankStorage(capacity=8)
+    tb_rd_mp_0 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=0)
+    tb_rd_mp_1 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=0)
+    ls.register(tb, tb_rd_mp_0, tb_rd_mp_1)
+    ls.connect(out_port_0, tb_rd_mp_0)
+    ls.connect(out_port_1, tb_rd_mp_1)
+    ls.connect(tb_rd_mp_0, tb)
+    ls.connect(tb_rd_mp_1, tb)
+
+    controller_name_map = {agg: 'agg', sram: 'sram', tb: 'tb'}
+    return ls, controller_name_map
+
+
+class TestMemLevelCollateral:
+    """Validate collateral from a 3-storage agg/sram/tb Spec against
+    clockwork's LakeCollateral('mem') hardcoded values."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.ls, self.cname_map = _build_mem_level_spec()
+        self.collateral = self.ls.extract_compiler_information(
+            controller_name_map=self.cname_map)
+
+    def test_controller_names(self):
+        assert set(self.collateral['controller_name']) == {'agg', 'sram', 'tb'}
+
+    def test_capacity(self):
+        assert self.collateral['capacity'] == {'agg': 8, 'sram': 512, 'tb': 8}
+
+    def test_word_width(self):
+        # word_width = gcd(in_port_width, out_port_width)
+        # agg: gcd(1, ?) — agg only has write ports; sram: gcd(4, 4)=4
+        assert self.collateral['word_width']['sram'] == 4
+
+    def test_bank_num(self):
+        assert self.collateral['bank_num']['agg'] == 2
+        assert self.collateral['bank_num']['sram'] == 1
+        assert self.collateral['bank_num']['tb'] == 2
+
+    def test_interconnect_ports(self):
+        assert self.collateral['interconnect_in_num'] == 2
+        assert self.collateral['interconnect_out_num'] == 2
+
+    def test_fetch_width(self):
+        # int_data_width=64 / ext_data_width=16 = 4
+        assert self.collateral['fetch_width'] == 4
+
+    def test_iteration_level(self):
+        assert self.collateral['iteration_level'] == 6
+
+    def test_iter_level_map(self):
+        ilm = self.collateral['iter_level_map']
+        assert ilm == {
+            'in2agg_0': 6,
+            'in2agg_1': 6,
+            'tb2out_0': 6,
+            'tb2out_1': 6,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Serialization round-trip tests
+# ---------------------------------------------------------------------------
+
+class TestSaveLoadCompilerInformation:
+    """Test save_compiler_information / load_compiler_information round-trip."""
+
+    def test_round_trip_dual_port(self, tmp_path):
+        ls, stg = _build_simple_dual_port()
+        filepath = str(tmp_path / "collateral.json")
+        ls.save_compiler_information(filepath, controller_name_map={stg: 'mem'})
+
+        loaded = Spec.load_compiler_information(filepath)
+        original = ls.extract_compiler_information(controller_name_map={stg: 'mem'})
+
+        # controller_name gets sorted during save
+        original['controller_name'] = sorted(original['controller_name'])
+        assert loaded == original
+
+    def test_round_trip_wide_fetch(self, tmp_path):
+        ls, stg = _build_single_port_wide_fetch()
+        filepath = str(tmp_path / "collateral.json")
+        ls.save_compiler_information(filepath, controller_name_map={stg: 'sram'})
+
+        loaded = Spec.load_compiler_information(filepath)
+        original = ls.extract_compiler_information(controller_name_map={stg: 'sram'})
+        original['controller_name'] = sorted(original['controller_name'])
+        assert loaded == original
+
+    def test_round_trip_mem_level(self, tmp_path):
+        ls, cname_map = _build_mem_level_spec()
+        filepath = str(tmp_path / "mem_collateral.json")
+        ls.save_compiler_information(filepath, controller_name_map=cname_map)
+
+        loaded = Spec.load_compiler_information(filepath)
+        original = ls.extract_compiler_information(controller_name_map=cname_map)
+        original['controller_name'] = sorted(original['controller_name'])
+        assert loaded == original
+
+    def test_json_file_valid(self, tmp_path):
+        ls, stg = _build_simple_dual_port()
+        filepath = str(tmp_path / "collateral.json")
+        ls.save_compiler_information(filepath, controller_name_map={stg: 'mem'})
+
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        assert isinstance(data, dict)
+        assert set(data.keys()) == LAKE_COLLATERAL_KEYS

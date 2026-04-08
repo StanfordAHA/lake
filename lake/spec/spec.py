@@ -1041,6 +1041,35 @@ class Spec():
             'write_port': write_port,
         }
 
+    def save_compiler_information(self, filepath, **kwargs):
+        """Serialize compiler collateral to a JSON file.
+
+        Args:
+            filepath: Path to write the JSON file to.
+            **kwargs: Forwarded to extract_compiler_information().
+        """
+        collateral = self.extract_compiler_information(**kwargs)
+        # Convert sets to sorted lists for JSON serialization
+        if isinstance(collateral.get('controller_name'), (set, list)):
+            collateral['controller_name'] = sorted(collateral['controller_name'])
+        # Convert any boolean values explicitly for JSON compat
+        os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
+        with open(filepath, 'w') as f:
+            json.dump(collateral, f, indent=2, sort_keys=True)
+
+    @staticmethod
+    def load_compiler_information(filepath):
+        """Load compiler collateral from a JSON file.
+
+        Args:
+            filepath: Path to the JSON file.
+
+        Returns:
+            dict with keys matching LakeCollateral fields.
+        """
+        with open(filepath, 'r') as f:
+            return json.load(f)
+
     def get_port_controllers(self, port) -> Tuple[IterationDomain, AddressGenerator, ScheduleGenerator]:
         # Assemble the ID,AG,SG (or at least their interfaces) on the port
         port_id: IterationDomain = self.get_associated_controller(IterationDomain, port)
