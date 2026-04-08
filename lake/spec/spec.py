@@ -824,8 +824,222 @@ class Spec():
         flush_port = self._final_gen.internal_generator.get_port("flush")
         flush_port.add_attribute(ControlSignalAttr(True))
 
-    def extract_compiler_information(self) -> None:
-        pass
+    def _resolve_controller_name_map(self, controller_name_map=None):
+        """Build a mapping from Storage nodes to controller name strings.
+
+        If controller_name_map is not provided, uses each Storage node's
+        component name attribute.
+        """
+        if controller_name_map is not None:
+            return controller_name_map
+        storage_nodes = self.get_nodes(Storage)
+        return {stg: stg.name for stg in storage_nodes}
+
+    def _extract_capacity(self, controller_name_map):
+        """Extract per-controller storage capacity."""
+        capacity = {}
+        for stg in self.get_nodes(Storage):
+            cname = controller_name_map[stg]
+            capacity[cname] = stg.get_capacity()
+        return capacity
+
+    def _get_memports_for_storage(self, stg):
+        """Return MemoryPort neighbors of a Storage node."""
+        return [mp for mp in nx.neighbors(self._hw_graph, stg)
+                if isinstance(mp, MemoryPort)]
+
+    def _extract_memory_port_info(self, controller_name_map):
+        """Analyze MemoryPorts per Storage to extract bank_num, single_port,
+        dual_port_sram, in/out_port_width, and load/store latency."""
+        bank_num = {}
+        single_port = {}
+        dual_port_sram = False
+        in_port_width = {}
+        out_port_width = {}
+        load_latency = 0
+        store_latency = 0
+
+        for stg in self.get_nodes(Storage):
+            cname = controller_name_map[stg]
+            memports = self._get_memports_for_storage(stg)
+
+            all_rw = all(mp.get_type() == MemoryPortType.RW for mp in memports)
+            single_port[cname] = all_rw
+
+            has_r = any(mp.get_type() == MemoryPortType.R for mp in memports)
+            has_w = any(mp.get_type() == MemoryPortType.W for mp in memports)
+            if has_r and has_w:
+                dual_port_sram = True
+
+            bank_num[cname] = len(memports) if len(memports) > 0 else 1
+
+            max_write_width = 0
+            max_read_width = 0
+            for mp in memports:
+                mp_type = mp.get_type()
+                mp_width_bits = mp.get_width()
+                connected_ports = [n for n in nx.neighbors(self._hw_graph, mp)
+                                   if isinstance(n, Port)]
+                ext_width = 16
+                if connected_ports:
+                    ext_width = connected_ports[0]._ext_data_width
+
+                width_in_words = mp_width_bits // ext_width
+
+                if mp_type in (MemoryPortType.W, MemoryPortType.RW):
+                    max_write_width = max(max_write_width, width_in_words)
+                if mp_type in (MemoryPortType.R, MemoryPortType.RW):
+                    max_read_width = max(max_read_width, width_in_words)
+
+                if mp_type in (MemoryPortType.R, MemoryPortType.RW):
+                    load_latency = max(load_latency, mp.get_port_delay())
+                if mp_type == MemoryPortType.W:
+                    store_latency = max(store_latency, mp.get_port_delay())
+
+            if max_write_width > 0:
+                in_port_width[cname] = max_write_width
+            if max_read_width > 0:
+                out_port_width[cname] = max_read_width
+
+        return {
+            'bank_num': bank_num,
+            'single_port': single_port,
+            'dual_port_sram': dual_port_sram,
+            'in_port_width': in_port_width,
+            'out_port_width': out_port_width,
+            'load_latency': load_latency,
+            'store_latency': store_latency,
+        }
+
+    def _extract_word_width(self, controller_names, in_port_width, out_port_width):
+        """Compute word_width as GCD of in/out port widths per controller."""
+        word_width = {}
+        for cname in controller_names:
+            ipw = in_port_width.get(cname, 1)
+            opw = out_port_width.get(cname, 1)
+            word_width[cname] = math.gcd(ipw, opw)
+        return word_width
+
+    def _extract_multi_sram_accessor(self):
+        """Return True if multiple Ports share a single MemoryPort."""
+        if self._memport_map:
+            for mp, ports in self._memport_map.items():
+                if len(ports) > 1:
+                    return True
+        return False
+
+    def _extract_iteration_info(self, controller_name_map):
+        """Extract iteration_level, iter_level_map, and counter_ub from
+        IterationDomain nodes and their connections to Ports/Storage."""
+        iteration_level = 0
+        iter_level_map = {}
+        id_nodes = self.get_nodes(IterationDomain)
+
+        for id_node in id_nodes:
+            iteration_level = max(iteration_level, id_node.get_dimensionality())
+
+        for i_, port in enumerate(self.get_in_ports()):
+            port_id = self.get_associated_controller(IterationDomain, port)
+            if port_id is not None:
+                for mp in self.get_memory_ports(port):
+                    for stg in nx.neighbors(self._hw_graph, mp):
+                        if isinstance(stg, Storage):
+                            cname = controller_name_map.get(stg, stg.name)
+                            iter_level_map[f"in2{cname}_{i_}"] = port_id.get_dimensionality()
+
+        for i_, port in enumerate(self.get_out_ports()):
+            port_id = self.get_associated_controller(IterationDomain, port)
+            if port_id is not None:
+                for mp in self.get_memory_ports(port):
+                    for stg in nx.neighbors(self._hw_graph, mp):
+                        if isinstance(stg, Storage):
+                            cname = controller_name_map.get(stg, stg.name)
+                            iter_level_map[f"{cname}2out_{i_}"] = port_id.get_dimensionality()
+
+        counter_ub = 0
+        for id_node in id_nodes:
+            counter_ub = max(counter_ub, (2 ** id_node.get_extent_width()) - 1)
+
+        return {
+            'iteration_level': iteration_level,
+            'iter_level_map': iter_level_map,
+            'counter_ub': counter_ub,
+        }
+
+    def _extract_storage_topology(self, controller_name_map):
+        """Detect read_port/write_port wiring between storages.
+
+        If a Port bridges two Storage nodes (via different MemoryPorts),
+        records the producer->consumer relationship.
+        """
+        read_port = {}
+        write_port = {}
+        for port in self.get_in_ports() + self.get_out_ports():
+            port_memports = self.get_memory_ports(port)
+            connected_storages = set()
+            for mp in port_memports:
+                for neighbor in nx.neighbors(self._hw_graph, mp):
+                    if isinstance(neighbor, Storage):
+                        connected_storages.add(neighbor)
+            if len(connected_storages) == 2:
+                stg_list = list(connected_storages)
+                name0 = controller_name_map.get(stg_list[0], stg_list[0].name)
+                name1 = controller_name_map.get(stg_list[1], stg_list[1].name)
+                if port.get_direction() == Direction.IN:
+                    read_port[name0] = name1
+                    write_port[name1] = name0
+                else:
+                    read_port[name1] = name0
+                    write_port[name0] = name1
+        return read_port, write_port
+
+    def extract_compiler_information(self, max_chaining=4, wire_chain_en=False,
+                                       controller_name_map=None) -> dict:
+        """Extract compiler collateral matching clockwork's LakeCollateral struct.
+
+        Args:
+            max_chaining: Maximum chaining depth (no direct Spec equivalent).
+            wire_chain_en: Wire chaining enabled (no direct Spec equivalent).
+            controller_name_map: Optional dict mapping Storage node -> str name for the controller.
+                If None, uses the component's name attribute.
+
+        Returns:
+            dict with keys matching LakeCollateral fields.
+        """
+        controller_name_map = self._resolve_controller_name_map(controller_name_map)
+        controller_names = set(controller_name_map[stg] for stg in self.get_nodes(Storage))
+
+        capacity = self._extract_capacity(controller_name_map)
+        mp_info = self._extract_memory_port_info(controller_name_map)
+        word_width = self._extract_word_width(controller_names,
+                                              mp_info['in_port_width'],
+                                              mp_info['out_port_width'])
+        iter_info = self._extract_iteration_info(controller_name_map)
+        read_port, write_port = self._extract_storage_topology(controller_name_map)
+
+        return {
+            'controller_name': list(controller_names),
+            'capacity': capacity,
+            'word_width': word_width,
+            'in_port_width': mp_info['in_port_width'],
+            'out_port_width': mp_info['out_port_width'],
+            'bank_num': mp_info['bank_num'],
+            'single_port': mp_info['single_port'],
+            'fetch_width': self.fw_max,
+            'max_chaining': max_chaining,
+            'iteration_level': iter_info['iteration_level'],
+            'iter_level_map': iter_info['iter_level_map'],
+            'load_latency': mp_info['load_latency'],
+            'store_latency': mp_info['store_latency'],
+            'counter_ub': iter_info['counter_ub'],
+            'multi_sram_accessor': self._extract_multi_sram_accessor(),
+            'dual_port_sram': mp_info['dual_port_sram'],
+            'wire_chain_en': wire_chain_en,
+            'interconnect_in_num': self.num_in_ports,
+            'interconnect_out_num': self.num_out_ports,
+            'read_port': read_port,
+            'write_port': write_port,
+        }
 
     def get_port_controllers(self, port) -> Tuple[IterationDomain, AddressGenerator, ScheduleGenerator]:
         # Assemble the ID,AG,SG (or at least their interfaces) on the port
