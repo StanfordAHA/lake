@@ -1,194 +1,132 @@
 # 7.2.1 Streaming Memory Characteristics
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Experiments to sweep over port characteristics...
-# For FW 1, want to sweep over interface width
-python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/THESIS_BUILDS/PORT_EXP --design_filter thesis_sweep --physical --run_builds \
-    --static \
-    --fetch_width 1 \
-    --interface_width 8 16 32 64 \
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/PORT_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
+    --fetch_width 4 \
+    --in_ports 2 \
+    --out_ports 2 \
+    --data_width 8 16 32 64 \
     --storage_capacity 8192 \
     --frequency 700
 
-# For FW 2, 4, 8 want to sweep over interface width and vector capacity - (fetch_width * interface_width * vec_capacity) = total vec storage
-# Can later analyze with a fixed vec storage as well, see overheads associated with vec capacity too
-python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/THESIS_BUILDS/PORT_EXP --design_filter thesis_sweep --physical --run_builds \
-    --static \
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/PORT_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
     --fetch_width 2 4 8 \
     --vec_capacity 2 4 8 \
-    --interface_width 8 16 32 64 \
+    --data_width 8 16 32 64 \
     --storage_capacity 8192 \
     --frequency 700
 
 # Experiments to sweep over IterationDomain characteristics...dimensionality and max extent
-# no point in trying different sets of max extent as it should not really impact the size of the adder used
-python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/THESIS_BUILDS/ITERATION_DOMAIN_EXP --design_filter thesis_sweep --physical --run_builds \
-    --static \
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/ITERATION_DOMAIN_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
     --fetch_width 1 \
-    --interface_width 16 \
+    --data_width 16 \
     --dimensionality 1 2 3 4 5 6 \
     --max_extent 64 256 1024 4096 \
     --storage_capacity 8192 \
     --frequency 700
 
 # Experiments to sweep over AddressGenerator characteristics...dimensionality, max offset/stride are set by sequence value width
-# no point in trying different sets of max extent as it should not really impact the size of the adder used
-python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/THESIS_BUILDS/ADDRESS_GENERATOR_EXP --design_filter thesis_sweep --physical --run_builds \
-    --static \
+# Strides could be minimized (if we only expect to step by a certain amount on the inside...)
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/AFFINE_PATTERN_GENERATOR_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
     --fetch_width 1 \
-    --interface_width 16 \
+    --data_width 16 \
     --dimensionality 1 2 3 4 5 6 \
     --max_sequence_width 64 256 1024 4096 16384 \
     --storage_capacity 8192 \
     --frequency 700
 
+# Experiments to sweep over Storage (capacity) and MemoryPort (type, shared ports) characteristics...capacity and line size
 
+# Single fetch dual port, 1 in 1 out
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/MEMORY_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
+    --fetch_width 1 \
+    --dual_port \
+    --in_ports 1 \
+    --out_ports 1 \
+    --data_width 16 \
+    --storage_capacity 1024 2048 4096 8192 16384 32768 \
+    --frequency 700
 
+# 2 fetch dual port, 2 in 2 out
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/MEMORY_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
+    --fetch_width 2 \
+    --dual_port \
+    --in_ports 2 \
+    --out_ports 2 \
+    --data_width 16 \
+    --storage_capacity 1024 2048 4096 8192 16384 32768 \
+    --frequency 700
 
-# # # This sweeps FW without changing num in ports num out ports
-# # python ASPLOS_EXP/create_all_experiments.py --fetch_width 2 4 8 --outdir MEK_fw --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports
-# # # Next few commands generate the same things but add in the extra ports
-# # python ASPLOS_EXP/create_all_experiments.py --fetch_width 2 --outdir MEK_fw --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports
-# # python ASPLOS_EXP/create_all_experiments.py --fetch_width 4 --outdir MEK_fw --physical --design_filter single_port_wide_fetch --in_ports 2 --out_ports 2 --storage_capacity 16384 --use_ports
-# # python ASPLOS_EXP/create_all_experiments.py --fetch_width 8 --outdir MEK_fw --physical --design_filter single_port_wide_fetch --in_ports 4 --out_ports 4 --storage_capacity 16384 --use_ports
-# # python ASPLOS_EXP/create_all_experiments.py --fetch_width 2 --outdir MEK_fwspst --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --spst dense
-# # python ASPLOS_EXP/create_all_experiments.py --fetch_width 2 --outdir MEK_fwspst --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --spst perf
+# 4 fetch dual port, 4 in 4 out
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/MEMORY_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
+    --fetch_width 4 \
+    --dual_port \
+    --in_ports 4 \
+    --out_ports 4 \
+    --data_width 16 \
+    --storage_capacity 1024 2048 4096 8192 16384 32768 \
+    --frequency 700
 
-# # # This sweeps FW without changing num in ports num out ports
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 2 4 8 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_9_26/ --physical --design_filter single_port_wide_fetch --storage_capacity 16384 --run_builds
-# # # Next few commands generate the same things but add in the extra ports
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 2 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_9_26/ --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 4 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_9_26/ --physical --design_filter single_port_wide_fetch --in_ports 2 --out_ports 2 --storage_capacity 16384 --use_ports --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 8 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_9_26/ --physical --design_filter single_port_wide_fetch --in_ports 4 --out_ports 4 --storage_capacity 16384 --use_ports --run_builds
+# 8 fetch dual port, 8 in 8 out
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/MEMORY_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
+    --fetch_width 8 \
+    --dual_port \
+    --in_ports 8 \
+    --out_ports 8 \
+    --data_width 16 \
+    --storage_capacity 1024 2048 4096 8192 16384 32768 \
+    --frequency 700
 
-# # # Just create two different builds with the performance and density switch for the SRAM so we can compare (only for the single port!!!!)
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 2 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_SPST_9_26/ --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --run_builds --spst dense
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 2 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_SPST_9_26/ --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --run_builds --spst perf
+# Dual fetch single port, 1 in 1 out
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/MEMORY_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
+    --fetch_width 2 \
+    --in_ports 1 \
+    --out_ports 1 \
+    --data_width 16 \
+    --storage_capacity 1024 2048 4096 8192 16384 32768 \
+    --frequency 700
 
-# # just normal simple dual port
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
+# Quad fetch single port, 2 in 2 out
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/MEMORY_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
+    --fetch_width 4 \
+    --in_ports 2 \
+    --out_ports 2 \
+    --data_width 16 \
+    --storage_capacity 1024 2048 4096 8192 16384 32768 \
+    --frequency 700
 
-# # Simple dual port placeholder...
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/SIMPLE_DUAL_PORT_LVS_VLOG_FIX_10_14_SPI/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/SIMPLE_DUAL_PORT_LVS_VLOG_FIX_10_14_RTL_SIM/ --physical --design_filter simple_dual_port --storage_capacity 16384
+# 8 fetch single port, 4 in 4 out
+python ASPLOS_EXP/create_mflowgen_experiments.py \
+    --build_dir /sim/mstrange/THESIS_BUILDS/MEMORY_EXP \
+    --design_filter thesis_sweep --physical --run_builds \
+    --fetch_width 8 \
+    --in_ports 4 \
+    --out_ports 4 \
+    --data_width 16 \
+    --storage_capacity 1024 2048 4096 8192 16384 32768 \
+    --frequency 700
 
-# # Amber quad static + rv
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_ALL_PORTS_RV/ --physical --design_filter dual_port_wide_fetch_quad_rv --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_VLOG_FIX/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_LONG_TEST/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
-
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_VLOG_FIX/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_NO_FIX/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_DONTUSE_FIX/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_VLOG_FIX_LVS/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_NO_FIX_LVS/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # Good cell - SC7P5T_INVX0P5_SSC14R
-# # Bad cell - SC7P5T_INVX2_SSC14R
-
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_NO_CG_10_23/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_NO_CG_10_23/ --physical --design_filter dual_port_rv --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_NO_CG_10_23/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
-
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_CG_10_23/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_CG_10_23/ --physical --design_filter dual_port_rv --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_CG_10_23/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
-
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_CLK_GATE/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_CLK_GATE/ --physical --design_filter dual_port_rv --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_CLK_GATE/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
-
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_ALL_PORTS_RV/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
-
-# Testing removing the config register entirely...
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_WO_HARD_CFG_REG/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_WO_HARD_CFG_REG/ --physical --design_filter dual_port_rv --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_WO_HARD_CFG_REG/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
-
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_MONOLITHIC_CLK_GATE/ --physical --design_filter dual_port_wide_fetch_quad_rv --storage_capacity 16384
-
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_CONSTRAINT_WITH_CFG_REG/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_CONSTRAINT_WO_CFG_REG/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
-
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ALL_SWEEP_9_17 --physical --run_builds
-
-# # All figures
-
-# # Summary area + power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment summary --figure_name summary_area
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment summary_power --figure_name summary_power
-
-# # Dual quad summary + power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment dual_quad_summary --figure_name dual_quad_summary_area
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment dual_quad_summary_power --figure_name dual_quad_summary_power
-
-# # Dual quad ports + power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment dual_quad_ports --figure_name dual_quad_ports_area
-# # python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment dual_quad_ports_power --figure_name dual_quad_ports_power
-
-# # Config
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment config --figure_name config_area
-
-# # Fetch width sweep iso ports area + power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_9_26/ --csv_out . --experiment fw_sweep_iso_ports --figure_name fw_sweep_iso_ports_area
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_9_26/ --csv_out . --experiment fw_sweep_iso_ports_power --figure_name fw_sweep_iso_ports_power
-
-# # Fetch width sweep grow ports area + power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_9_26/ --csv_out . --experiment fw_sweep_grow_ports --figure_name fw_sweep_grow_ports_area
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_9_26/ --csv_out . --experiment fw_sweep_grow_ports_power --figure_name fw_sweep_grow_ports_power
-
-# # Fetch width sweep grow ports per port area + power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment fw_sweep_grow_ports_per_port --figure_name fw_sweep_grow_ports_per_port_area
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment fw_sweep_grow_ports_per_port_power --figure_name fw_sweep_grow_ports_per_port_power
-
-# # SPST area + power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_SPST_9_26/ --csv_out . --experiment spst --figure_name spst_area
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_SPST_9_26/ --csv_out . --experiment spst_power --figure_name spst_power
-
-# # control v capacity area + power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment control_v_capacity --figure_name control_v_capacity_area
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment control_v_capacity_power --figure_name control_v_capacity_power
-
-# # control v runtime area + power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment control_v_runtime --figure_name control_v_runtime_area
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment control_v_runtime_power --figure_name control_v_runtime_power
-
-# # Simple dual port, quad port power comparison
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/DUAL_PORT_POWER_CLEAN_10_14/ --csv_out . --experiment dual_port_power --figure_name dual_port_power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_POWER/ --csv_out . --experiment dual_port_power --figure_name quad_port_power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_POWER_LONG_TEST/ --csv_out . --experiment dual_port_power --figure_name quad_port_power
-
-# # Simple dual port clock gate
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/SIMPLE_DUAL_PORT_CLK_GATE/ --csv_out . --experiment dual_port_power --figure_name clkgate_power
-# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_MONOLITHIC_CLK_GATE/ --csv_out . --experiment dual_port_power --figure_name monolithic_power
-
-#  python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_CG_10_23/ --csv_out . --experiment dual_quad_summary --figure_name quad_cg_area
-#  python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_MONOLITHIC_CLK_GATE/ --csv_out . --experiment dual_quad_summary --figure_name monolithic_area
-#  python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_INPUT_MONOLITHIC/ --csv_out . --experiment dual_quad_summary --figure_name monolithic_IN_area
-
-python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_STATIC_SLOW/ --physical --design_filter four_port_single_mp_wide_fetch --storage_capacity 16384 --run_builds --strict_filter --frequency 50
-python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_RV_SLOW/ --physical --design_filter four_port_single_mp_wide_fetch_rv --storage_capacity 16384 --run_builds --strict_filter --frequency 50 --opt_rv
-python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_RV_FAST_FIX_AG/ --physical --design_filter four_port_single_mp_wide_fetch_rv --storage_capacity 16384 --run_builds --strict_filter --frequency 1000 --opt_rv --synth_only
-python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_RV_FAST_FIX_AG2/ --physical --design_filter four_port_single_mp_wide_fetch_rv --storage_capacity 16384 --run_builds --strict_filter --frequency 1000 --opt_rv --synth_only
-python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_RV_FAST_FIX_AG3/ --physical --design_filter four_port_single_mp_wide_fetch_rv --storage_capacity 16384 --run_builds --strict_filter --frequency 1000 --opt_rv --synth_only
-
-# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_STATIC_SLOW/ --physical --design_filter four_port_single_mp_wide_fetch --storage_capacity 16384 --run_builds --strict_filter --frequency 10000
-# Dual port, quad port w/ clk gate
-python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/DUAL_PORT_CLK_GATE/ --csv_out . --experiment dual_port_power --figure_name dpcg
-python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_CLK_GATE/ --csv_out . --experiment dual_port_power --figure_name qpcg
-
-# All ports
-python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_POWER_ALL_PORTS_RV/ --csv_out . --experiment dual_port_power --figure_name allports_power
-
-cd $LAKE_TOP
-python MICRO24_WS/demo_driver.py --outdir LAKE_TEST --verilog --visualize
-
-cd LAKE_TEST
-# optionally set WAVEFORM
-export WAVEFORM=1
-make sim
-
-# Dual port, quad port w/ clk gate
-python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/DUAL_PORT_NO_CG_10_23/ --csv_out . --experiment dual_port_power --figure_name dp_no_cg_10_23
-python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/DUAL_PORT_CG_10_23/ --csv_out . --experiment dual_port_power --figure_name dp_yes_cg_10_23
-python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_NO_CG_10_23/ --csv_out . --experiment dual_port_power --figure_name qp_no_cg_10_23
-python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_CG_10_23/ --csv_out . --experiment dual_port_power --figure_name qp_yes_cg_10_23
+# Unified Buffer Characterization
+# This section is more focused on the performance of the memory system as a whole
+# May actually already have all the data we need from prior experiments
+# Could do a few more focused experiments here if needed
