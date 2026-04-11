@@ -9,41 +9,56 @@ from lake.spec.memory_port import MemoryPort
 from lake.utils.util import get_data_sizes, TestPrepper, calculate_read_out_vec
 from lake.top.tech_maps import GF_Tech_Map
 import argparse
+import math
 import os
 
 
 def build_four_port_wide_fetch(storage_capacity=4096, data_width=16, dims: int = 6, vec_width=4, physical=False,
-                                  reg_file=False, vec_capacity=2, opt_rv=False, add_filter_path=False) -> Spec:
+                                  reg_file=False, vec_capacity=2, opt_rv=False, add_filter_path=False,
+                                  in_ports=2, out_ports=2, dual_port=False,
+                                  max_extent=None, max_sequence_width=None) -> Spec:
 
     opt_rv = False
 
     # TODO: Override this in garnet and not here...
     id_width = 11
+    if max_extent is not None:
+        id_width = max(1, math.ceil(math.log2(max(max_extent, 2))))
+    stride_width = 16
+    if max_sequence_width is not None:
+        stride_width = max(1, math.ceil(math.log2(max(max_sequence_width, 2))))
     remote_storage = False
 
     ls = Spec(name="lakespec", opt_rv=opt_rv, remote_storage=remote_storage,
               config_passthru=False, comply_17=True)
 
-    # Don't opt timing on the in ports (which really just adds a fifo at the input which we don't need)
-    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                   vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.IN,
-                   opt_rv=opt_rv, opt_timing=False)
-    in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.IN,
-                    opt_rv=opt_rv, opt_timing=False)
-    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.OUT)
-    out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                     vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.OUT)
+    # Determine if vec_capacity is needed (only when vectorized)
+    vc = vec_capacity if vec_width > 1 else None
+    int_dw = data_width * vec_width
 
-    ls.register(in_port, in_port2)
+    # Create input ports
+    input_port_list = []
+    for i in range(in_ports):
+        p = Port(ext_data_width=data_width, int_data_width=int_dw,
+                 vec_capacity=vc, runtime=Runtime.STATIC, direction=Direction.IN,
+                 opt_rv=opt_rv, opt_timing=False)
+        input_port_list.append(p)
+
+    ls.register(*input_port_list)
 
     if add_filter_path:
         in_port_filter = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
                               direction=Direction.IN, opt_rv=opt_rv, filter=True)
         ls.register(in_port_filter)
 
-    ls.register(out_port, out_port2)
+    # Create output ports
+    output_port_list = []
+    for i in range(out_ports):
+        p = Port(ext_data_width=data_width, int_data_width=int_dw,
+                 vec_capacity=vc, runtime=Runtime.STATIC, direction=Direction.OUT)
+        output_port_list.append(p)
+
+    ls.register(*output_port_list)
 
     if add_filter_path:
 
@@ -51,35 +66,31 @@ def build_four_port_wide_fetch(storage_capacity=4096, data_width=16, dims: int =
                               direction=Direction.OUT, opt_rv=opt_rv, filter=False)
         ls.register(out_port_filter)
 
-    in_id = IterationDomain(dimensionality=dims, extent_width=id_width)
-    in_ag = AddressGenerator(dimensionality=dims)
-    in_sg = ScheduleGenerator(dimensionality=dims)
+    # Create iteration domains, address generators, schedule generators for each port
+    in_controllers = []
+    for i in range(in_ports):
+        id_ = IterationDomain(dimensionality=dims, extent_width=id_width)
+        ag_ = AddressGenerator(dimensionality=dims)
+        sg_ = ScheduleGenerator(dimensionality=dims, stride_width=stride_width)
+        ls.register(id_, ag_, sg_)
+        in_controllers.append((id_, ag_, sg_))
 
-    in_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
-    in_ag2 = AddressGenerator(dimensionality=dims)
-    in_sg2 = ScheduleGenerator(dimensionality=dims)
-
-    out_id = IterationDomain(dimensionality=dims, extent_width=id_width)
-    out_ag = AddressGenerator(dimensionality=dims)
-    out_sg = ScheduleGenerator(dimensionality=dims)
-
-    out_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
-    out_ag2 = AddressGenerator(dimensionality=dims)
-    out_sg2 = ScheduleGenerator(dimensionality=dims)
-
-    ls.register(in_id, in_ag, in_sg)
-    ls.register(in_id2, in_ag2, in_sg2)
-    ls.register(out_id, out_ag, out_sg)
-    ls.register(out_id2, out_ag2, out_sg2)
+    out_controllers = []
+    for i in range(out_ports):
+        id_ = IterationDomain(dimensionality=dims, extent_width=id_width)
+        ag_ = AddressGenerator(dimensionality=dims)
+        sg_ = ScheduleGenerator(dimensionality=dims, stride_width=stride_width)
+        ls.register(id_, ag_, sg_)
+        out_controllers.append((id_, ag_, sg_))
 
     if add_filter_path:
         in_id_filter = IterationDomain(dimensionality=dims, extent_width=id_width)
         in_ag_filter = AddressGenerator(dimensionality=dims)
-        in_sg_filter = ScheduleGenerator(dimensionality=dims)
+        in_sg_filter = ScheduleGenerator(dimensionality=dims, stride_width=stride_width)
 
         out_id_filter = IterationDomain(dimensionality=dims, extent_width=id_width)
         out_ag_filter = AddressGenerator(dimensionality=dims)
-        out_sg_filter = ScheduleGenerator(dimensionality=dims)
+        out_sg_filter = ScheduleGenerator(dimensionality=dims, stride_width=stride_width)
 
         ls.register(in_id_filter, in_ag_filter, in_sg_filter)
         ls.register(out_id_filter, out_ag_filter, out_sg_filter)
@@ -87,12 +98,18 @@ def build_four_port_wide_fetch(storage_capacity=4096, data_width=16, dims: int =
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
     if physical:
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False)
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=dual_port)
 
     # 1024 Bytes
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map, remote=remote_storage)
-    shared_rw_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.RW, delay=1)
-    ls.register(stg, shared_rw_mem_port)
+
+    if dual_port:
+        write_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.W, delay=1)
+        read_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.R, delay=1)
+        ls.register(stg, write_mem_port, read_mem_port)
+    else:
+        shared_rw_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.RW, delay=1)
+        ls.register(stg, shared_rw_mem_port)
 
     if add_filter_path:
         # Just try buffering 8 data for now ... want to turn into a fifo if possible.
@@ -105,32 +122,38 @@ def build_four_port_wide_fetch(storage_capacity=4096, data_width=16, dims: int =
     # All cores are registered at this point
     # Now connect them
 
-    # In to in
-    ls.connect(in_port, in_id)
-    ls.connect(in_port, in_ag)
-    ls.connect(in_port, in_sg)
+    # Connect input ports to their controllers
+    for i in range(in_ports):
+        id_, ag_, sg_ = in_controllers[i]
+        ls.connect(input_port_list[i], id_)
+        ls.connect(input_port_list[i], ag_)
+        ls.connect(input_port_list[i], sg_)
 
-    ls.connect(in_port2, in_id2)
-    ls.connect(in_port2, in_ag2)
-    ls.connect(in_port2, in_sg2)
+    # Connect output ports to their controllers
+    for i in range(out_ports):
+        id_, ag_, sg_ = out_controllers[i]
+        ls.connect(output_port_list[i], id_)
+        ls.connect(output_port_list[i], ag_)
+        ls.connect(output_port_list[i], sg_)
 
-    # Out to out
-    ls.connect(out_port, out_id)
-    ls.connect(out_port, out_ag)
-    ls.connect(out_port, out_sg)
-
-    ls.connect(out_port2, out_id2)
-    ls.connect(out_port2, out_ag2)
-    ls.connect(out_port2, out_sg2)
-
-    # In and Out to shared memory port
-    ls.connect(in_port, shared_rw_mem_port)
-    ls.connect(in_port2, shared_rw_mem_port)
-    ls.connect(out_port, shared_rw_mem_port)
-    ls.connect(out_port2, shared_rw_mem_port)
+    # Connect ports to memory ports
+    if dual_port:
+        for p in input_port_list:
+            ls.connect(p, write_mem_port)
+        for p in output_port_list:
+            ls.connect(p, read_mem_port)
+    else:
+        for p in input_port_list:
+            ls.connect(p, shared_rw_mem_port)
+        for p in output_port_list:
+            ls.connect(p, shared_rw_mem_port)
 
     # Memory Ports to storage
-    ls.connect(shared_rw_mem_port, stg)
+    if dual_port:
+        ls.connect(write_mem_port, stg)
+        ls.connect(read_mem_port, stg)
+    else:
+        ls.connect(shared_rw_mem_port, stg)
 
     if add_filter_path:
         # In to filter
@@ -781,8 +804,210 @@ def get_linear_test_rv():
     return linear_test
 
 
+def get_linear_test_generic(in_ports_count, vec_width):
+    """Generate a simple linear write-then-read test that works with any port configuration.
+    Uses only the first input port (index 0) and first output port (index in_ports_count)."""
+    linear_test = {}
+    length_scale = 32
+
+    pw_idx = 0
+    pr_idx = in_ports_count
+
+    if vec_width > 1:
+        # Vectorized write port
+        pw_vec = 0
+        pr_vec = 1
+        raw_constraint_vec_w = (pr_vec, 0, pw_vec, 1, LFComparisonOperator.LT.value, 0)
+        war_constraint_vec_w = (pw_vec, 1, pr_vec, 0, LFComparisonOperator.GT.value, 2)
+
+        linear_test[pw_idx] = {
+            'type': Direction.IN,
+            'name': 'port_w0',
+            'config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [vec_width],
+                    'offset': vec_width
+                }
+            },
+            'vec_in_config': {
+                'dimensionality': 2,
+                'extents': [vec_width, 16 * length_scale],
+                'address': {
+                    'strides': [1, vec_width],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [1, vec_width],
+                    'offset': 0
+                }
+            },
+            'vec_out_config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [vec_width],
+                    'offset': vec_width
+                }
+            },
+            'vec_constraints': [raw_constraint_vec_w, war_constraint_vec_w]
+        }
+
+        # Vectorized read port
+        pw_vec_r = 0
+        pr_vec_r = 1
+        raw_constraint_vec_r = (pr_vec_r, 1, pw_vec_r, 0, LFComparisonOperator.LT.value, 0)
+        war_constraint_vec_r = (pw_vec_r, 0, pr_vec_r, 1, LFComparisonOperator.GT.value, 2)
+
+        linear_test[pr_idx] = {
+            'type': Direction.OUT,
+            'name': 'port_r0',
+            'config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [vec_width],
+                    'offset': 17
+                }
+            },
+            'vec_in_config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [vec_width],
+                    'offset': 18
+                }
+            },
+            'vec_out_config': {
+                'dimensionality': 2,
+                'extents': [vec_width, 16 * length_scale],
+                'address': {
+                    'strides': [1, vec_width],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [1, vec_width],
+                    'offset': 19
+                }
+            },
+            'vec_constraints': [raw_constraint_vec_r, war_constraint_vec_r]
+        }
+    else:
+        # Non-vectorized (fw=1)
+        linear_test[pw_idx] = {
+            'type': Direction.IN,
+            'name': 'port_w0',
+            'config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [1],
+                    'offset': 1
+                }
+            },
+            'vec_in_config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [1],
+                    'offset': 0
+                }
+            },
+            'vec_out_config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [1],
+                    'offset': 1
+                }
+            },
+            'vec_constraints': []
+        }
+
+        linear_test[pr_idx] = {
+            'type': Direction.OUT,
+            'name': 'port_r0',
+            'config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [1],
+                    'offset': 17
+                }
+            },
+            'vec_in_config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [1],
+                    'offset': 18
+                }
+            },
+            'vec_out_config': {
+                'dimensionality': 1,
+                'extents': [16 * length_scale],
+                'address': {
+                    'strides': [1],
+                    'offset': 0
+                },
+                'schedule': {
+                    'strides': [1],
+                    'offset': 19
+                }
+            },
+            'vec_constraints': []
+        }
+
+    # Cross-port constraints (RAW and WAR)
+    raw_scalar = vec_width if vec_width > 1 else 4
+    raw_constraint = (pr_idx, 0, pw_idx, 0, LFComparisonOperator.LT.value, raw_scalar)
+    war_constraint = (pw_idx, 0, pr_idx, 0, LFComparisonOperator.GT.value, 8)
+    linear_test['constraints'] = [raw_constraint, war_constraint]
+
+    return linear_test
+
+
 def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
-                                    tp: TestPrepper = None, test='linear', reg_file=False, dimensionality=6, opt_rv=False):
+                                    tp: TestPrepper = None, test='linear', reg_file=False, dimensionality=6, opt_rv=False,
+                                    in_ports=2, out_ports=2, dual_port=False, vec_capacity=2,
+                                    max_extent=None, max_sequence_width=None):
 
     assert tp is not None
 
@@ -797,27 +1022,39 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
     # Build the spec
     simple_four_port_spec = build_four_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
                                                        physical=physical, vec_width=vec_width, reg_file=reg_file,
-                                                       dims=dimensionality, opt_rv=opt_rv)
+                                                       dims=dimensionality, opt_rv=opt_rv,
+                                                       in_ports=in_ports, out_ports=out_ports,
+                                                       dual_port=dual_port, vec_capacity=vec_capacity,
+                                                       max_extent=max_extent, max_sequence_width=max_sequence_width)
     simple_four_port_spec.visualize_graph()
     simple_four_port_spec.generate_hardware()
-    simple_four_port_spec.extract_compiler_information()
+
+    # Save compiler collateral to the output directory
+    collateral_path = os.path.join(output_dir_verilog, 'lake_collateral.json')
+    simple_four_port_spec.save_compiler_information(collateral_path)
 
     # output this to simple_single_port_specthe inputs thing
     simple_four_port_spec.get_verilog(output_dir=output_dir_verilog)
 
     # Define the test
+    num_total_ports = in_ports + out_ports
     lt = None
-    if test == 'linear':
-        if opt_rv:
-            lt = get_linear_test_rv()
+    use_standard_test = (in_ports == 2 and out_ports == 2 and vec_width >= 2)
+    if use_standard_test:
+        if test == 'linear':
+            if opt_rv:
+                lt = get_linear_test_rv()
+            else:
+                lt = get_linear_test()
+        elif test == 'two_read':
+            lt = get_two_read_test()
+        elif test == 'conv_2_1':
+            lt = get_conv_2_1_app()
         else:
-            lt = get_linear_test()
-    elif test == 'two_read':
-        lt = get_two_read_test()
-    elif test == 'conv_2_1':
-        lt = get_conv_2_1_app()
+            raise NotImplementedError(f"Cannot run test: {test}")
     else:
-        raise NotImplementedError(f"Cannot run test: {test}")
+        # Use generic linear test for non-standard port configurations
+        lt = get_linear_test_generic(in_ports, vec_width)
 
     if test == 'conv_2_1':
         max_time = 6500
@@ -870,7 +1107,7 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
         file.write(config_define_str)
         file.write(numports_define_str)
 
-    data_sizes = get_data_sizes(lt, num_ports=4)
+    data_sizes = get_data_sizes(lt, num_ports=num_total_ports)
     tp.add_pargs(data_sizes)
     # tp.add_pargs(('max_time', max_time + int((max_time / 10))))
     tp.add_pargs(('max_time', max_time + 15))
@@ -893,23 +1130,17 @@ if __name__ == "__main__":
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--outdir", type=str, default=None)
     parser.add_argument("--opt_rv", action="store_true")
+    parser.add_argument("--dual_port", action="store_true")
+    parser.add_argument("--vec_capacity", type=int, default=2)
+    parser.add_argument("--max_extent", type=int, default=None)
+    parser.add_argument("--max_sequence_width", type=int, default=None)
     args = parser.parse_args()
 
     print("Preparing hardware test")
 
     in_ports = args.in_ports
     out_ports = args.out_ports
-    fetch_width = args.fetch_width
-
-    assert fetch_width == 4, "This test is currently parameterized for a fetch width of 4 --- exiting early!"
-    assert in_ports == 2, "This test is currently parameterized for 2 input ports --- exiting early!"
-    assert out_ports == 2, "This test is currently parameterized for 2 output ports --- exiting early!"
-
-    # argparser
     fw = args.fetch_width
-    if fw < 4:
-        print(f"Not parameterized for fetch width of {fw} --- exiting early!")
-        exit()
 
     tp = TestPrepper(base_dir=args.outdir)
     hw_test_dir = tp.prepare_hw_test()
@@ -918,4 +1149,6 @@ if __name__ == "__main__":
     test_linear_read_write_qp_wf_rv(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
                                     physical=args.physical, vec_width=fw, tp=tp, test=args.test,
                                     reg_file=args.reg_file, dimensionality=args.dimensionality,
-                                    opt_rv=args.opt_rv)
+                                    opt_rv=args.opt_rv, in_ports=in_ports, out_ports=out_ports,
+                                    dual_port=args.dual_port, vec_capacity=args.vec_capacity,
+                                    max_extent=args.max_extent, max_sequence_width=args.max_sequence_width)

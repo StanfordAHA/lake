@@ -1878,6 +1878,10 @@ if __name__ == "__main__":
     parser.add_argument('--clock_count_width', nargs='*', type=int)
     # Single port sram type (where relevant)
     parser.add_argument("--spst", type=str, default=None, required=False)
+    parser.add_argument("--dual_port", action="store_true")
+    parser.add_argument("--vec_capacity", nargs='*', type=int)
+    parser.add_argument("--max_extent", nargs='*', type=int)
+    parser.add_argument("--max_sequence_width", nargs='*', type=int)
     args = parser.parse_args()
     physical_arg = args.physical
     run_builds = args.run_builds
@@ -1902,6 +1906,7 @@ if __name__ == "__main__":
     # collect_power = args.collect_power
 
     spst = args.spst
+    dual_port = args.dual_port
 
     # Matches everything
     if design_filter is None:
@@ -2060,6 +2065,24 @@ if __name__ == "__main__":
         print(f"Overriding used frequency of {freqs_use} with {freqs_arg}")
         freqs_use = freqs_arg
 
+    vec_capacity_use = [2]
+    vec_capacity_arg = args.vec_capacity
+    if (vec_capacity_arg is not None) and len(vec_capacity_arg) > 0:
+        print(f"Overriding used vec_capacity of {vec_capacity_use} with {vec_capacity_arg}")
+        vec_capacity_use = vec_capacity_arg
+
+    max_extent_use = [None]
+    max_extent_arg = args.max_extent
+    if (max_extent_arg is not None) and len(max_extent_arg) > 0:
+        print(f"Overriding used max_extent with {max_extent_arg}")
+        max_extent_use = max_extent_arg
+
+    max_sequence_width_use = [None]
+    max_sequence_width_arg = args.max_sequence_width
+    if (max_sequence_width_arg is not None) and len(max_sequence_width_arg) > 0:
+        print(f"Overriding used max_sequence_width with {max_sequence_width_arg}")
+        max_sequence_width_use = max_sequence_width_arg
+
     add_fw_arg = fetch_width_arg is not None
     add_port_arg = use_ports
 
@@ -2093,9 +2116,9 @@ if __name__ == "__main__":
             other_folder = os.path.join(pd_build_dir, filename_no_ext_f)
             subprocess.run(["mkdir", "-p", other_folder])
 
-            all_test_pts = ((sc, dataw, ccw, dimw, fw) for sc in storage_capacity_use for dataw in data_width_use for ccw in ccw_use for dimw in dimensionalities_use for fw in fetch_width_use)
+            all_test_pts = ((sc, dataw, ccw, dimw, fw, vc, me, msw) for sc in storage_capacity_use for dataw in data_width_use for ccw in ccw_use for dimw in dimensionalities_use for fw in fetch_width_use for vc in vec_capacity_use for me in max_extent_use for msw in max_sequence_width_use)
 
-            for (storage_capacity, data_width, clock_count_width, dimensionality, fw) in all_test_pts:
+            for (storage_capacity, data_width, clock_count_width, dimensionality, fw, vec_cap, max_ext, max_seq_w) in all_test_pts:
 
                 # Now go through the different data points
                 params_dict = {
@@ -2116,6 +2139,12 @@ if __name__ == "__main__":
                     design_folder += f"_inp_{inp}_outp_{outp}"
                 if spst is not None:
                     design_folder += f"_spst_{spst}"
+                if vec_cap != 2:
+                    design_folder += f"_vc_{vec_cap}"
+                if max_ext is not None:
+                    design_folder += f"_me_{max_ext}"
+                if max_seq_w is not None:
+                    design_folder += f"_msw_{max_seq_w}"
                 full_design_path = os.path.join(head_folder, f"{design_folder}_{freq}")
 
                 subprocess.run(["rm", "-rf", full_design_path])
@@ -2168,6 +2197,18 @@ if __name__ == "__main__":
 
                     if opt_rv:
                         python_command = " ".join([python_command, "--opt_rv"])
+
+                    if dual_port:
+                        python_command = " ".join([python_command, "--dual_port"])
+
+                    if vec_cap != 2:
+                        python_command = " ".join([python_command, "--vec_capacity", f"{vec_cap}"])
+
+                    if max_ext is not None:
+                        python_command = " ".join([python_command, "--max_extent", f"{max_ext}"])
+
+                    if max_seq_w is not None:
+                        python_command = " ".join([python_command, "--max_sequence_width", f"{max_seq_w}"])
 
                     rtl_configure.write(f"{python_command}\n")
                     rtl_configure.write("\n")

@@ -26,6 +26,10 @@ if __name__ == "__main__":
     parser.add_argument("--design_filter", type=str, default=None, required=False)
     # Single port sram type (where relevant)
     parser.add_argument("--spst", type=str, default=None, required=False)
+    parser.add_argument("--dual_port", action="store_true")
+    parser.add_argument("--vec_capacity", type=int, default=2)
+    parser.add_argument("--max_extent", type=int, default=None)
+    parser.add_argument("--max_sequence_width", type=int, default=None)
     args = parser.parse_args()
     physical_arg = args.physical
     run_sim = args.run_sim
@@ -39,6 +43,10 @@ if __name__ == "__main__":
     opt_rv = args.opt_rv
 
     spst = args.spst
+    dual_port = args.dual_port
+    vec_capacity = args.vec_capacity
+    max_extent = args.max_extent
+    max_sequence_width = args.max_sequence_width
 
     # Matches everything
     if design_filter is None:
@@ -113,6 +121,12 @@ if __name__ == "__main__":
                 big_name_string += f"_inp_{inp}_outp_{outp}"
             if spst is not None:
                 big_name_string += f"_spst_{spst}"
+            if vec_capacity != 2:
+                big_name_string += f"_vc_{vec_capacity}"
+            if max_extent is not None:
+                big_name_string += f"_me_{max_extent}"
+            if max_sequence_width is not None:
+                big_name_string += f"_msw_{max_sequence_width}"
             outdir = os.path.join(exp_base_dir, big_name_string)
             print(f"Generating exp at ... {outdir}")
             execution_str = ["python", f"{total_path_of_file}", "--storage_capacity", f"{storage_capacity}",
@@ -136,6 +150,18 @@ if __name__ == "__main__":
 
             if opt_rv:
                 execution_str.append("--opt_rv")
+
+            if dual_port:
+                execution_str.append("--dual_port")
+
+            if vec_capacity != 2:
+                execution_str.extend(["--vec_capacity", f"{vec_capacity}"])
+
+            if max_extent is not None:
+                execution_str.extend(["--max_extent", f"{max_extent}"])
+
+            if max_sequence_width is not None:
+                execution_str.extend(["--max_sequence_width", f"{max_sequence_width}"])
 
             if reg_file:
                 execution_str
