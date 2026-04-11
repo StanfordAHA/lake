@@ -9,6 +9,7 @@ from lake.spec.memory_port import MemoryPort
 from lake.utils.util import get_data_sizes, TestPrepper, calculate_read_out_vec
 from lake.top.tech_maps import GF_Tech_Map
 import argparse
+import json
 import math
 import os
 
@@ -1004,6 +1005,100 @@ def get_linear_test_generic(in_ports_count, vec_width):
     return linear_test
 
 
+# Expected keys in the compiler collateral JSON
+COLLATERAL_REQUIRED_KEYS = {
+    'controller_name', 'capacity', 'word_width', 'in_port_width', 'out_port_width',
+    'bank_num', 'single_port', 'fetch_width', 'max_chaining', 'iteration_level',
+    'iter_level_map', 'load_latency', 'store_latency', 'counter_ub',
+    'multi_sram_accessor', 'dual_port_sram', 'wire_chain_en',
+    'interconnect_in_num', 'interconnect_out_num', 'read_port', 'write_port',
+}
+
+
+def validate_generated_outputs(collateral_path, verilog_path,
+                               expected_in_ports, expected_out_ports,
+                               expected_fetch_width, expected_dimensionality,
+                               expected_storage_capacity, expected_dual_port):
+    """Validate that the collateral JSON and verilog file exist and have reasonable contents."""
+
+    # --- Check files exist and are non-empty ---
+    assert os.path.isfile(collateral_path), f"Collateral file not found: {collateral_path}"
+    assert os.path.getsize(collateral_path) > 0, f"Collateral file is empty: {collateral_path}"
+    assert os.path.isfile(verilog_path), f"Verilog file not found: {verilog_path}"
+    assert os.path.getsize(verilog_path) > 0, f"Verilog file is empty: {verilog_path}"
+
+    # --- Load and validate collateral JSON ---
+    with open(collateral_path, 'r') as f:
+        collateral = json.load(f)
+
+    # Check all required keys are present
+    missing_keys = COLLATERAL_REQUIRED_KEYS - set(collateral.keys())
+    assert len(missing_keys) == 0, f"Collateral missing keys: {missing_keys}"
+
+    # --- Validate key values are reasonable ---
+
+    # controller_name should be a non-empty list of strings
+    assert isinstance(collateral['controller_name'], list) and len(collateral['controller_name']) > 0, \
+        "controller_name must be a non-empty list"
+
+    # capacity should be a dict with positive integer values
+    assert isinstance(collateral['capacity'], dict), "capacity must be a dict"
+    for cname, cap in collateral['capacity'].items():
+        assert isinstance(cap, int) and cap > 0, f"capacity[{cname}] must be a positive int, got {cap}"
+
+    # Port counts should match
+    assert collateral['interconnect_in_num'] == expected_in_ports, \
+        f"interconnect_in_num: expected {expected_in_ports}, got {collateral['interconnect_in_num']}"
+    assert collateral['interconnect_out_num'] == expected_out_ports, \
+        f"interconnect_out_num: expected {expected_out_ports}, got {collateral['interconnect_out_num']}"
+
+    # fetch_width should match vec_width
+    assert collateral['fetch_width'] == expected_fetch_width, \
+        f"fetch_width: expected {expected_fetch_width}, got {collateral['fetch_width']}"
+
+    # iteration_level should be >= 1 and match expected dimensionality
+    assert collateral['iteration_level'] == expected_dimensionality, \
+        f"iteration_level: expected {expected_dimensionality}, got {collateral['iteration_level']}"
+
+    # dual_port_sram should match
+    assert collateral['dual_port_sram'] == expected_dual_port, \
+        f"dual_port_sram: expected {expected_dual_port}, got {collateral['dual_port_sram']}"
+
+    # Latencies should be non-negative integers
+    assert isinstance(collateral['load_latency'], int) and collateral['load_latency'] >= 0, \
+        f"load_latency must be a non-negative int, got {collateral['load_latency']}"
+    assert isinstance(collateral['store_latency'], int) and collateral['store_latency'] >= 0, \
+        f"store_latency must be a non-negative int, got {collateral['store_latency']}"
+
+    # counter_ub should be positive
+    assert isinstance(collateral['counter_ub'], int) and collateral['counter_ub'] > 0, \
+        f"counter_ub must be a positive int, got {collateral['counter_ub']}"
+
+    # bank_num should be a dict with positive values
+    assert isinstance(collateral['bank_num'], dict), "bank_num must be a dict"
+    for cname, bn in collateral['bank_num'].items():
+        assert isinstance(bn, int) and bn > 0, f"bank_num[{cname}] must be positive, got {bn}"
+
+    # word_width, in_port_width, out_port_width should be dicts with positive values
+    for key in ('word_width', 'in_port_width', 'out_port_width'):
+        assert isinstance(collateral[key], dict), f"{key} must be a dict"
+        for cname, val in collateral[key].items():
+            assert isinstance(val, int) and val > 0, f"{key}[{cname}] must be positive, got {val}"
+
+    # Capacity in collateral should match the expected storage capacity for at least one controller
+    capacities = list(collateral['capacity'].values())
+    assert expected_storage_capacity in capacities, \
+        f"Expected storage_capacity {expected_storage_capacity} not found in capacity values {capacities}"
+
+    # Boolean fields
+    assert isinstance(collateral['single_port'], dict), "single_port must be a dict"
+    assert isinstance(collateral['multi_sram_accessor'], bool), "multi_sram_accessor must be a bool"
+    assert isinstance(collateral['dual_port_sram'], bool), "dual_port_sram must be a bool"
+    assert isinstance(collateral['wire_chain_en'], bool), "wire_chain_en must be a bool"
+
+    print(f"Collateral and verilog validation passed: {collateral_path}")
+
+
 def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
                                     tp: TestPrepper = None, test='linear', reg_file=False, dimensionality=6, opt_rv=False,
                                     in_ports=2, out_ports=2, dual_port=False, vec_capacity=2,
@@ -1035,6 +1130,13 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
 
     # output this to simple_single_port_specthe inputs thing
     simple_four_port_spec.get_verilog(output_dir=output_dir_verilog)
+
+    # Validate that the collateral JSON and verilog file were created and are well-formed
+    verilog_path = os.path.join(output_dir_verilog, 'lakespec.sv')
+    validate_generated_outputs(collateral_path, verilog_path,
+                               expected_in_ports=in_ports, expected_out_ports=out_ports,
+                               expected_fetch_width=vec_width, expected_dimensionality=dimensionality,
+                               expected_storage_capacity=storage_capacity, expected_dual_port=dual_port)
 
     # Define the test
     num_total_ports = in_ports + out_ports

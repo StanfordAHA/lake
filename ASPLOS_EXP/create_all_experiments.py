@@ -170,13 +170,14 @@ if __name__ == "__main__":
             print(" ".join(execution_str))
 
             vlog_filepath = os.path.join(outdir, "inputs", "lakespec.sv")
+            collateral_filepath = os.path.join(outdir, "inputs", "lake_collateral.json")
             if serial_processing is True:
                 result = subprocess.run(execution_str, capture_output=True, text=True)
                 print(result.stdout)
             else:
                 newp = subprocess.Popen(execution_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             # newp = subprocess.Popen(execution_str)
-                all_procs.append((newp, vlog_filepath))
+                all_procs.append((newp, vlog_filepath, collateral_filepath))
 
             if run_sim:
 
@@ -208,7 +209,7 @@ if __name__ == "__main__":
         while not done:
             done = True
             num_procs_alive = 0
-            for proc_, vlfp in all_procs:
+            for proc_, vlfp, clfp in all_procs:
                 # Still an alive process...
                 if proc_.poll() is None:
                     num_procs_alive += 1
@@ -218,9 +219,10 @@ if __name__ == "__main__":
                 done = False
 
         print("Done generating all tests...")
-        print("Now checking for output verilog...")
+        print("Now checking for output verilog and collateral...")
 
-        for proc_, vlfp in all_procs:
+        for proc_, vlfp, clfp in all_procs:
             assert check_file_exists_and_has_content(vlfp) is True, f"Verilog file at {vlfp} was not created..."
+            assert check_file_exists_and_has_content(clfp) is True, f"Collateral file at {clfp} was not created..."
             assert proc_.returncode == 0, f"Proc returned bad value..."
         print("All test collateral verified!")

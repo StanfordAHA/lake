@@ -2084,7 +2084,7 @@ if __name__ == "__main__":
         max_sequence_width_use = max_sequence_width_arg
 
     add_fw_arg = fetch_width_arg is not None
-    add_port_arg = use_ports
+    add_port_arg = use_ports or (inp != 1) or (outp != 1)
 
     create_curr_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -2182,7 +2182,7 @@ if __name__ == "__main__":
                     rtl_configure.write("  - export TOP=$PWD\n")
                     rtl_configure.write("\n")
 
-                    python_command = f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width} --outdir $TOP/TEST/ --design_filter {filename_no_ext}"
+                    python_command = f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width} --dimensionality {dimensionality} --outdir $TOP/TEST/ --design_filter {filename_no_ext}"
 
                     if add_fw_arg:
                         python_command = " ".join([python_command, "--fetch_width", f"{fw}"])
