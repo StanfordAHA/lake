@@ -889,7 +889,8 @@ class Spec():
 
             has_r = any(mp.get_type() == MemoryPortType.R for mp in memports)
             has_w = any(mp.get_type() == MemoryPortType.W for mp in memports)
-            if has_r and has_w:
+            # dual_port_sram applies to the primary "sram" level only
+            if has_r and has_w and cname == 'sram':
                 dual_port_sram = True
 
             bank_num[cname] = len(memports) if len(memports) > 0 else 1
@@ -1166,6 +1167,18 @@ class Spec():
         # For wide-fetch single-storage specs (ONYX), synthesize agg/tb entries
         if self._is_wide_fetch_single_storage(controller_name_map):
             self._synthesize_wide_fetch_hierarchy(collateral, controller_name_map)
+
+        # Convert capacity from bytes to number of addresses.
+        # Each address holds word_width[ctrl] words, each word is
+        # data_width bits (ext_data_width from any Port).
+        all_ports = self.get_in_ports() + self.get_out_ports()
+        if all_ports:
+            data_width_bytes = all_ports[0]._ext_data_width // 8
+        else:
+            data_width_bytes = 2  # default 16-bit words
+        for ctrl, cap_bytes in collateral['capacity'].items():
+            ww = collateral['word_width'].get(ctrl, 1)
+            collateral['capacity'][ctrl] = cap_bytes // (ww * data_width_bytes)
 
         return collateral
 
