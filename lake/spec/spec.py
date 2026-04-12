@@ -828,33 +828,27 @@ class Spec():
         """Build a mapping from Storage nodes to controller name strings.
 
         If controller_name_map is not provided:
-        - For wide-fetch specs (fw_max > 1) with a single primary storage
-          connected via a shared RW MemoryPort, maps that storage to "sram".
-        - Any secondary (non-remote or filter) storage is mapped to "filter".
-        - For other topologies, falls back to component name attributes.
+        - Single storage node → always mapped to "sram".
+        - Multiple storage nodes → largest capacity is "sram", rest "filter".
+        This handles all topologies: fw=1, wide-fetch, dual-port, single-port.
         """
         if controller_name_map is not None:
             return controller_name_map
         storage_nodes = self.get_nodes(Storage)
 
-        if self.fw_max > 1 and len(storage_nodes) >= 1:
-            # Wide-fetch topology: identify the primary SRAM storage
-            # (the one connected to a shared RW MemoryPort)
-            cname_map = {}
-            for stg in storage_nodes:
-                memports = self._get_memports_for_storage(stg)
-                has_rw = any(mp.get_type() == MemoryPortType.RW for mp in memports)
-                is_remote = getattr(stg, 'remote', False)
-                if has_rw and is_remote:
-                    cname_map[stg] = "sram"
-                elif has_rw and not is_remote and "sram" not in cname_map.values():
-                    # Single storage that is the main SRAM even if not remote
-                    cname_map[stg] = "sram"
-                else:
-                    cname_map[stg] = "filter"
-            return cname_map
+        if not storage_nodes:
+            return {}
 
-        return {stg: stg.name for stg in storage_nodes}
+        if len(storage_nodes) == 1:
+            return {storage_nodes[0]: "sram"}
+
+        # Multiple storages: largest capacity is the primary SRAM
+        sorted_stg = sorted(storage_nodes,
+                            key=lambda s: s.get_capacity(), reverse=True)
+        cname_map = {sorted_stg[0]: "sram"}
+        for stg in sorted_stg[1:]:
+            cname_map[stg] = "filter"
+        return cname_map
 
     def _extract_capacity(self, controller_name_map):
         """Extract per-controller storage capacity."""
@@ -1167,6 +1161,23 @@ class Spec():
         # For wide-fetch single-storage specs (ONYX), synthesize agg/tb entries
         if self._is_wide_fetch_single_storage(controller_name_map):
             self._synthesize_wide_fetch_hierarchy(collateral, controller_name_map)
+
+        # For fw==1 specs, clockwork's dual-port compile path expects the
+        # storage key to be "mem" (not "sram") and controller_name = ["regfile"].
+        # Remap all maps accordingly.
+        if collateral['fetch_width'] == 1 and 'sram' in collateral['capacity']:
+            for map_key in ('capacity', 'word_width', 'in_port_width',
+                            'out_port_width', 'bank_num', 'single_port'):
+                d = collateral.get(map_key, {})
+                if 'sram' in d:
+                    d['mem'] = d.pop('sram')
+            # Remap iter_level_map keys: in2sram_N → in2mem_N, sram2out_N → mem2out_N
+            new_ilm = {}
+            for k, v in collateral.get('iter_level_map', {}).items():
+                new_ilm[k.replace('sram', 'mem')] = v
+            collateral['iter_level_map'] = new_ilm
+            # Set controller_name to match clockwork's dual-port convention
+            collateral['controller_name'] = ['regfile']
 
         # Convert capacity from bytes to number of addresses.
         # Each address holds word_width[ctrl] words, each word is
