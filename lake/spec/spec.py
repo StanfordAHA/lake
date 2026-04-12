@@ -827,12 +827,33 @@ class Spec():
     def _resolve_controller_name_map(self, controller_name_map=None):
         """Build a mapping from Storage nodes to controller name strings.
 
-        If controller_name_map is not provided, uses each Storage node's
-        component name attribute.
+        If controller_name_map is not provided:
+        - For wide-fetch specs (fw_max > 1) with a single primary storage
+          connected via a shared RW MemoryPort, maps that storage to "sram".
+        - Any secondary (non-remote or filter) storage is mapped to "filter".
+        - For other topologies, falls back to component name attributes.
         """
         if controller_name_map is not None:
             return controller_name_map
         storage_nodes = self.get_nodes(Storage)
+
+        if self.fw_max > 1 and len(storage_nodes) >= 1:
+            # Wide-fetch topology: identify the primary SRAM storage
+            # (the one connected to a shared RW MemoryPort)
+            cname_map = {}
+            for stg in storage_nodes:
+                memports = self._get_memports_for_storage(stg)
+                has_rw = any(mp.get_type() == MemoryPortType.RW for mp in memports)
+                is_remote = getattr(stg, 'remote', False)
+                if has_rw and is_remote:
+                    cname_map[stg] = "sram"
+                elif has_rw and not is_remote and "sram" not in cname_map.values():
+                    # Single storage that is the main SRAM even if not remote
+                    cname_map[stg] = "sram"
+                else:
+                    cname_map[stg] = "filter"
+            return cname_map
+
         return {stg: stg.name for stg in storage_nodes}
 
     def _extract_capacity(self, controller_name_map):
@@ -993,15 +1014,116 @@ class Spec():
                     write_port[name0] = name1
         return read_port, write_port
 
+    def _is_wide_fetch_single_storage(self, controller_name_map):
+        """Check if this spec has a wide-fetch single-primary-storage topology.
+
+        Returns True when fw_max > 1 and the controller_name_map does NOT
+        already contain explicit "agg" or "tb" entries (the ONYX pattern
+        where agg/tb are internal to Ports and must be synthesized).
+        """
+        if self.fw_max <= 1:
+            return False
+        names = set(controller_name_map.values())
+        # If agg or tb already exist as explicit storage nodes, don't synthesize
+        if 'agg' in names or 'tb' in names:
+            return False
+        return 'sram' in names
+
+    def _synthesize_wide_fetch_hierarchy(self, collateral, controller_name_map):
+        """Synthesize virtual agg/tb controller entries for wide-fetch specs.
+
+        When a spec uses a single shared-RW SRAM with wide-fetch ports
+        (the ONYX pattern), the input Ports internally build SIPO storage
+        (aggregator) and the output Ports internally build PISO storage
+        (transpose buffer). This method creates the "agg" and "tb" entries
+        that clockwork's fetch_width > 1 traversal code expects.
+
+        Modifies collateral dict in-place.
+        """
+        # Gather wide-fetch (non-filter) input/output ports.
+        # In ONYX specs, the "filter" path ports have fw==1 while main data
+        # ports have fw>1.  The Port.filter attribute indicates filter
+        # *capability*, not that the port IS the filter path.
+        in_ports = [p for p in self.get_in_ports() if p.get_fw() > 1]
+        out_ports = [p for p in self.get_out_ports() if p.get_fw() > 1]
+
+        if not in_ports and not out_ports:
+            return
+
+        # Use the first wide-fetch port to derive agg/tb sizing
+        ref_port = in_ports[0] if in_ports else out_ports[0]
+        ext_dw = ref_port._ext_data_width
+        int_dw = ref_port._int_data_width
+        vec_cap = ref_port._vec_capacity
+        fw = int_dw // ext_dw
+        ext_bytes = ext_dw // 8
+
+        # SIPO/PISO capacity in bytes (capacity is always in bytes)
+        if ext_dw > int_dw:
+            cap_bytes = ext_dw * vec_cap // 8
+        else:
+            cap_bytes = int_dw * vec_cap // 8
+
+        # --- agg (aggregator — from input SIPO) ---
+        collateral['capacity']['agg'] = cap_bytes
+        collateral['in_port_width']['agg'] = 1          # 1 word at a time from external
+        collateral['out_port_width']['agg'] = fw         # fw words to SRAM
+        collateral['word_width']['agg'] = 1
+        collateral['bank_num']['agg'] = len(in_ports)
+        collateral['single_port']['agg'] = False         # separate R and W ports
+
+        # --- tb (transpose buffer — from output PISO) ---
+        collateral['capacity']['tb'] = cap_bytes
+        collateral['in_port_width']['tb'] = fw           # fw words from SRAM
+        collateral['out_port_width']['tb'] = 1            # 1 word at a time to external
+        collateral['word_width']['tb'] = 1
+        collateral['bank_num']['tb'] = len(out_ports)
+        collateral['single_port']['tb'] = False
+
+        # Add agg/tb to controller_name set
+        controller_names = collateral['controller_name']
+        if isinstance(controller_names, list):
+            if 'agg' not in controller_names:
+                controller_names.append('agg')
+            if 'tb' not in controller_names:
+                controller_names.append('tb')
+        elif isinstance(controller_names, set):
+            controller_names.add('agg')
+            controller_names.add('tb')
+
+        # Rewrite iter_level_map to use agg/tb naming instead of sram
+        new_iter_map = {}
+        for key, val in collateral['iter_level_map'].items():
+            if key.startswith('in2sram_'):
+                idx = key.split('_')[-1]
+                new_iter_map[f'in2agg_{idx}'] = val
+            elif key.startswith('sram2out_'):
+                idx = key.split('_')[-1]
+                new_iter_map[f'tb2out_{idx}'] = val
+            else:
+                new_iter_map[key] = val
+        collateral['iter_level_map'] = new_iter_map
+
+        # Add storage topology wiring: agg→sram, sram→tb
+        collateral['read_port']['agg'] = 'sram'
+        collateral['write_port']['sram'] = 'agg'
+        collateral['read_port']['sram'] = 'tb'
+        collateral['write_port']['tb'] = 'sram'
+
     def extract_compiler_information(self, max_chaining=4, wire_chain_en=False,
                                        controller_name_map=None) -> dict:
         """Extract compiler collateral matching clockwork's LakeCollateral struct.
+
+        For wide-fetch specs with a single primary storage (ONYX pattern),
+        this method synthesizes virtual "agg" and "tb" controller entries
+        from the Port SIPO/PISO parameters so clockwork's fetch_width > 1
+        traversal code works unchanged.
 
         Args:
             max_chaining: Maximum chaining depth (no direct Spec equivalent).
             wire_chain_en: Wire chaining enabled (no direct Spec equivalent).
             controller_name_map: Optional dict mapping Storage node -> str name for the controller.
-                If None, uses the component's name attribute.
+                If None, auto-inferred (maps primary storage to "sram" for wide-fetch specs).
 
         Returns:
             dict with keys matching LakeCollateral fields.
@@ -1017,7 +1139,7 @@ class Spec():
         iter_info = self._extract_iteration_info(controller_name_map)
         read_port, write_port = self._extract_storage_topology(controller_name_map)
 
-        return {
+        collateral = {
             'controller_name': list(controller_names),
             'capacity': capacity,
             'word_width': word_width,
@@ -1040,6 +1162,12 @@ class Spec():
             'read_port': read_port,
             'write_port': write_port,
         }
+
+        # For wide-fetch single-storage specs (ONYX), synthesize agg/tb entries
+        if self._is_wide_fetch_single_storage(controller_name_map):
+            self._synthesize_wide_fetch_hierarchy(collateral, controller_name_map)
+
+        return collateral
 
     def save_compiler_information(self, filepath, **kwargs):
         """Serialize compiler collateral to a JSON file.
