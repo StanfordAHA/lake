@@ -1477,23 +1477,49 @@ class Spec():
 
         test_name = os.environ.get("TEST_NAME_FOR_HACKING_CHECK", None)
         use_pond_path_balancing = os.getenv("POND_PATH_BALANCING", "0") != "0"
-        override = (test_name in APPS_NEEDING_HACKS or use_pond_path_balancing) and "rom_" not in node_name
-        if override is True:
-            application = hack_rv_config(test_name, node_name=node_name)
-            print("HARDCODED APPLICATION")
-            print(application)
-        elif rewrite is True:
-            print("Producing SPEC BITSTREAM with Application:")
-            print("APPLICATION BEFORE")
-            print(application)
 
-            application = self.rewrite_app_json(application)
-            print("APPLICATION AFTER")
+        if isinstance(application, dict) and "lake_rv_config" in application:
+            # RV schedule config is embedded directly in the coreir json metadata.
+            # This takes priority over the app-name-based hack so individual MEMs
+            # can carry their own configuration without requiring a matching entry
+            # in APPS_NEEDING_HACKS. But this still calls helpers in hack_rv_mem_pond_bitstream.py
+            # instead of using clockwork-generated configs for better modularity
+            rv_params = application["lake_rv_config"]
+            if not isinstance(rv_params, dict):
+                rv_params = json.loads(rv_params)
+            rv_type = rv_params.get("type")
+            if rv_type == "dual_read":
+                application = get_mem_dual_read(input_stream_size=rv_params["input_stream_size"])
+            elif rv_type == "filter_mem_transpose":
+                application = get_filter_mem_transpose(
+                    X=rv_params["X"],
+                    Y=rv_params["Y"],
+                    output_glb_bank_idx=rv_params["output_glb_bank_idx"],
+                    lane_idx_within_bank=rv_params["lane_idx_within_bank"],
+                    unroll=rv_params.get("unroll", 32),
+                )
+            else:
+                raise ValueError(f"Unknown lake_rv_config type: {rv_type!r}")
+            print("MODULAR APPLICATION")
             print(application)
+        else:
+            override = (test_name in APPS_NEEDING_HACKS or use_pond_path_balancing) and "rom_" not in node_name
+            if override is True:
+                application = hack_rv_config(test_name, node_name=node_name)
+                print("HARDCODED APPLICATION")
+                print(application)
+            elif rewrite is True:
+                print("Producing SPEC BITSTREAM with Application:")
+                print("APPLICATION BEFORE")
+                print(application)
 
-            application = self.convert_app_json_to_config(application)
-            print("APPLICATION AFTER _config")
-            print(application)
+                application = self.rewrite_app_json(application)
+                print("APPLICATION AFTER")
+                print(application)
+
+                application = self.convert_app_json_to_config(application)
+                print("APPLICATION AFTER _config")
+                print(application)
 
         # Need to integrate all the bitstream information
         # into one single integer/string for the verilog harness
