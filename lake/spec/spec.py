@@ -1500,8 +1500,31 @@ class Spec():
                 )
             elif rv_type == "get_filter_mem_two_streams":
                 application = get_filter_mem_two_streams(input_stream_size=rv_params["input_stream_size"])
+            elif rv_type == "get_vec_accum_pond":
+                application = get_vec_accum_pond(
+                    num_partial_reduction=rv_params["num_partial_reduction"],
+                    num_output_pixels=rv_params["num_output_pixels"],
+                )
+            elif rv_type == "get_broadcast_mem":
+                application = get_broadcast_mem(
+                    input_stream_size=rv_params["input_stream_size"],
+                    replicate_factor=rv_params["replicate_factor"],
+                    raw_scalar=rv_params.get("raw_scalar", 4),
+                )
             elif rv_type == "get_interleave_mem":
                 application = get_interleave_mem(single_input_stream_size=rv_params["single_input_stream_size"])
+            elif rv_type == "get_single_mem_line_buffer":
+                application = get_single_mem_line_buffer(
+                    buffer_size=rv_params["buffer_size"],
+                    num_lines=rv_params["num_lines"],
+                )
+            elif rv_type == "get_filter_scale_mem":
+                application = get_filter_scale_mem(
+                    img_size=rv_params["img_size"],
+                    total_channels=rv_params["total_channels"],
+                    mu_OC=rv_params["mu_OC"],
+                    packed=rv_params.get("packed", False),
+                )
             else:
                 raise ValueError(f"Unknown lake_rv_config type: {rv_type!r}")
             print("MODULAR APPLICATION")
