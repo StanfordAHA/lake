@@ -5,32 +5,13 @@ import math
 import json
 
 APPS_NEEDING_HACKS = [
-    "scalar_reduction_fp",
-    "vector_reduction_fp",
-    "scalar_max_fp",
-    "stable_softmax_pass1_fp",
-    "stable_softmax_pass3_fp",
-    "layer_norm_pass1_fp",
-    "layer_norm_pass2_fp",
     "gelu_pass1_mu_input_fp",
     "gelu_pass2_fp",
-    "add_gelu_pass1_mu_input_fp",
     "add_gelu_pass2_fp",
-    "scalar_avg_fp",
-    "mem_transpose_test",
-    "mem_slice_test",
-    "mem_filter_test",
-    "avgpool_layer_fp",
-    "mat_vec_mul_fp",
-    "get_apply_e8m0_scale_fp",
-    "get_e8m0_scale_tree_mu_input",
-    "get_e8m0_scale_accum_gb_input",
     "maxpooling_dense_rv_fp",
     "maxpooling_dense_rv_mem_buf_fp",
-    "fully_connected_layer_fp",
     "tanh_fp",
     "camera_pipeline_2x2_dense_rv",
-    "pe_mem_flush_test",
 ]
 
 
@@ -62,141 +43,6 @@ def hack_rv_config(test_name, node_name=None):
         pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id][0] # Get boolean value
         print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
         rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
-
-    elif test_name in ["scalar_reduction_fp", "scalar_max_fp", "scalar_avg_fp"]:
-        # Only have one Pond
-        # "HALIDE_GEN_ARGS" example: "vec_width=256 vec_height=2 glb_i=8 glb_o=1 tree_stages=3"
-        vec_len = int(halide_gen_args_dict['vec_width']) * int(halide_gen_args_dict['vec_height'])
-        num_partial_reduction = vec_len // int(halide_gen_args_dict['glb_i'])
-        rv_config = get_accum_pond(num_partial_reduction=num_partial_reduction,
-                                   num_output_pixels=1)
-
-    elif test_name in ["vector_reduction_fp", "stable_softmax_pass1_fp"]:
-        # "HALIDE_GEN_ARGS" example: "vec_width=256 vec_height=2 glb_i=8 glb_o=1 tree_stages=3"
-        vec_len = int(halide_gen_args_dict['vec_width'])
-        num_vecs = int(halide_gen_args_dict['vec_height'])
-        num_partial_reduction = vec_len // int(halide_gen_args_dict['glb_i'])
-        assert num_partial_reduction % 2 == 0, f"ERROR: num_partial_reduction has to be even for two ponds"
-        # Configure filter mem to demux reduction results into two ponds
-        if "filter_mem" in node_name:
-            rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * num_vecs)
-        # Configure accum pond, each handling half of the reduction results
-        elif "accum_pond" in node_name:
-            rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=num_vecs)
-        else:
-            raise ValueError(f"Invalid node name: {node_name}")
-
-    elif test_name == "mem_transpose_test":
-        # Only have one MEM
-        rv_config = get_single_mem_transpose(
-            in_img_x=int(halide_gen_args_dict["in_img_x"]),
-            in_img_y=int(halide_gen_args_dict["in_img_y"])
-        )
-
-    elif test_name == "mem_slice_test":
-        # Only have one MEM
-        rv_config = get_single_mem_slice(
-            in_img_x=int(halide_gen_args_dict["in_img_x"]),
-            in_img_y=int(halide_gen_args_dict["in_img_y"])
-        )
-
-    elif test_name == "mem_filter_test":
-        # Only have one MEM
-        rv_config = get_single_mem_stride(
-            in_img_x=int(halide_gen_args_dict["in_img_x"]),
-            in_img_y=int(halide_gen_args_dict["in_img_y"]),
-            stride=int(halide_gen_args_dict["write_stride"])
-        )
-
-    elif test_name == "avgpool_layer_fp":
-        # Have accum ponds and output mems
-        print(f"configure node_name: {node_name}")
-
-        # Configure accum pond
-        # input port: num_0
-        # output port: update: num_0, spill: num_1
-        avgpool_kernel_reduction = int(halide_gen_args_dict["in_img"]) * int(halide_gen_args_dict["in_img"])
-        num_out_channels_per_lane = int(halide_gen_args_dict["n_ic"]) // int(halide_gen_args_dict["glb_i"])
-        assert avgpool_kernel_reduction % 2 == 0, f"ERROR: avgpool_kernel_reduction has to be even for two ponds"
-        # Configure filter mem to demux reduction results into two ponds
-        if "filter_mem" in node_name:
-            rv_config = get_filter_mem_two_streams(input_stream_size=avgpool_kernel_reduction * num_out_channels_per_lane)
-        elif "accum_pond" in node_name:
-            rv_config = get_vec_accum_pond(num_partial_reduction=avgpool_kernel_reduction // 2, num_output_pixels=num_out_channels_per_lane)
-        else:
-            raise ValueError(f"Invalid node name: {node_name}")
-
-    elif test_name == "mat_vec_mul_fp":
-        # Have accum ponds
-        print(f"configure node_name: {node_name}")
-        matrix_width = int(halide_gen_args_dict['matrix_width'])
-        matrix_height = int(halide_gen_args_dict['matrix_height'])
-        num_partial_reduction = matrix_width // int(halide_gen_args_dict['glb_i'])
-        assert num_partial_reduction % 2 == 0, f"ERROR: num_partial_reduction has to be even for two ponds"
-        # Configure filter mem to demux reduction results into two ponds
-        if "filter_mem" in node_name:
-            rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * matrix_height)
-        # Configure accum pond, each handling half of the reduction results
-        elif "accum_pond" in node_name:
-            rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=matrix_height)
-        else:
-            raise ValueError(f"Invalid node name: {node_name}")
-
-    elif test_name == "get_apply_e8m0_scale_fp":
-        # Configure mem tiles to buffer 32 channels of all pixels
-        # vec_height is pixels per channel and vec_width is total number of channels
-        img_size = int(halide_gen_args_dict["vec_height"])
-        total_channels = int(halide_gen_args_dict["vec_width"])
-        mu_OC = int(halide_gen_args_dict["mu_i"])
-        print(f"configure node_name: {node_name}")
-        if "mem_mu2tree" in node_name:
-            rv_config = get_single_mem_line_buffer(
-                buffer_size=img_size,
-                num_lines=total_channels // mu_OC
-            )
-        elif "mem_quantized_output_pair" in node_name:
-            # // 2 because of data packing and x2 because of bogus data
-            rv_config = get_interleave_mem(single_input_stream_size=img_size * total_channels // mu_OC // 2 * 2)
-        elif "mem_scale_output_broadcast" in node_name:
-            # Filter scale to only stream valid scales to GLB output IO
-            rv_config = get_filter_scale_mem(img_size=img_size, total_channels=total_channels, mu_OC=mu_OC)
-
-    elif test_name == "get_e8m0_scale_tree_mu_input":
-        # Configure mem tiles to buffer 32 channels of all pixels
-        # vec_height is pixels per channel and vec_width is total number of channels
-        img_size = int(halide_gen_args_dict["vec_height"])
-        total_channels = int(halide_gen_args_dict["vec_width"])
-        mu_OC = int(halide_gen_args_dict["mu_i"])
-        print(f"configure node_name: {node_name}")
-        if "mem_mu2tree" in node_name:
-            rv_config = get_single_mem_line_buffer(
-                buffer_size=img_size,
-                num_lines=total_channels // mu_OC
-            )
-        elif "mem_scale_filter" in node_name:
-            # Filter scale to only stream valid scales to GLB output IO
-            rv_config = get_filter_scale_mem(img_size=img_size, total_channels=total_channels, mu_OC=mu_OC, packed=False)
-        else:
-            raise ValueError(f"Invalid node name: {node_name}")
-
-    elif test_name == "get_e8m0_scale_accum_gb_input":
-        print(f"configure node_name: {node_name}")
-        # Configure filter mem and accum pond
-        # Configure accum pond
-        # input port: num_0
-        # output port: update: num_0, spill: num_1
-        head_dim = int(halide_gen_args_dict["head_dim"])
-        seq_heads_prod = int(halide_gen_args_dict["seq_heads_prod"])
-        block_size = 64
-        num_out_scales_per_lane = seq_heads_prod // block_size * head_dim // int(halide_gen_args_dict["glb_i"])
-        assert block_size % 2 == 0, f"ERROR: num_partial_reduction has to be even for two ponds"
-        # Configure filter mem to demux reduction results into two ponds
-        if "filter_mem" in node_name:
-            rv_config = get_filter_mem_two_streams(input_stream_size=block_size * num_out_scales_per_lane)
-        elif "accum_pond" in node_name:
-            rv_config = get_vec_accum_pond(num_partial_reduction=block_size // 2, num_output_pixels=num_out_scales_per_lane)
-        else:
-            raise ValueError(f"Invalid node name: {node_name}")
 
     elif test_name == "maxpooling_dense_rv_fp":
         # Line buffer with two read ports
@@ -251,70 +97,21 @@ def hack_rv_config(test_name, node_name=None):
         else:
             raise ValueError(f"Invalid node name: {node_name}")
 
-    elif test_name == "fully_connected_layer_fp":
-        # Have accum ponds
-        print(f"configure node_name: {node_name}")
-        matrix_width = int(halide_gen_args_dict['matrix_width'])
-        matrix_height = int(halide_gen_args_dict['matrix_height'])
-        num_partial_reduction = matrix_width // int(halide_gen_args_dict['glb_i'])
-        # Configure filter mem to demux reduction results into two ponds
-        if "filter_mem" in node_name:
-            rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * matrix_height)
-        # Configure accum pond, each handling half of the reduction results
-        elif "accum_pond" in node_name:
-            rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=matrix_height)
-        else:
-            raise ValueError(f"Invalid node name: {node_name}")
-
-    elif test_name in ["stable_softmax_pass3_fp", "layer_norm_pass1_fp", "layer_norm_pass2_fp"]:
-        print(f"configure node_name: {node_name}")
-        vec_len = int(halide_gen_args_dict['vec_width'])
-        num_vecs = int(halide_gen_args_dict['vec_height'])
-        glb_i = int(halide_gen_args_dict['glb_i'])
-        num_partial_reduction = vec_len // glb_i
-        inputs_per_lane = vec_len * num_vecs // glb_i
-        assert num_partial_reduction % 2 == 0, f"ERROR: num_partial_reduction has to be even for two ponds"
-        # Category 1: filter mem
-        if "filter_mem" in node_name:
-            rv_config = get_filter_mem_two_streams(input_stream_size=num_partial_reduction * num_vecs)
-        # Category 2: accum pond
-        elif "accum_pond" in node_name:
-            rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction // 2, num_output_pixels=num_vecs)
-        # Category 3: 1/sum buffer mem
-        elif "output_cgra_stencil" in node_name:
-            if test_name == "layer_norm_pass2_fp":
-                raw_scalar = 6
-            else:
-                raw_scalar = 4
-            rv_config = get_broadcast_mem(input_stream_size=num_vecs, replicate_factor=vec_len // glb_i, raw_scalar=raw_scalar)
-        # Category 4: input buffer mem
-        elif "tile_input_stencil" in node_name:
-            rv_config = get_mem_dual_read(input_stream_size=inputs_per_lane)
-        elif "_path_balance_pond" in node_name:
-            pe_id = node_name.split("_path_balance_pond")[0]
-            app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
-            assert os.path.exists(app_path_balancing_json_file), f"Cannot find path balancing json file: {app_path_balancing_json_file}"
-            with open(app_path_balancing_json_file, "r") as f:
-                path_balancing_metadata = json.load(f)
-            balance_length = path_balancing_metadata["balance_lengths"][pe_id]
-            total_stream_length = path_balancing_metadata["total_stream_lengths"][pe_id]
-            pe_to_pond = path_balancing_metadata["pe_to_pond"][pe_id]
-            print(f"\033[93mINFO: Adding path balancing pond for PE {pe_id} with balance_length: {balance_length}, total_stream_length: {total_stream_length}. PE-to-pond is {pe_to_pond}\033[0m")
-            rv_config = get_path_balancing_pond(balance_length=balance_length, total_stream_length=total_stream_length, pe_to_pond=pe_to_pond)
-        else:
-            raise ValueError(f"Invalid node name: {node_name}")
-
-    elif test_name in ["gelu_pass1_mu_input_fp", "gelu_pass2_fp", "add_gelu_pass1_mu_input_fp", "add_gelu_pass2_fp"]:
+    elif test_name in ["gelu_pass1_mu_input_fp", "gelu_pass2_fp", "add_gelu_pass1_mu_input_mem_buf_fp", "add_gelu_pass2_fp"]:
         print(f"configure node_name: {node_name}")
         vec_len = int(halide_gen_args_dict['vec_width'])
         num_vecs = int(halide_gen_args_dict['vec_height'])
         if "input_buffer_mem" in node_name:
-            if test_name in ["gelu_pass1_mu_input_fp", "add_gelu_pass1_mu_input_fp"]:
+            if test_name in ["gelu_pass1_mu_input_fp", "add_gelu_pass1_mu_input_mem_buf_fp"]:
                 mu_i = int(halide_gen_args_dict['mu_i'])
                 rv_config = get_mem_dual_read(input_stream_size=vec_len * num_vecs // mu_i)
             elif test_name in ["gelu_pass2_fp", "add_gelu_pass2_fp"]:
                 glb_i = int(halide_gen_args_dict['glb_i'])
                 rv_config = get_mem_dual_read(input_stream_size=vec_len * num_vecs // glb_i)
+        elif "mu_buffer_mem" in node_name:
+            if test_name in ["add_gelu_pass1_mu_input_mem_buf_fp"]:
+                mu_i = int(halide_gen_args_dict['mu_i'])
+                rv_config = get_mem_single_read(input_stream_size=vec_len * num_vecs // mu_i)
         elif "_path_balance_pond" in node_name:
             pe_id = node_name.split("_path_balance_pond")[0]
             app_path_balancing_json_file = f"/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/{test_name}/bin/path_balancing.json"
@@ -514,15 +311,6 @@ def hack_rv_config(test_name, node_name=None):
 
         if rv_config is None:
             raise ValueError(f"Invalid node name: {node_name}")
-
-    elif test_name == "pe_mem_flush_test":
-        print(f"configure node_name: {node_name}")
-        input_width = int(halide_gen_args_dict["input_width"])
-        input_height = int(halide_gen_args_dict["input_height"])
-        unroll = int(halide_gen_args_dict["myunroll"])
-        stream_size_per_lane = input_width * input_height // unroll
-        assert stream_size_per_lane * 2 // 1024 <= 4, f"ERROR: stream_size_per_lane {stream_size_per_lane} is too large to be mapped to 4KB's MEM tile size"
-        rv_config = get_mem_single_read(input_stream_size=stream_size_per_lane)
 
     # Global hack for path balancing with ponds
     elif "_path_balance_pond" in node_name:
@@ -1377,19 +1165,56 @@ def get_mem_line_buffer_single_port(line_size=64, num_lines=198, offset_r0=-64):
 
 def get_interleave_mem(single_input_stream_size=512):
     '''
-    Helper function to interleave two data streams like output GLB IOs
-    input num 0 first, input num 1 second
+    Helper function to interleave two data streams like output GLB IOs.
+    Input num 0 first, input num 1 second.
+    Auto-splits extents when single_input_stream_size exceeds the extent
+    counter width, following the same pattern as get_filter_mem_two_streams.
     '''
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)
+    SIPO_WORD_WIDTH = 4
+
+    port_data_in_0 = 0
+    port_data_in_1 = 1
+    port_data_out_0 = 3
+
+    dim_1 = single_input_stream_size // SIPO_WORD_WIDTH
+    dim_2 = 1
+    while dim_1 > MAX_EXTENT:
+        assert dim_1 % 2 == 0, f"ERROR: dim_1 always has to be divisible by 2 when increasing dimensionality."
+        dim_1 //= 2
+        dim_2 *= 2
+        assert dim_2 <= MAX_EXTENT, f"ERROR: Cannot map interleave mem with single_input_stream_size: {single_input_stream_size}. Higher dimensionality is required."
+
+    if dim_2 > 1:
+        write_dimensionality = 3
+        write_extents = [SIPO_WORD_WIDTH, dim_1, dim_2]
+        write_strides = [1, 2 * SIPO_WORD_WIDTH, dim_1 * 2 * SIPO_WORD_WIDTH]
+        read_dimensionality = 4
+        read_extents = [2, SIPO_WORD_WIDTH, dim_1, dim_2]
+        read_strides = [SIPO_WORD_WIDTH, 1, 2 * SIPO_WORD_WIDTH, dim_1 * 2 * SIPO_WORD_WIDTH]
+        raw_dim_w = 2
+        raw_dim_r = 3
+    else:
+        write_dimensionality = 2
+        write_extents = [SIPO_WORD_WIDTH, dim_1]
+        write_strides = [1, 2 * SIPO_WORD_WIDTH]
+        read_dimensionality = 3
+        read_extents = [2, SIPO_WORD_WIDTH, dim_1]
+        read_strides = [SIPO_WORD_WIDTH, 1, 2 * SIPO_WORD_WIDTH]
+        raw_dim_w = 1
+        raw_dim_r = 2
+
     linear_test = {}
 
     linear_test[0] = {
         'name': 'port_w0',
         'type': Direction.IN,
         'config': {
-            'dimensionality': 2,
-            'extents': [4, single_input_stream_size // 4],
+            'dimensionality': write_dimensionality,
+            'extents': write_extents,
             'address': {
-                'strides': [1, 8],
+                'strides': write_strides,
                 'offset': 0
             },
             'schedule': {}
@@ -1403,11 +1228,11 @@ def get_interleave_mem(single_input_stream_size=512):
         'name': 'port_w1',
         'type': Direction.IN,
         'config': {
-            'dimensionality': 2,
-            'extents': [4, single_input_stream_size // 4],
+            'dimensionality': write_dimensionality,
+            'extents': write_extents,
             'address': {
-                'strides': [1, 8],
-                'offset': 4
+                'strides': write_strides,
+                'offset': SIPO_WORD_WIDTH
             },
             'schedule': {}
         },
@@ -1420,10 +1245,10 @@ def get_interleave_mem(single_input_stream_size=512):
         'name': 'port_r0',
         'type': Direction.OUT,
         'config': {
-            'dimensionality': 3,
-            'extents': [2, 4, single_input_stream_size // 4],
+            'dimensionality': read_dimensionality,
+            'extents': read_extents,
             'address': {
-                'strides': [4, 1, 8],
+                'strides': read_strides,
                 'offset': 0
             },
             'schedule': {}
@@ -1433,23 +1258,15 @@ def get_interleave_mem(single_input_stream_size=512):
         'vec_constraints': []
     }
 
-    port_data_in_0 = 0
-    port_data_in_1 = 1
-    port_data_out_0 = 3
-
-    # raw_scalar should be 0 but set a magic number 1 to actually contraint read after write. Needs investigation.
     raw_scalar_0 = 1
-    raw_0 = (port_data_out_0, 2, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_0)
+    raw_0 = (port_data_out_0, raw_dim_r, port_data_in_0, raw_dim_w, LFComparisonOperator.LT.value, raw_scalar_0)
 
     raw_scalar_1 = 1
-    raw_1 = (port_data_out_0, 2, port_data_in_1, 1, LFComparisonOperator.LT.value, raw_scalar_1)
+    raw_1 = (port_data_out_0, raw_dim_r, port_data_in_1, raw_dim_w, LFComparisonOperator.LT.value, raw_scalar_1)
 
-    # waw_scalar_0 = 0
-    # waw_0 = (port_data_in_1, 0, port_data_in_0, 0, LFComparisonOperator.GT.value, waw_scalar_0)
-    war_0 = (port_data_in_0, 1, port_data_out_0, 2, LFComparisonOperator.GT.value, 128)
-    war_1 = (port_data_in_1, 1, port_data_out_0, 2, LFComparisonOperator.GT.value, 128)
+    war_0 = (port_data_in_0, raw_dim_w, port_data_out_0, raw_dim_r, LFComparisonOperator.GT.value, 128)
+    war_1 = (port_data_in_1, raw_dim_w, port_data_out_0, raw_dim_r, LFComparisonOperator.GT.value, 128)
 
-    # linear_test['constraints'] = [raw_0, raw_1]
     linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
 
     return linear_test
@@ -1635,6 +1452,68 @@ def get_filter_mem_two_streams(input_stream_size=512):
     raw_1 = (port_data_out_1, 0, port_data_in_0, 1, LFComparisonOperator.LT.value, 3)
 
     linear_test['constraints'] = [raw_0, raw_1]
+    return linear_test
+
+def get_filter_mem_transpose(
+        X: int,
+        Y: int,
+        output_glb_bank_idx: int,
+        lane_idx_within_bank: int,
+        unroll: int=32,
+    ):
+    '''
+    Helper function to create config for filter mem to transpose a 2D tensor
+    '''
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 1,
+            'extents': [X * Y // unroll // unroll],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {},
+            'filter': {
+                'offset': [4 * output_glb_bank_idx + lane_idx_within_bank],
+                'dimensionality': [1],
+                'strides': [unroll]
+            }
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 1,
+            'extents': [X * Y // unroll // unroll],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            "schedule": {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    # The scalar has to be a magic number 12 to actually contraint read after write.
+    raw_scalar = 12
+    raw = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar)
+
+    linear_test['constraints'] = [raw]
+
     return linear_test
 
 def get_demosaic_rgb_stencil_mem_single_port(
