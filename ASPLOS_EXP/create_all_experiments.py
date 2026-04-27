@@ -175,9 +175,11 @@ if __name__ == "__main__":
                 result = subprocess.run(execution_str, capture_output=True, text=True)
                 print(result.stdout)
             else:
-                newp = subprocess.Popen(execution_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            # newp = subprocess.Popen(execution_str)
-                all_procs.append((newp, vlog_filepath, collateral_filepath))
+                os.makedirs(outdir, exist_ok=True)
+                log_filepath = os.path.join(outdir, "rtl_gen.log")
+                log_file = open(log_filepath, "w")
+                newp = subprocess.Popen(execution_str, stdout=log_file, stderr=subprocess.STDOUT)
+                all_procs.append((newp, vlog_filepath, collateral_filepath, log_filepath, log_file))
 
             if run_sim:
 
@@ -209,7 +211,7 @@ if __name__ == "__main__":
         while not done:
             done = True
             num_procs_alive = 0
-            for proc_, vlfp, clfp in all_procs:
+            for proc_, vlfp, clfp, lfp, lf in all_procs:
                 # Still an alive process...
                 if proc_.poll() is None:
                     num_procs_alive += 1
@@ -218,11 +220,33 @@ if __name__ == "__main__":
                 time.sleep(3)
                 done = False
 
+        for _, _, _, _, lf in all_procs:
+            try:
+                lf.close()
+            except Exception:
+                pass
+
         print("Done generating all tests...")
         print("Now checking for output verilog and collateral...")
 
-        for proc_, vlfp, clfp in all_procs:
-            assert check_file_exists_and_has_content(vlfp) is True, f"Verilog file at {vlfp} was not created..."
-            assert check_file_exists_and_has_content(clfp) is True, f"Collateral file at {clfp} was not created..."
-            assert proc_.returncode == 0, f"Proc returned bad value..."
+        def _dump_log(lfp):
+            try:
+                with open(lfp, "r") as f:
+                    contents = f.read()
+                print(f"\n===== subprocess log: {lfp} =====")
+                print(contents)
+                print(f"===== end log: {lfp} =====\n")
+            except Exception as e:
+                print(f"(could not read log {lfp}: {e})")
+
+        for proc_, vlfp, clfp, lfp, _ in all_procs:
+            if proc_.returncode != 0:
+                _dump_log(lfp)
+                raise AssertionError(f"RTL generation subprocess failed (returncode={proc_.returncode}); see log above: {lfp}")
+            if not check_file_exists_and_has_content(vlfp):
+                _dump_log(lfp)
+                raise AssertionError(f"Verilog file at {vlfp} was not created (see log above: {lfp})")
+            if not check_file_exists_and_has_content(clfp):
+                _dump_log(lfp)
+                raise AssertionError(f"Collateral file at {clfp} was not created (see log above: {lfp})")
         print("All test collateral verified!")

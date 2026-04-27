@@ -31,6 +31,23 @@ class IterationDomain(Component):
         else:
             self.configure(self._dimensionality, dimensionality)
 
+        # Validate that each active extent fits in extent_width bits before we
+        # silently truncate it into the configuration register. The encoded
+        # value is `extent - 2`; the register is unsigned `self.extent_width`
+        # wide, so encoded must be in [0, 2**extent_width - 1].
+        max_repr = (1 << self.extent_width) - 1
+        for i in range(dimensionality):
+            encoded = extents[i] - 2
+            if encoded < 0 or encoded > max_repr:
+                raise ValueError(
+                    f"IterationDomain extent[{i}]={extents[i]} cannot be encoded "
+                    f"with extent_width={self.extent_width} bits "
+                    f"(encoded {encoded} not in [0, {max_repr}]; "
+                    f"extent must be in [2, {max_repr + 2}]). "
+                    f"Increase extent_width (e.g. raise --max_extent in "
+                    f"thesis_sweep) or reduce the workload extent."
+                )
+
         # Do a - 2 thing...
         use_exts = [extent - 2 for extent in extents]
 
@@ -95,7 +112,9 @@ class IterationDomain(Component):
 
         self._counter_update = self.var("counter_update", 1)
 
-        self._max_value = self.var("max_value", self.dimensionality_support)
+        self._max_value = self.var("max_value", 1,
+                                   size=self.dimensionality_support,
+                                   packed=True, explicit_array=True)
 
         self._mux_sel = self.var("mux_sel_lcl", max(kts.clog2(self.dimensionality_support), 1))
 
@@ -105,8 +124,12 @@ class IterationDomain(Component):
         # LOCAL VARIABLES: end
         # GENERATION LOGIC: begin
         self._done = self.var("done", 1)
-        self._clear = self.var("clear", self.dimensionality_support)
-        self._inc = self.var("inc", self.dimensionality_support)
+        self._clear = self.var("clear", 1,
+                               size=self.dimensionality_support,
+                               packed=True, explicit_array=True)
+        self._inc = self.var("inc", 1,
+                             size=self.dimensionality_support,
+                             packed=True, explicit_array=True)
 
         # We go to a finished state once the last iter is done
         self._finished_lcl = sticky_flag(self, self._last_iter_lcl & self._step, name="finished_lcl_sticky",

@@ -223,6 +223,16 @@ class Component(kratos.Generator):
             # trim the value
             # use_value = int(bin(value)[-1 * diff:], 2)
             use_value = value
+            # When dimensionality_support == 1, multi-element config_regs (strides, extents,
+            # etc.) end up unflattened (size=1 in config_reg), so they're not in
+            # remap_flatten_config. But callers like AddressGenerator.gen_bitstream still
+            # pass a 1-element list (e.g., tform_strides=[stride_0]). Unwrap it so the
+            # later (value & bmask) in create_config_int doesn't TypeError on a list.
+            if isinstance(use_value, list):
+                assert len(use_value) == 1, (
+                    f"Cannot configure non-flattened reg '{cfg_reg}' with list of len {len(use_value)}"
+                )
+                use_value = use_value[0]
             self.configuration.append((range_, use_value))
 
     def config_reg(self, **kwargs):

@@ -1031,6 +1031,9 @@ def generate_affine_sequence(dimensionality, extents, strides, offset):
 def calculate_read_out_vec(schedule, vec=4, mem_depth=2048):
     '''Handle vectorized - three phases
     '''
+    # Scratch buffer indexed as memory[addr * vec + z_] — must be large enough that
+    # max-address × vec doesn't overflow. Without this, fw>=8 trips IndexError at line ~1211.
+    inner_mem_depth = mem_depth * max(vec, 1)
     # Phase one - calculate all inputs to SIPO
     # Get all input ports
     # in_ports = {port_num: port_sched for port_num, port_sched in schedule.items() if port_sched['type'] == Direction.IN}
@@ -1068,13 +1071,13 @@ def calculate_read_out_vec(schedule, vec=4, mem_depth=2048):
             }
 
         }
-        sub_in_test_out = calculate_read_out(sub_test, vec=(1, vec), sanitize=False)
+        sub_in_test_out = calculate_read_out(sub_test, vec=(1, vec), sanitize=False, mem_depth=inner_mem_depth)
         sipo_outs[pnum] = sub_in_test_out[1]
         sipo_outs_data[pnum] = sub_in_test_out[1]['data']
 
     # Now that we have these, we just need to feed the normal schedule, except we need
     # to send this data instead
-    mid_result = calculate_read_out(schedule=schedule, vec=(vec, vec), data_in=sipo_outs_data, sanitize=False, mem_depth=mem_depth)
+    mid_result = calculate_read_out(schedule=schedule, vec=(vec, vec), data_in=sipo_outs_data, sanitize=False, mem_depth=inner_mem_depth)
     mid_result_data = {}
     for pnum, info in mid_result.items():
         mid_result_data[pnum] = info['data']
@@ -1113,7 +1116,7 @@ def calculate_read_out_vec(schedule, vec=4, mem_depth=2048):
         send_data = {0: mid_result_data[pnum]}
 
         sub_in_test_out = calculate_read_out(sub_test, vec=(vec, 1),
-                                             data_in=send_data)
+                                             data_in=send_data, mem_depth=inner_mem_depth)
         piso_outs[pnum] = sub_in_test_out[1]
         piso_outs_data[pnum] = sub_in_test_out[1]['data']
 

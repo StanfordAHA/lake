@@ -532,11 +532,17 @@ def get_two_read_test():
     return linear_test
 
 
-def get_linear_test():
+def get_linear_test(max_extent=None):
 
     linear_test = {}
 
     length_scale = 32
+
+    # When max_extent is set the IterationDomain extent register is narrowed
+    # to ceil(log2(max_extent)) bits. The outer extent here is 16 * length_scale,
+    # so cap length_scale to keep the workload representable.
+    if max_extent is not None:
+        length_scale = max(1, min(length_scale, max_extent // 16))
 
     pw_vec_w = 0
     pr_vec_w = 1
@@ -805,11 +811,15 @@ def get_linear_test_rv():
     return linear_test
 
 
-def get_linear_test_generic(in_ports_count, vec_width):
+def get_linear_test_generic(in_ports_count, vec_width, max_extent=None):
     """Generate a simple linear write-then-read test that works with any port configuration.
     Uses only the first input port (index 0) and first output port (index in_ports_count)."""
     linear_test = {}
     length_scale = 32
+
+    # See get_linear_test() for rationale: cap workload to fit narrowed extent register.
+    if max_extent is not None:
+        length_scale = max(1, min(length_scale, max_extent // 16))
 
     pw_idx = 0
     pr_idx = in_ports_count
@@ -911,7 +921,9 @@ def get_linear_test_generic(in_ports_count, vec_width):
             'vec_constraints': [raw_constraint_vec_r, war_constraint_vec_r]
         }
     else:
-        # Non-vectorized (fw=1)
+        # Non-vectorized (fw=1) — single-port SRAM cannot service simultaneous
+        # read+write. Stride writes/reads on different mod-4 phases so they
+        # never collide (write phase 0, read phase 1), mirroring get_linear_test().
         linear_test[pw_idx] = {
             'type': Direction.IN,
             'name': 'port_w0',
@@ -923,8 +935,8 @@ def get_linear_test_generic(in_ports_count, vec_width):
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [1],
-                    'offset': 1
+                    'strides': [4],
+                    'offset': 4
                 }
             },
             'vec_in_config': {
@@ -935,7 +947,7 @@ def get_linear_test_generic(in_ports_count, vec_width):
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [1],
+                    'strides': [4],
                     'offset': 0
                 }
             },
@@ -947,8 +959,8 @@ def get_linear_test_generic(in_ports_count, vec_width):
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [1],
-                    'offset': 1
+                    'strides': [4],
+                    'offset': 4
                 }
             },
             'vec_constraints': []
@@ -965,7 +977,7 @@ def get_linear_test_generic(in_ports_count, vec_width):
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [1],
+                    'strides': [4],
                     'offset': 17
                 }
             },
@@ -977,7 +989,7 @@ def get_linear_test_generic(in_ports_count, vec_width):
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [1],
+                    'strides': [4],
                     'offset': 18
                 }
             },
@@ -989,8 +1001,8 @@ def get_linear_test_generic(in_ports_count, vec_width):
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [1],
-                    'offset': 19
+                    'strides': [4],
+                    'offset': 18
                 }
             },
             'vec_constraints': []
@@ -1018,7 +1030,8 @@ COLLATERAL_REQUIRED_KEYS = {
 def validate_generated_outputs(collateral_path, verilog_path,
                                expected_in_ports, expected_out_ports,
                                expected_fetch_width, expected_dimensionality,
-                               expected_storage_capacity, expected_dual_port):
+                               expected_storage_capacity, expected_dual_port,
+                               expected_data_width):
     """Validate that the collateral JSON and verilog file exist and have reasonable contents."""
 
     # --- Check files exist and are non-empty ---
@@ -1085,10 +1098,15 @@ def validate_generated_outputs(collateral_path, verilog_path,
         for cname, val in collateral[key].items():
             assert isinstance(val, int) and val > 0, f"{key}[{cname}] must be positive, got {val}"
 
-    # Capacity in collateral should match the expected storage capacity for at least one controller
-    capacities = list(collateral['capacity'].values())
-    assert expected_storage_capacity in capacities, \
-        f"Expected storage_capacity {expected_storage_capacity} not found in capacity values {capacities}"
+    # collateral['capacity'] is in entries (see lake/spec/spec.py: cap_bytes // (word_width * data_width_bytes)).
+    # Convert back to bytes per controller and check at least one matches the expected storage capacity.
+    data_width_bytes = expected_data_width // 8
+    capacities_bytes = {
+        cname: collateral['capacity'][cname] * collateral['word_width'].get(cname, 1) * data_width_bytes
+        for cname in collateral['capacity']
+    }
+    assert expected_storage_capacity in capacities_bytes.values(), \
+        f"Expected storage_capacity {expected_storage_capacity} bytes not found in per-controller byte capacities {capacities_bytes} (raw entries: {dict(collateral['capacity'])}, word_width: {dict(collateral['word_width'])}, data_width_bytes: {data_width_bytes})"
 
     # Boolean fields
     assert isinstance(collateral['single_port'], dict), "single_port must be a dict"
@@ -1136,7 +1154,8 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
     validate_generated_outputs(collateral_path, verilog_path,
                                expected_in_ports=in_ports, expected_out_ports=out_ports,
                                expected_fetch_width=vec_width, expected_dimensionality=dimensionality,
-                               expected_storage_capacity=storage_capacity, expected_dual_port=dual_port)
+                               expected_storage_capacity=storage_capacity, expected_dual_port=dual_port,
+                               expected_data_width=data_width)
 
     # Define the test
     num_total_ports = in_ports + out_ports
@@ -1147,7 +1166,7 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
             if opt_rv:
                 lt = get_linear_test_rv()
             else:
-                lt = get_linear_test()
+                lt = get_linear_test(max_extent=max_extent)
         elif test == 'two_read':
             lt = get_two_read_test()
         elif test == 'conv_2_1':
@@ -1156,7 +1175,7 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
             raise NotImplementedError(f"Cannot run test: {test}")
     else:
         # Use generic linear test for non-standard port configurations
-        lt = get_linear_test_generic(in_ports, vec_width)
+        lt = get_linear_test_generic(in_ports, vec_width, max_extent=max_extent)
 
     if test == 'conv_2_1':
         max_time = 6500

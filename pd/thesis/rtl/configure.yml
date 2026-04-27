@@ -1,0 +1,58 @@
+name: rtl
+
+parameters:
+  python_command: ""
+  test_dir: ""
+  storage_capacity: 8192
+  data_width: 16
+  fetch_width: 4
+  dimensionality: 6
+  in_ports: 2
+  out_ports: 2
+  dual_port: False
+
+outputs:
+  - design.v
+  - testbench.sv
+  - design.args
+  - info.json
+  - comp_args.txt
+  - PARGS.txt
+  - bitstream.bs
+  - gold
+  - lake_collateral.json
+
+commands:
+
+  - export CURR=$PWD
+  - export TOP=$PWD
+
+  - $python_command
+
+  - cd $CURR
+  - cp $TOP/$test_dir/inputs/lakespec.sv outputs/design.v
+  - cp $TOP/$test_dir/inputs/info.json outputs/info.json
+  - cp $TOP/$test_dir/tb.sv outputs/testbench.sv
+  - cat $TOP/$test_dir/inputs/comp_args.txt $TOP/$test_dir/inputs/PARGS.txt > outputs/design.args
+  - cp $TOP/$test_dir/inputs/comp_args.txt outputs/comp_args.txt
+  - cp $TOP/$test_dir/inputs/PARGS.txt outputs/PARGS.txt
+  - cp $TOP/$test_dir/inputs/bitstream.bs outputs/bitstream.bs
+  - cp -r $TOP/$test_dir/gold outputs/gold
+  - cp $TOP/$test_dir/inputs/lake_collateral.json outputs/lake_collateral.json
+
+  - python validate_collateral.py
+      --collateral outputs/lake_collateral.json
+      --storage_capacity $storage_capacity
+      --data_width $data_width
+      --fetch_width $fetch_width
+      --dimensionality $dimensionality
+      --in_ports $in_ports
+      --out_ports $out_ports
+      --dual_port $dual_port
+
+  - python set_test_dir.py --test_dir $test_dir
+  - echo $PWD
+
+postconditions:
+  - assert File( 'outputs/lake_collateral.json' )
+  - assert File( 'outputs/design.v' )

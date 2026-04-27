@@ -1278,7 +1278,11 @@ def get_power_breakdown_dir(directory, run_power):
             design_point_path = os.path.join(design_path, design_point)
 
             if run_power:
-                subprocess.run(["make", "28"], cwd=design_point_path)
+                log_file = os.path.join(design_point_path, "build.log")
+                with open(log_file, 'w') as log:
+                    env = os.environ.copy()
+                    env['TERM'] = 'dumb'
+                    subprocess.run("source ~/.bashrc && make 28", cwd=design_point_path, stdout=log, stderr=subprocess.STDOUT, env=env, shell=True)
 
             ptpx_step = find_step(design_point_path, 'synopsys-ptpx-gl')
             print(f"Found ptpx step: {ptpx_step}")
@@ -1831,16 +1835,17 @@ def get_area_breakdown_file(file_path):
 
 
 def get_num_live_procs(proc_list):
-    # Wait for all to be done.
+    # Count alive processes (handle both process objects and (process, log_file) tuples)
     num_procs_alive = 0
-    done = False
-    while not done:
-        done = True
-        num_procs_alive = 0
-        for proc_ in proc_list:
-            # Still an alive process...
-            if proc_.poll() is None:
-                num_procs_alive += 1
+    for item in proc_list:
+        # Handle both old format (just process) and new format (process, log_file)
+        if isinstance(item, tuple):
+            proc_ = item[0]
+        else:
+            proc_ = item
+        # Still an alive process...
+        if proc_.poll() is None:
+            num_procs_alive += 1
     return num_procs_alive
 
 
@@ -1922,6 +1927,7 @@ if __name__ == "__main__":
     lake_base_dir = os.path.join(base_dir, "../")
     test_files_dir = os.path.join(lake_base_dir, "tests/test_spec/")
     pd_files_dir = os.path.join(lake_base_dir, "gf_physical_design/NEW/")
+    sample_folder = os.path.join(lake_base_dir, "pd", "thesis")
     make_script = os.path.join(lake_base_dir, "gf_physical_design/", "make_all.sh")
 
     # If the collect data flag is on, all else is ignored, and we will go collect all the
@@ -2109,10 +2115,6 @@ if __name__ == "__main__":
             filename_no_ext = os.path.splitext(filename)[0]
             filename_no_ext_f = f"{filename_no_ext}_{freq}"
 
-            head_folder = os.path.join(pd_files_dir, filename_no_ext_f)
-            # subprocess.run(["rm", "-rf", head_folder])
-            subprocess.run(["mkdir", "-p", head_folder])
-
             other_folder = os.path.join(pd_build_dir, filename_no_ext_f)
             subprocess.run(["mkdir", "-p", other_folder])
 
@@ -2145,16 +2147,9 @@ if __name__ == "__main__":
                     design_folder += f"_me_{max_ext}"
                 if max_seq_w is not None:
                     design_folder += f"_msw_{max_seq_w}"
-                full_design_path = os.path.join(head_folder, f"{design_folder}_{freq}")
-
-                subprocess.run(["rm", "-rf", full_design_path])
-                sample_folder = os.path.join(pd_files_dir, "sample")
-                subprocess.run(["cp", "-r", sample_folder, full_design_path])
-                print(f"Made design folder at {full_design_path}")
 
                 pd_build_path = os.path.join(pd_build_dir, filename_no_ext_f, design_folder)
                 subprocess.run(["mkdir", "-p", pd_build_path])
-                subprocess.run(["cd", pd_build_path])
 
                 # Dump a parameter file so that we can understand what
                 # the design looks like
@@ -2162,82 +2157,57 @@ if __name__ == "__main__":
                 with open(params_file, 'w') as json_file:
                     json.dump(params_dict, json_file, indent=4)
 
-                with open(f"{full_design_path}/rtl/configure.yml", 'w+') as rtl_configure:
-                    rtl_configure.write("name: rtl\n")
-                    rtl_configure.write("\n")
-                    rtl_configure.write("outputs:\n")
-                    rtl_configure.write("  - design.v\n")
-                    rtl_configure.write("  - testbench.sv\n")
-                    rtl_configure.write("  - design.args\n")
-                    rtl_configure.write("  - comp_args.txt\n")
-                    rtl_configure.write("  - PARGS.txt\n")
-                    rtl_configure.write("  - bitstream.bs\n")
-                    rtl_configure.write("  - gold\n")
-                    rtl_configure.write("\n")
-                    rtl_configure.write("commands:\n")
-                    rtl_configure.write("\n")
-                    rtl_configure.write("  - export CURR=$PWD\n")
-                    rtl_configure.write("  - echo $CURR\n")
-                    rtl_configure.write("\n")
-                    rtl_configure.write("  - export TOP=$PWD\n")
-                    rtl_configure.write("\n")
+                python_command = f"python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width} --dimensionality {dimensionality} --outdir TEST/ --design_filter {filename_no_ext}"
 
-                    python_command = f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width} --dimensionality {dimensionality} --outdir $TOP/TEST/ --design_filter {filename_no_ext}"
+                if add_fw_arg:
+                    python_command = " ".join([python_command, "--fetch_width", f"{fw}"])
 
-                    if add_fw_arg:
-                        python_command = " ".join([python_command, "--fetch_width", f"{fw}"])
+                if add_port_arg:
+                    python_command = " ".join([python_command, "--in_ports", f"{inp}"])
+                    python_command = " ".join([python_command, "--out_ports", f"{outp}"])
+                    python_command = " ".join([python_command, "--use_ports"])
 
-                    if add_port_arg:
-                        python_command = " ".join([python_command, "--in_ports", f"{inp}"])
-                        python_command = " ".join([python_command, "--out_ports", f"{outp}"])
-                        python_command = " ".join([python_command, "--use_ports"])
+                if spst is not None:
+                    python_command = " ".join([python_command, "--spst", f"{spst}"])
 
-                    if spst is not None:
-                        python_command = " ".join([python_command, "--spst", f"{spst}"])
+                if opt_rv:
+                    python_command = " ".join([python_command, "--opt_rv"])
 
-                    if opt_rv:
-                        python_command = " ".join([python_command, "--opt_rv"])
+                if dual_port:
+                    python_command = " ".join([python_command, "--dual_port"])
 
-                    if dual_port:
-                        python_command = " ".join([python_command, "--dual_port"])
+                if vec_cap != 2:
+                    python_command = " ".join([python_command, "--vec_capacity", f"{vec_cap}"])
 
-                    if vec_cap != 2:
-                        python_command = " ".join([python_command, "--vec_capacity", f"{vec_cap}"])
+                if max_ext is not None:
+                    python_command = " ".join([python_command, "--max_extent", f"{max_ext}"])
 
-                    if max_ext is not None:
-                        python_command = " ".join([python_command, "--max_extent", f"{max_ext}"])
+                if max_seq_w is not None:
+                    python_command = " ".join([python_command, "--max_sequence_width", f"{max_seq_w}"])
 
-                    if max_seq_w is not None:
-                        python_command = " ".join([python_command, "--max_sequence_width", f"{max_seq_w}"])
+                test_dir = os.path.join("TEST", filename_no_ext, design_folder)
 
-                    rtl_configure.write(f"{python_command}\n")
-                    rtl_configure.write("\n")
-                    rtl_configure.write("  - cd $CURR\n")
+                # Effective port counts: when add_port_arg is False, the
+                # python_command omits --in_ports/--out_ports and thesis_sweep.py
+                # falls back to its own default of 2x2. Match that here so the
+                # collateral postcondition checks against what was actually built.
+                effective_in_ports  = inp if add_port_arg else 2
+                effective_out_ports = outp if add_port_arg else 2
 
-                    if defense:
-                        if dynamic:
-                            rtl_configure.write(f"  - cp /home/mstrange/DEFENSE_VLOG/design_dynamic.v outputs/design.v\n")
-                        else:
-                            rtl_configure.write(f"  - cp /home/mstrange/DEFENSE_VLOG/design_static.v outputs/design.v\n")
-                    else:
-                        rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/lakespec.sv outputs/design.v\n")
-
-                    rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/info.json outputs/info.json\n")
-                    rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/tb.sv outputs/testbench.sv\n")
-                    rtl_configure.write(f"  - cat $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/comp_args.txt $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/PARGS.txt > outputs/design.args\n")
-                    rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/comp_args.txt outputs/comp_args.txt\n")
-                    rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/PARGS.txt outputs/PARGS.txt\n")
-                    rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/bitstream.bs outputs/bitstream.bs\n")
-                    rtl_configure.write(f"  - cp -r $TOP/TEST/{filename_no_ext}/{design_folder}/gold outputs/gold\n")
-                    rtl_configure.write("\n")
-                    # Make sure the test dir is set to the proper directory!!!!
-                    test_dir_arg = os.path.join("TEST", filename_no_ext, design_folder)
-                    rtl_configure.write(f"  - python set_test_dir.py --test_dir {test_dir_arg}\n")
-                    rtl_configure.write("  - echo $PWD\n")
-
-                graph_dict = {'clock_period': period_ps}
-                print(f"cd {pd_build_path}; mflowgen run --design {full_design_path} --graph-kwargs {graph_dict}")
-                subprocess.run(["mflowgen", "run", "--design", full_design_path, "--graph-kwargs", str(graph_dict)], cwd=pd_build_path)
+                graph_dict = {
+                    'clock_period':     period_ps,
+                    'storage_capacity': storage_capacity,
+                    'data_width':       data_width,
+                    'fetch_width':      fw,
+                    'dimensionality':   dimensionality,
+                    'in_ports':         effective_in_ports,
+                    'out_ports':        effective_out_ports,
+                    'dual_port':        dual_port,
+                    'python_command':   f'"{python_command}"',
+                    'test_dir':         test_dir,
+                }
+                print(f"cd {pd_build_path}; mflowgen run --design {sample_folder} --graph-kwargs {graph_dict}")
+                subprocess.run(["mflowgen", "run", "--design", sample_folder, "--graph-kwargs", str(graph_dict)], cwd=pd_build_path)
 
                 # If the builds should go, start it here...
                 if run_builds is True:
@@ -2245,11 +2215,15 @@ if __name__ == "__main__":
                     # execute_str = ["source", make_script]
                     # execute_str = ["make", "6", "&&", "make", "-t", "6", "&&", "make", "17"]
                     if synth_only:
-                        execute_str = "make 6; make -t 6"
+                        execute_str = "source ~/.bashrc && make 6; make -t 6"
                     else:
-                        execute_str = "make 6; make -t 6; make 18; make 29; make -t 29"
-                    newp = subprocess.Popen(execute_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=pd_build_path, shell=True)
-                    all_procs.append(newp)
+                        execute_str = "source ~/.bashrc && make 6; make -t 6; make 18; make 29; make -t 29"
+                    log_file = os.path.join(pd_build_path, "build.log")
+                    log_fp = open(log_file, 'w')
+                    env = os.environ.copy()
+                    env['TERM'] = 'dumb'
+                    newp = subprocess.Popen(execute_str, stdout=log_fp, stderr=subprocess.STDOUT, cwd=pd_build_path, shell=True, env=env)
+                    all_procs.append((newp, log_fp))
 
                 # print(f"Made PD build folder at {pd_build_path}")
 
@@ -2259,7 +2233,7 @@ if __name__ == "__main__":
                     print(f"This many running...{num_alive}...")
                     while num_alive >= x_or_more:
                         print(f"At limit of {x_or_more} procs...sleeping")
-                        time.sleep(15)
+                        time.sleep(10)
                         num_alive = get_num_live_procs(all_procs)
 
     # Wait for all to be done.
@@ -2267,10 +2241,20 @@ if __name__ == "__main__":
     while not done:
         done = True
         num_procs_alive = 0
-        for proc_ in all_procs:
+        for item in all_procs:
+            # Handle both process objects and (process, log_file) tuples
+            if isinstance(item, tuple):
+                proc_, log_fp = item
+            else:
+                proc_ = item
+                log_fp = None
             # Still an alive process...
             if proc_.poll() is None:
                 num_procs_alive += 1
+            else:
+                # Process is done, close the log file if it exists
+                if log_fp is not None and not log_fp.closed:
+                    log_fp.close()
         if num_procs_alive > 0:
             print(f"{num_procs_alive} processes still running...")
             time.sleep(10)
