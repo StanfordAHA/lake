@@ -887,7 +887,10 @@ class Spec():
             if has_r and has_w and cname == 'sram':
                 dual_port_sram = True
 
-            bank_num[cname] = len(memports) if len(memports) > 0 else 1
+            if has_r and has_w:
+                bank_num[cname] = 1
+            else:
+                bank_num[cname] = len(memports) if len(memports) > 0 else 1
 
             max_write_width = 0
             max_read_width = 0
@@ -1865,6 +1868,269 @@ class Spec():
 
         return ret_map
 
+    @staticmethod
+    def _is_clockwork_format(config):
+        """Detect if config is in clockwork lake format (agg/sram/tb keys or regfile keys)."""
+        clockwork_keys = {'in2agg_', 'agg2sram_', 'sram2tb_', 'tb2out_', 'mem_',
+                          'in2regfile_', 'regfile2out_'}
+        for key in config:
+            for prefix in clockwork_keys:
+                if str(key).startswith(prefix):
+                    return True
+        return False
+
+    def _convert_clockwork_to_port_config(self, config):
+        """Convert clockwork-style config (in2agg/tb2out/mem format) to
+        the port-indexed config format used by gen_bitstream.
+
+        Clockwork outputs:
+          in2agg_X  - word-level write access pattern for write port X
+          tb2out_X  - word-level read access pattern for read port X
+          agg2sram_X - SRAM-level write pattern (used for AG when fw>1)
+          sram2tb_X  - SRAM-level read pattern (used for AG when fw>1)
+          mem_X     - fw=1 direct memory access pattern
+
+        For wide-fetch (fw>1), the spec's AddressGenerator operates at the
+        SRAM level, so we use agg2sram/sram2tb patterns for addresses.
+        For fw=1, we use in2agg/tb2out or mem_* patterns directly.
+
+        This converts to the format expected after convert_app_json_to_config:
+          {port_idx: {'name', 'type', 'config': {dimensionality, extents,
+                       address, schedule, filter}, 'vec_in_config', ...},
+           'constraints': [...]}
+        """
+        num_in = self.get_num_in_ports()
+        port_config = {}
+
+        # Collect SRAM-level patterns (for wide-fetch AG config)
+        agg2sram = {}
+        sram2tb = {}
+        for key in config:
+            k = str(key)
+            if k.startswith("agg2sram_"):
+                idx = int(k.split("_")[-1])
+                agg2sram[idx] = config[key]
+            elif k.startswith("sram2tb_"):
+                idx = int(k.split("_")[-1])
+                sram2tb[idx] = config[key]
+
+        has_wide_fetch = len(agg2sram) > 0
+
+        def _extract_offset(val_list):
+            if isinstance(val_list, list):
+                return val_list[0] if val_list else 0
+            return val_list if val_list is not None else 0
+
+        def _adjust_extents(exts):
+            """IterDomain.gen_bitstream does extent-2, giving extent-1 iterations.
+            Add 1 to each extent so the hardware produces the correct count."""
+            return [e + 1 for e in exts]
+
+        def _extract_schedule(entry):
+            dim = entry.get("dimensionality", 1)
+            return {
+                'strides': entry.get("cycle_stride", [0] * dim),
+                'offset': _extract_offset(entry.get("cycle_starting_addr", [0])),
+            }
+
+        # Extract write ports from in2agg_* or in2regfile_* entries
+        for key, val in config.items():
+            if str(key).startswith("in2agg_") or str(key).startswith("in2regfile_"):
+                idx = int(str(key).split("_")[-1])
+                port_idx = idx
+
+                if has_wide_fetch and idx in agg2sram:
+                    # Use SRAM-level pattern for address generator
+                    word_val = val
+                    sram_val = agg2sram[idx]
+                    dim = sram_val.get("dimensionality", 1)
+                    port_config[port_idx] = {
+                        'name': f'port_w{idx}',
+                        'type': Direction.IN,
+                        'config': {
+                            'dimensionality': dim,
+                            'extents': _adjust_extents(sram_val.get("extent", [1])),
+                            'address': {
+                                'strides': sram_val.get("write_data_stride", [0] * dim),
+                                'offset': _extract_offset(sram_val.get("write_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(sram_val),
+                            'filter': None,
+                        },
+                        'vec_in_config': {
+                            'dimensionality': word_val.get("dimensionality", 1),
+                            'extents': _adjust_extents(word_val.get("extent", [1])),
+                            'address': {
+                                'strides': word_val.get("write_data_stride", [0] * word_val.get("dimensionality", 1)),
+                                'offset': _extract_offset(word_val.get("write_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(word_val),
+                        },
+                        'vec_out_config': {
+                            'dimensionality': dim,
+                            'extents': _adjust_extents(sram_val.get("extent", [1])),
+                            'address': {
+                                'strides': sram_val.get("write_data_stride", [0] * dim),
+                                'offset': _extract_offset(sram_val.get("write_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(sram_val),
+                        },
+                        'vec_constraints': [],
+                    }
+                else:
+                    # Use word-level pattern directly (fw=1 or no agg2sram)
+                    dim = val.get("dimensionality", 1)
+                    port_config[port_idx] = {
+                        'name': f'port_w{idx}',
+                        'type': Direction.IN,
+                        'config': {
+                            'dimensionality': dim,
+                            'extents': _adjust_extents(val.get("extent", [1])),
+                            'address': {
+                                'strides': val.get("write_data_stride", [0] * dim),
+                                'offset': _extract_offset(val.get("write_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(val),
+                            'filter': None,
+                        },
+                        'vec_in_config': {},
+                        'vec_out_config': {},
+                        'vec_constraints': [],
+                    }
+
+        # Extract read ports from tb2out_* or regfile2out_* entries
+        for key, val in config.items():
+            if str(key).startswith("tb2out_") or str(key).startswith("regfile2out_"):
+                idx = int(str(key).split("_")[-1])
+                port_idx = num_in + idx
+
+                if has_wide_fetch and idx in sram2tb:
+                    # Use SRAM-level pattern for address generator
+                    word_val = val
+                    sram_val = sram2tb[idx]
+                    dim = sram_val.get("dimensionality", 1)
+                    port_config[port_idx] = {
+                        'name': f'port_r{idx}',
+                        'type': Direction.OUT,
+                        'config': {
+                            'dimensionality': dim,
+                            'extents': _adjust_extents(sram_val.get("extent", [1])),
+                            'address': {
+                                'strides': sram_val.get("read_data_stride", [0] * dim),
+                                'offset': _extract_offset(sram_val.get("read_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(sram_val),
+                            'filter': None,
+                        },
+                        'vec_in_config': {
+                            'dimensionality': dim,
+                            'extents': _adjust_extents(sram_val.get("extent", [1])),
+                            'address': {
+                                'strides': sram_val.get("read_data_stride", [0] * dim),
+                                'offset': _extract_offset(sram_val.get("read_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(sram_val),
+                        },
+                        'vec_out_config': {
+                            'dimensionality': word_val.get("dimensionality", 1),
+                            'extents': _adjust_extents(word_val.get("extent", [1])),
+                            'address': {
+                                'strides': word_val.get("read_data_stride", [0] * word_val.get("dimensionality", 1)),
+                                'offset': _extract_offset(word_val.get("read_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(word_val),
+                        },
+                        'vec_constraints': [],
+                    }
+                else:
+                    # Use word-level pattern directly
+                    dim = val.get("dimensionality", 1)
+                    port_config[port_idx] = {
+                        'name': f'port_r{idx}',
+                        'type': Direction.OUT,
+                        'config': {
+                            'dimensionality': dim,
+                            'extents': _adjust_extents(val.get("extent", [1])),
+                            'address': {
+                                'strides': val.get("read_data_stride", [0] * dim),
+                                'offset': _extract_offset(val.get("read_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(val),
+                            'filter': None,
+                        },
+                        'vec_in_config': {},
+                        'vec_out_config': {},
+                        'vec_constraints': [],
+                    }
+
+        # Handle fw=1 mem_* entries (from dual-port clockwork path)
+        for key, val in config.items():
+            if str(key).startswith("mem_") and not str(key).startswith("mem_header"):
+                suffix = str(key).split("mem_")[1]
+                dim = val.get("dimensionality", 1)
+                if suffix.startswith("in_"):
+                    idx = int(suffix.split("_")[-1])
+                    port_config[idx] = {
+                        'name': f'port_w{idx}',
+                        'type': Direction.IN,
+                        'config': {
+                            'dimensionality': dim,
+                            'extents': _adjust_extents(val.get("extent", [1])),
+                            'address': {
+                                'strides': val.get("write_data_stride", [0] * dim),
+                                'offset': _extract_offset(val.get("write_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(val),
+                            'filter': None,
+                        },
+                        'vec_in_config': {},
+                        'vec_out_config': {},
+                        'vec_constraints': [],
+                    }
+                elif suffix.startswith("out_"):
+                    idx = int(suffix.split("_")[-1])
+                    port_config[num_in + idx] = {
+                        'name': f'port_r{idx}',
+                        'type': Direction.OUT,
+                        'config': {
+                            'dimensionality': dim,
+                            'extents': _adjust_extents(val.get("extent", [1])),
+                            'address': {
+                                'strides': val.get("read_data_stride", [0] * dim),
+                                'offset': _extract_offset(val.get("read_data_starting_addr", [0])),
+                            },
+                            'schedule': _extract_schedule(val),
+                            'filter': None,
+                        },
+                        'vec_in_config': {},
+                        'vec_out_config': {},
+                        'vec_constraints': [],
+                    }
+
+        # Build read-after-write constraints: each read port depends on each write port
+        # For multi-dimensional patterns, constrain at the outermost shared level
+        # so the inner dimension can complete a full "row" before reads begin on it.
+        # A level-0 constraint deadlocks when the write counter wraps (e.g. 15→0)
+        # because read_iter[0] < write_iter[0] becomes 0 < 0 = false.
+        constraints = []
+        write_indices = [i for i in port_config if isinstance(i, int) and port_config[i]['type'] == Direction.IN]
+        read_indices = [i for i in port_config if isinstance(i, int) and port_config[i]['type'] == Direction.OUT]
+        for pr in read_indices:
+            for pw in write_indices:
+                pr_dim = port_config[pr]['config']['dimensionality']
+                pw_dim = port_config[pw]['config']['dimensionality']
+                if pr_dim >= 2 and pw_dim >= 2:
+                    # Use outer level (level 1): read's outer iter < write's outer iter
+                    constraints.append((pr, 1, pw, 1, LFComparisonOperator.LT.value, 0))
+                else:
+                    # 1D pattern: constrain at level 0
+                    constraints.append((pr, 0, pw, 0, LFComparisonOperator.LT.value, 0))
+        port_config['constraints'] = constraints
+
+        print("CLOCKWORK->SPEC CONVERSION RESULT:")
+        print(port_config)
+        return port_config
+
     def gen_bitstream(self, application, rewrite=True, node_name=None, over=False):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.
            There may be other information that needs to go into the configuration, but that could be in the object hierarchy
@@ -1885,11 +2151,16 @@ class Spec():
             print("APPLICATION BEFORE")
             print(application)
 
-            application = self.rewrite_app_json(application)
-            print("APPLICATION AFTER")
-            print(application)
+            # Detect clockwork lake-format config and convert directly to port config
+            if self._is_clockwork_format(application):
+                print("Detected clockwork format — converting to spec port config")
+                application = self._convert_clockwork_to_port_config(application)
+            else:
+                application = self.rewrite_app_json(application)
+                print("APPLICATION AFTER")
+                print(application)
 
-            application = self.convert_app_json_to_config(application)
+                application = self.convert_app_json_to_config(application)
             print("APPLICATION AFTER _config")
             print(application)
 

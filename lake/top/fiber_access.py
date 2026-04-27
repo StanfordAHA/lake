@@ -327,7 +327,9 @@ class FiberAccess(MemoryController):
         self._rd_scan_us_pos_in_valid = self.input(f"{self.rd_scan_pre}_us_pos_in_valid", 1)
         self._rd_scan_us_pos_in_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-        self.buffet = BuffetLike(data_width=self.data_width, num_ID=2, mem_depth=512,
+        self.buffet = BuffetLike(data_width=self.data_width, num_ID=2,
+                                 mem_width=self.mem_width,
+                                 mem_depth=self.mem_depth,
                                  local_memory=self.local_memory,
                                  tech_map=self.tech_map,
                                  defer_fifos=self.defer_fifos,

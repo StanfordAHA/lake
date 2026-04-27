@@ -30,6 +30,7 @@ class CoreCombiner(Generator):
                  use_sim_sram=True,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                 true_dual_port=False,  # Separate W and R ports (spec dual_port)
                  rf=False,
                  config_data_width=32,
                  config_addr_width=8,
@@ -62,6 +63,7 @@ class CoreCombiner(Generator):
         self.config_addr_width = config_addr_width
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
+        self.true_dual_port = true_dual_port
         self.tech_map_name = tech_map_name
         self.io_prefix = io_prefix
         self.fifo_depth = fifo_depth

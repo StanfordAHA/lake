@@ -1220,11 +1220,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for (idx, (ctrl_name, ctrl_port)) in enumerate(ctrl_ports.items()):
 
                 ctrl_intf = ctrl_port.get_port_interface()
-                # Broadcast the outputs
+                # Broadcast the outputs — skip signals the controller doesn't have
                 for bc_sign in bc_list:
-                    if ctrl_intf[bc_sign] is not None:
+                    if bc_sign in ctrl_intf and ctrl_intf[bc_sign] is not None:
                         bc_comb.add_stmt(ctrl_intf[bc_sign].assign(local_intf[bc_sign]))
-                ass_stmt = [local_intf[name].assign(ctrl_intf[name]) for name in mux_list if name not in ignore_sigs]
+                ass_stmt = [local_intf[name].assign(ctrl_intf[name]) for name in mux_list if name not in ignore_sigs and name in ctrl_intf]
                 # Mux in the inputs
                 if idx == 0:
                     mode_num, b_ex = self.ctrl_to_mode[ctrl_name]
@@ -1275,7 +1275,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     def get_bit(self, val, n):
         return (val >> n & 1)
 
-    def get_bitstream(self, config_json):
+    def get_bitstream(self, config_json, **kwargs):
         '''
         At this level, we can take in the json and figure out which mode we are using
         '''
