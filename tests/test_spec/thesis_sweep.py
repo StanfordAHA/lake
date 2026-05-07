@@ -178,7 +178,7 @@ def build_four_port_wide_fetch(storage_capacity=4096, data_width=16, dims: int =
     return ls
 
 
-def get_conv_2_1_app():
+def get_conv_2_1_app(vec_width=4):
 
         linear_test = {}
 
@@ -216,20 +216,20 @@ def get_conv_2_1_app():
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [4],
-                    'offset': 4
+                    'strides': [vec_width],
+                    'offset': vec_width
                 }
             },
             'vec_in_config': {
                 'dimensionality': 2,
-                'extents': [4, 16 * length_scale],
+                'extents': [vec_width, 16 * length_scale],
                 'address': {
-                    'strides': [1, 4],
+                    'strides': [1, vec_width],
                     # Start this here to handle the bogus data creation
                     'offset': -64
                 },
                 'schedule': {
-                    'strides': [1, 4],
+                    'strides': [1, vec_width],
                     'offset': 0
                 }
             },
@@ -241,8 +241,8 @@ def get_conv_2_1_app():
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [4],
-                    'offset': 4
+                    'strides': [vec_width],
+                    'offset': vec_width
                 }
             },
             'vec_constraints': [raw_constraint_vec_w, war_constraint_vec_w]
@@ -277,7 +277,7 @@ def get_conv_2_1_app():
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [4],
+                    'strides': [vec_width],
                     'offset': 17
                 }
             },
@@ -289,19 +289,19 @@ def get_conv_2_1_app():
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [4],
+                    'strides': [vec_width],
                     'offset': 18
                 }
             },
             'vec_out_config': {
                 'dimensionality': 2,
-                'extents': [4, 16 * length_scale],
+                'extents': [vec_width, 16 * length_scale],
                 'address': {
-                    'strides': [1, 4],
+                    'strides': [1, vec_width],
                     'offset': 0
                 },
                 'schedule': {
-                    'strides': [1, 4],
+                    'strides': [1, vec_width],
                     'offset': 19
                 }
             },
@@ -331,7 +331,7 @@ def get_conv_2_1_app():
         return linear_test
 
 
-def get_two_read_test():
+def get_two_read_test(vec_width=4):
 
     linear_test = {}
 
@@ -363,19 +363,19 @@ def get_two_read_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
-                'offset': 4
+                'strides': [vec_width],
+                'offset': vec_width
             }
         },
         'vec_in_config': {
             'dimensionality': 2,
-            'extents': [4, 16],
+            'extents': [vec_width, 16],
             'address': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 0
             }
         },
@@ -387,8 +387,8 @@ def get_two_read_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
-                'offset': 4
+                'strides': [vec_width],
+                'offset': vec_width
             }
         },
         'vec_constraints': [raw_constraint_vec_w, war_constraint_vec_w]
@@ -422,7 +422,7 @@ def get_two_read_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
+                'strides': [vec_width],
                 'offset': 17
             }
         },
@@ -434,19 +434,19 @@ def get_two_read_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
+                'strides': [vec_width],
                 'offset': 18
             }
         },
         'vec_out_config': {
             'dimensionality': 2,
-            'extents': [4, 16],
+            'extents': [vec_width, 16],
             'address': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 19
             }
         },
@@ -464,7 +464,7 @@ def get_two_read_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
+                'strides': [vec_width],
                 'offset': 18
             }
         },
@@ -476,19 +476,19 @@ def get_two_read_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
+                'strides': [vec_width],
                 'offset': 19
             }
         },
         'vec_out_config': {
             'dimensionality': 2,
-            'extents': [4, 16],
+            'extents': [vec_width, 16],
             'address': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 20
             }
         },
@@ -532,7 +532,7 @@ def get_two_read_test():
     return linear_test
 
 
-def get_linear_test(max_extent=None):
+def get_linear_test(max_extent=None, vec_width=4):
 
     linear_test = {}
 
@@ -572,19 +572,19 @@ def get_linear_test(max_extent=None):
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
-                'offset': 4
+                'strides': [vec_width],
+                'offset': vec_width
             }
         },
         'vec_in_config': {
             'dimensionality': 2,
-            'extents': [4, 16 * length_scale],
+            'extents': [vec_width, 16 * length_scale],
             'address': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 0
             }
         },
@@ -596,8 +596,8 @@ def get_linear_test(max_extent=None):
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
-                'offset': 4
+                'strides': [vec_width],
+                'offset': vec_width
             }
         },
         'vec_constraints': [raw_constraint_vec_w, war_constraint_vec_w]
@@ -631,7 +631,7 @@ def get_linear_test(max_extent=None):
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
+                'strides': [vec_width],
                 'offset': 17
             }
         },
@@ -643,19 +643,19 @@ def get_linear_test(max_extent=None):
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
+                'strides': [vec_width],
                 'offset': 18
             }
         },
         'vec_out_config': {
             'dimensionality': 2,
-            'extents': [4, 16 * length_scale],
+            'extents': [vec_width, 16 * length_scale],
             'address': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1, 4],
+                'strides': [1, vec_width],
                 'offset': 19
             }
         },
@@ -668,13 +668,13 @@ def get_linear_test(max_extent=None):
     pr_raw_idx = 0
     pw_raw_idx = 0
     raw_comp = LFComparisonOperator.LT.value
-    raw_scalar = 4
+    raw_scalar = vec_width
     raw_constraint = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
 
     pw_war_idx = 0
     pr_war_idx = 0
     war_comp = LFComparisonOperator.GT.value
-    war_scalar = 8
+    war_scalar = 2 * vec_width
     war_constraint = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
 
     # Just have read follow write
@@ -683,7 +683,7 @@ def get_linear_test(max_extent=None):
     return linear_test
 
 
-def get_linear_test_rv():
+def get_linear_test_rv(vec_width=4):
 
     linear_test = {}
 
@@ -700,8 +700,8 @@ def get_linear_test_rv():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
-                'offset': 4
+                'strides': [vec_width],
+                'offset': vec_width
             }
         },
         'vec_in_config': {
@@ -724,8 +724,8 @@ def get_linear_test_rv():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
-                'offset': 4
+                'strides': [vec_width],
+                'offset': vec_width
             }
         },
         'vec_constraints': []
@@ -759,7 +759,7 @@ def get_linear_test_rv():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
+                'strides': [vec_width],
                 'offset': 17
             }
         },
@@ -771,7 +771,7 @@ def get_linear_test_rv():
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
+                'strides': [vec_width],
                 'offset': 18
             }
         },
@@ -1164,13 +1164,13 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
     if use_standard_test:
         if test == 'linear':
             if opt_rv:
-                lt = get_linear_test_rv()
+                lt = get_linear_test_rv(vec_width=vec_width)
             else:
-                lt = get_linear_test(max_extent=max_extent)
+                lt = get_linear_test(max_extent=max_extent, vec_width=vec_width)
         elif test == 'two_read':
-            lt = get_two_read_test()
+            lt = get_two_read_test(vec_width=vec_width)
         elif test == 'conv_2_1':
-            lt = get_conv_2_1_app()
+            lt = get_conv_2_1_app(vec_width=vec_width)
         else:
             raise NotImplementedError(f"Cannot run test: {test}")
     else:
