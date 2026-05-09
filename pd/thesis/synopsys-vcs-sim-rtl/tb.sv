@@ -1,7 +1,11 @@
 `timescale 1ns/1ns
 module tb;
 
+`ifdef DATA_WIDTH
+    parameter DATA_WIDTH = `DATA_WIDTH;
+`else
     parameter DATA_WIDTH = 16;
+`endif
 
 `ifdef CONFIG_MEMORY_SIZE
     parameter CONFIG_MEMORY_SIZE = `CONFIG_MEMORY_SIZE;
@@ -80,13 +84,13 @@ module tb;
     logic [DATA_WIDTH - 1:0] port_w3_mem [0:MAX_DATA_SIZE - 1];
 
     logic [DATA_WIDTH - 1:0] port_r0_mem  [0:MAX_DATA_SIZE - 1];
-    logic [DATA_WIDTH - 1:0] port_r0_time [0:MAX_DATA_SIZE - 1];
+    logic [31:0]             port_r0_time [0:MAX_DATA_SIZE - 1];
     logic [DATA_WIDTH - 1:0] port_r1_mem  [0:MAX_DATA_SIZE - 1];
-    logic [DATA_WIDTH - 1:0] port_r1_time [0:MAX_DATA_SIZE - 1];
+    logic [31:0]             port_r1_time [0:MAX_DATA_SIZE - 1];
     logic [DATA_WIDTH - 1:0] port_r2_mem  [0:MAX_DATA_SIZE - 1];
-    logic [DATA_WIDTH - 1:0] port_r2_time [0:MAX_DATA_SIZE - 1];
+    logic [31:0]             port_r2_time [0:MAX_DATA_SIZE - 1];
     logic [DATA_WIDTH - 1:0] port_r3_mem  [0:MAX_DATA_SIZE - 1];
-    logic [DATA_WIDTH - 1:0] port_r3_time [0:MAX_DATA_SIZE - 1];
+    logic [31:0]             port_r3_time [0:MAX_DATA_SIZE - 1];
 
     if (NUMBER_PORTS == 2) begin : dut_gen
     // if (NUMBER_PORTS == 2) begin : two_port_dut

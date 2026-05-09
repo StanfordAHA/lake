@@ -1,0 +1,62 @@
+name: clockwork-roundtrip-sim-rtl
+
+# Per-tile round-trip RTL sim — design.v from the rtl step (un-synthesized).
+# Pipecleaner: any failure here is a spec/compiler/converter bug, before
+# synthesis is implicated. Iterates over every tile_<idx>.json that
+# clockwork-roundtrip-compile produced and runs the same vcs sim recipe as
+# synopsys-vcs-sim-rtl, but with bitstream/gold derived from clockwork output
+# instead of the handcrafted test.
+
+parameters:
+  storage_capacity: 8192
+  data_width:       16
+  fetch_width:      4
+  dimensionality:   6
+  in_ports:         2
+  out_ports:        2
+  dual_port:        False
+  vec_capacity:     2
+  max_extent:       null
+  max_sequence_width: null
+  physical:         True
+  dump_vcd:         0
+
+inputs:
+  - adk
+  - design.v
+  - sram.v
+  - testbench.sv
+  - map_results
+
+outputs:
+  - roundtrip_results.json
+  - run.vcd
+
+commands:
+  - python -c "import json; print(json.dumps({
+      'storage_capacity':$storage_capacity,
+      'data_width':$data_width,
+      'vec_width':$fetch_width,
+      'dims':$dimensionality,
+      'in_ports':$in_ports,
+      'out_ports':$out_ports,
+      'dual_port':$dual_port,
+      'vec_capacity':$vec_capacity,
+      'physical':$physical}))" > spec_kwargs.json
+  - python ../../clockwork-roundtrip-common/run_roundtrip_sim.py
+      --map-results inputs/map_results
+      --design-v inputs/design.v
+      --sram-v inputs/sram.v
+      --tb-sv inputs/testbench.sv
+      --makefile ../../clockwork-roundtrip-common/Makefile
+      --test-comparison ../../clockwork-roundtrip-common/test_comparison.py
+      --variant rtl
+      --params "$(cat spec_kwargs.json)"
+      --results-out outputs/roundtrip_results.json
+      --log mflowgen-run.log
+      --dump-vcd $dump_vcd
+  - if [ -f cfg_0/waveforms.vcd ]; then cp cfg_0/waveforms.vcd outputs/run.vcd; else touch outputs/run.vcd; fi
+
+postconditions:
+  - assert 'FAIL' not in File( 'mflowgen-run.log' )
+  - assert 'PASS' in File( 'mflowgen-run.log' )

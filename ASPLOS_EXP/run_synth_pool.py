@@ -49,6 +49,11 @@ STATUS_RE = re.compile(r'^\s*-\s*(done|build)\s*->\s*(\d+)\s*:\s*(\S+)')
 # Matches lines from `make list` output:  -   7 : cadence-genus-synthesis
 LIST_SYNTH_RE = re.compile(r'^\s*-\s*(\d+)\s*:\s*cadence-genus-synthesis\s*$')
 LIST_SIM_RE   = re.compile(r'^\s*-\s*(\d+)\s*:\s*synopsys-vcs-sim-rtl\s*$')
+# New parallel sim/round-trip step resolvers — see plan 2026-05-06.
+LIST_VCS_SIM_SYNTH_RE = re.compile(r'^\s*-\s*(\d+)\s*:\s*synopsys-vcs-sim-synth\s*$')
+LIST_RT_COMPILE_RE    = re.compile(r'^\s*-\s*(\d+)\s*:\s*clockwork-roundtrip-compile\s*$')
+LIST_RT_SIM_RTL_RE    = re.compile(r'^\s*-\s*(\d+)\s*:\s*clockwork-roundtrip-sim-rtl\s*$')
+LIST_RT_SIM_SYNTH_RE  = re.compile(r'^\s*-\s*(\d+)\s*:\s*clockwork-roundtrip-sim-synth\s*$')
 
 
 def strip_ansi(s: str) -> str:
@@ -164,6 +169,41 @@ def resolve_sim_step(build_dir: str) -> int:
     )
 
 
+def _resolve_step_by_regex(build_dir: str, regex, step_label: str) -> int:
+    result = subprocess.run(
+        ['make', 'list'], cwd=build_dir, capture_output=True, text=True
+    )
+    output = strip_ansi(result.stdout + result.stderr)
+    for line in output.splitlines():
+        m = regex.match(line)
+        if m:
+            return int(m.group(1))
+    raise RuntimeError(
+        f"{step_label} not found in 'make list' at {build_dir}\n"
+        f"Output (first 500 chars):\n{output[:500]}"
+    )
+
+
+def resolve_vcs_sim_synth_step(build_dir: str) -> int:
+    return _resolve_step_by_regex(build_dir, LIST_VCS_SIM_SYNTH_RE,
+                                  'synopsys-vcs-sim-synth')
+
+
+def resolve_roundtrip_compile_step(build_dir: str) -> int:
+    return _resolve_step_by_regex(build_dir, LIST_RT_COMPILE_RE,
+                                  'clockwork-roundtrip-compile')
+
+
+def resolve_roundtrip_sim_rtl_step(build_dir: str) -> int:
+    return _resolve_step_by_regex(build_dir, LIST_RT_SIM_RTL_RE,
+                                  'clockwork-roundtrip-sim-rtl')
+
+
+def resolve_roundtrip_sim_synth_step(build_dir: str) -> int:
+    return _resolve_step_by_regex(build_dir, LIST_RT_SIM_SYNTH_RE,
+                                  'clockwork-roundtrip-sim-synth')
+
+
 def is_step_done(build_dir: str, step_num: int) -> bool:
     result = subprocess.run(
         ['make', 'status'], cwd=build_dir, capture_output=True, text=True
@@ -180,9 +220,9 @@ def is_synth_step_done(build_dir: str, synth_step: int) -> bool:
     return is_step_done(build_dir, synth_step)
 
 
-def is_pipeline_done(build_dir: str, synth_step: int, sim_step: int) -> bool:
-    """Both synth and sim must be stamped done for the pipeline to be considered complete."""
-    return is_step_done(build_dir, synth_step) and is_step_done(build_dir, sim_step)
+def is_pipeline_done(build_dir: str, *step_nums: int) -> bool:
+    """All listed steps must be stamped done for the pipeline to be considered complete."""
+    return all(is_step_done(build_dir, n) for n in step_nums)
 
 
 def find_failing_step_from_status(build_dir: str) -> Optional[str]:
@@ -436,6 +476,24 @@ TRIAGE_NOTES: Dict[str, str] = {
         "synopsys-vcs-sim-rtl step failed (compile/run error, or postcondition mismatch). "
         "See the step's mflowgen-run.log for the actual error."
     ),
+    'vcs_sim_synth_failure': (
+        "Handcrafted test failed on synthesized netlist (synopsys-vcs-sim-synth). "
+        "If synopsys-vcs-sim-rtl PASSed for this same config, synthesis broke "
+        "the simple handcrafted pattern."
+    ),
+    'roundtrip_compile_failure': (
+        "clockwork-roundtrip-compile could not schedule conv_3_3 against this "
+        "spec's collateral. Check the step's mflowgen-run.log for the clockwork error."
+    ),
+    'roundtrip_sim_rtl_failure': (
+        "Round-trip sim failed on un-synthesized RTL (clockwork-roundtrip-sim-rtl). "
+        "Bug is in spec/compiler/converter — synthesis is not implicated."
+    ),
+    'roundtrip_sim_synth_failure': (
+        "Round-trip sim failed only on synthesized netlist "
+        "(clockwork-roundtrip-sim-synth) while the rtl variant PASSed. "
+        "Synthesis broke something for the round-trip pattern."
+    ),
 }
 
 
@@ -456,10 +514,28 @@ def investigate_failure(
     }
     excerpt_lines: List[str] = []
 
-    # ── Sim step failure short-circuit ────────────────────────────────────────
-    # If the failure is in synopsys-vcs-sim-rtl (downstream of synth), the genus
-    # logs are irrelevant. Categorize directly from the sim step's run log.
-    if failed_step_name and 'synopsys-vcs-sim-rtl' in failed_step_name:
+    # ── Sim / round-trip step failure short-circuit ───────────────────────────
+    # If the failure is in any of the sim or round-trip steps, the genus logs
+    # are irrelevant. Categorize directly from the failing step's run log.
+    # Order matters: we want the most specific match first (e.g.
+    # 'clockwork-roundtrip-sim-rtl' before 'synopsys-vcs-sim-rtl').
+    SIM_STEP_CATEGORY_MAP = [
+        ('clockwork-roundtrip-compile',  'roundtrip_compile_failure'),
+        ('clockwork-roundtrip-sim-rtl',  'roundtrip_sim_rtl_failure'),
+        ('clockwork-roundtrip-sim-synth','roundtrip_sim_synth_failure'),
+        ('synopsys-vcs-sim-synth',       'vcs_sim_synth_failure'),
+        ('synopsys-vcs-sim-rtl',         None),  # routed through legacy logic
+    ]
+    matched_sim = None
+    matched_default = None
+    if failed_step_name:
+        for needle, default_cat in SIM_STEP_CATEGORY_MAP:
+            if needle in failed_step_name:
+                matched_sim = needle
+                matched_default = default_cat
+                break
+
+    if matched_sim is not None:
         sim_log_path = os.path.join(build_dir, failed_step_name, 'mflowgen-run.log')
         sim_content = ''
         if os.path.isfile(sim_log_path):
@@ -473,12 +549,22 @@ def investigate_failure(
                               ['NOLICN', 'Unable to checkout license', 'lic_error LMF-'])
         has_sim_test_fail = 'Test FAILED' in sim_content
 
-        if has_sim_license:
-            inv['category'] = 'sim_license_failure'
-        elif has_sim_test_fail:
-            inv['category'] = 'sim_test_failure'
+        if matched_default is not None:
+            # New (round-trip / vcs-sim-synth) steps use their own categories
+            # straight from the map. License-failure check still wins for the
+            # license category since it's actionable separately.
+            if has_sim_license:
+                inv['category'] = 'sim_license_failure'
+            else:
+                inv['category'] = matched_default
         else:
-            inv['category'] = 'sim_failure'
+            # Legacy synopsys-vcs-sim-rtl path — preserve existing categorization.
+            if has_sim_license:
+                inv['category'] = 'sim_license_failure'
+            elif has_sim_test_fail:
+                inv['category'] = 'sim_test_failure'
+            else:
+                inv['category'] = 'sim_failure'
 
         excerpt_lines += [
             f'=== {failed_step_name}/mflowgen-run.log (last 60 lines) ===',
@@ -902,6 +988,28 @@ def run_one(config: Config, run_dir: str, args, dispatcher: 'Dispatcher') -> Run
         print(f"[STEP-RESOLVE FAILED] {config.config_id}: {e}", file=sys.stderr)
         return state
 
+    # Resolve the new sim/round-trip steps. If any are missing, treat as
+    # pre_genus_failure — they should always exist in the updated graph.
+    try:
+        vcs_sim_synth_step      = resolve_vcs_sim_synth_step(config.build_dir)
+        roundtrip_compile_step  = resolve_roundtrip_compile_step(config.build_dir)
+        roundtrip_sim_rtl_step  = resolve_roundtrip_sim_rtl_step(config.build_dir)
+        roundtrip_sim_synth_step= resolve_roundtrip_sim_synth_step(config.build_dir)
+    except Exception as e:
+        state.state = 'failed'
+        state.category = 'pre_genus_failure'
+        state.investigation = {
+            'triage_note': f"Could not resolve round-trip / sim-synth step: {e}"
+        }
+        save_state()
+        dispatcher.on_transition(config.config_id, state)
+        print(f"[STEP-RESOLVE FAILED] {config.config_id}: {e}", file=sys.stderr)
+        return state
+
+    all_step_nums = [synth_step, sim_step, vcs_sim_synth_step,
+                     roundtrip_compile_step, roundtrip_sim_rtl_step,
+                     roundtrip_sim_synth_step]
+
     make_log_path = os.path.join(config_run_dir, f"make{synth_step}.log")
     state.make_log_path = make_log_path
 
@@ -918,11 +1026,11 @@ def run_one(config: Config, run_dir: str, args, dispatcher: 'Dispatcher') -> Run
 
     if not force_this:
         try:
-            if is_pipeline_done(config.build_dir, synth_step, sim_step):
+            if is_pipeline_done(config.build_dir, *all_step_nums):
                 state.state = 'skipped'
                 save_state()
                 dispatcher.on_transition(config.config_id, state)
-                print(f"[SKIP] {config.config_id} (steps {synth_step},{sim_step} already done)")
+                print(f"[SKIP] {config.config_id} (steps {all_step_nums} already done)")
                 return state
         except Exception as e:
             print(f"[WARN] make status failed for {config.config_id}: {e} — proceeding")
@@ -955,8 +1063,12 @@ def run_one(config: Config, run_dir: str, args, dispatcher: 'Dispatcher') -> Run
 
     try:
         with open(make_log_path, 'w') as log_fh:
+            # mflowgen DAG runs the rtl-level sims in parallel with synth and
+            # the synth-level sims after synth completes. Listing all leaf
+            # targets does not serialize — make+mflowgen handle the order.
+            make_targets = ['make'] + [str(n) for n in all_step_nums]
             proc = subprocess.Popen(
-                ['make', str(synth_step), str(sim_step)],
+                make_targets,
                 cwd=config.build_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,

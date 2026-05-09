@@ -1,0 +1,30 @@
+name: clockwork-roundtrip-compile
+
+# Run clockwork against the spec's collateral to compile conv_3_3, then walk
+# the resulting CoreIR JSON and emit one cleaned per-tile config JSON per
+# memory tile so the downstream round-trip sim steps can iterate over them.
+
+parameters:
+  app_dir:        "/aha/Halide-to-Hardware/apps/hardware_benchmarks/tests/conv_3_3"
+  clockwork_path: "/aha/clockwork"
+  testname:       "conv_3_3"
+
+inputs:
+  - lake_collateral.json
+
+outputs:
+  - map_results
+  - roundtrip_manifest.json
+
+commands:
+  - python run_clockwork.py
+      --collateral inputs/lake_collateral.json
+      --app-dir $app_dir
+      --clockwork-path $clockwork_path
+      --testname $testname
+      --out outputs/map_results
+      --manifest outputs/roundtrip_manifest.json
+
+postconditions:
+  - assert Directory( 'outputs/map_results' )
+  - assert File( 'outputs/roundtrip_manifest.json' )

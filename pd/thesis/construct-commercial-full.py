@@ -82,6 +82,14 @@ def construct(**kwargs):
   debugcalibre   = Step( 'cadence-innovus-debug-calibre',  default=True )
   vcs_sim        = Step( this_dir + '/synopsys-vcs-sim')
   vcs_sim_rtl        = Step( this_dir + '/synopsys-vcs-sim-rtl')
+  # Handcrafted-test sim against the synthesized netlist.
+  vcs_sim_synth      = Step( this_dir + '/synopsys-vcs-sim-synth')
+  # Round-trip clockwork→lake validation: compile conv_3_3 against the spec's
+  # collateral, then sim each per-tile config on both un-synth RTL and synth
+  # netlist. Diagnostic four-way matrix vs. the handcrafted-test sims.
+  roundtrip_compile   = Step( this_dir + '/clockwork-roundtrip-compile')
+  roundtrip_sim_rtl   = Step( this_dir + '/clockwork-roundtrip-sim-rtl')
+  roundtrip_sim_synth = Step( this_dir + '/clockwork-roundtrip-sim-synth')
   power_est      = Step( 'synopsys-pt-power',              default=True )
   formal_verif   = Step( 'synopsys-formality-verification', default=True )
   gen_saif       = Step('synopsys-vcd2saif-convert', default=True)
@@ -89,8 +97,23 @@ def construct(**kwargs):
   # Lets synth-level power run without going through full PnR.
   gen_saif_rtl   = Step('synopsys-vcd2saif-convert', default=True)
   gen_saif_rtl.set_name('synopsys-vcd2saif-convert-rtl')
+  # vcd2saif clones for the new sim nodes: one per workload×netlist combo
+  # so each gets its own synth-level power estimate.
+  gen_saif_handcrafted_synth = Step('synopsys-vcd2saif-convert', default=True)
+  gen_saif_handcrafted_synth.set_name('synopsys-vcd2saif-convert-handcrafted-synth')
+  gen_saif_roundtrip_rtl     = Step('synopsys-vcd2saif-convert', default=True)
+  gen_saif_roundtrip_rtl.set_name('synopsys-vcd2saif-convert-roundtrip-rtl')
+  gen_saif_roundtrip_synth   = Step('synopsys-vcd2saif-convert', default=True)
+  gen_saif_roundtrip_synth.set_name('synopsys-vcd2saif-convert-roundtrip-synth')
   pt_power_synth    = Step( this_dir + '/synopsys-ptpx-synth')
   pt_power_gl = Step(this_dir + '/synopsys-ptpx-gl')
+  # ptpx-synth clones for each new workload×netlist activity stream.
+  pt_power_handcrafted_synth = Step( this_dir + '/synopsys-ptpx-synth')
+  pt_power_handcrafted_synth.set_name('synopsys-ptpx-synth-handcrafted-synth')
+  pt_power_roundtrip_rtl     = Step( this_dir + '/synopsys-ptpx-synth')
+  pt_power_roundtrip_rtl.set_name('synopsys-ptpx-synth-roundtrip-rtl')
+  pt_power_roundtrip_synth   = Step( this_dir + '/synopsys-ptpx-synth')
+  pt_power_roundtrip_synth.set_name('synopsys-ptpx-synth-roundtrip-synth')
 
   print(f"Extending LVS inputs...")
   lvs.extend_inputs(['sram.spi'])
@@ -134,6 +157,20 @@ def construct(**kwargs):
   rtl.set_param('out_ports',        parameters.get('out_ports', 2))
   rtl.set_param('dual_port',        parameters.get('dual_port', False))
 
+  # Round-trip sim steps need the same spec-factory params so they can rebuild
+  # the spec via aha.util.sweep_thesis_collateral.build_spec and feed clockwork
+  # output through gen_bitstream.
+  for _step in (roundtrip_sim_rtl, roundtrip_sim_synth):
+    _step.set_param('storage_capacity', parameters.get('storage_capacity', 8192))
+    _step.set_param('data_width',       parameters.get('data_width', 16))
+    _step.set_param('fetch_width',      parameters.get('fetch_width', 4))
+    _step.set_param('dimensionality',   parameters.get('dimensionality', 6))
+    _step.set_param('in_ports',         parameters.get('in_ports', 2))
+    _step.set_param('out_ports',        parameters.get('out_ports', 2))
+    _step.set_param('dual_port',        parameters.get('dual_port', False))
+    _step.set_param('vec_capacity',     parameters.get('vec_capacity', 2))
+    _step.set_param('physical',         parameters.get('physical', True))
+
   #-----------------------------------------------------------------------
   # Modify Nodes
   #-----------------------------------------------------------------------
@@ -172,13 +209,23 @@ def construct(**kwargs):
   g.add_step( testbench      )
   g.add_step( vcs_sim        )
   g.add_step( vcs_sim_rtl    )
+  g.add_step( vcs_sim_synth  )
+  g.add_step( roundtrip_compile )
+  g.add_step( roundtrip_sim_rtl )
+  g.add_step( roundtrip_sim_synth )
   g.add_step( power_est      )
   g.add_step( verif_post_synth )
   g.add_step( verif_post_layout )
   g.add_step( gen_saif    )
   g.add_step( gen_saif_rtl )
+  g.add_step( gen_saif_handcrafted_synth )
+  g.add_step( gen_saif_roundtrip_rtl )
+  g.add_step( gen_saif_roundtrip_synth )
   g.add_step( pt_power_synth    )
   g.add_step(pt_power_gl)
+  g.add_step( pt_power_handcrafted_synth )
+  g.add_step( pt_power_roundtrip_rtl )
+  g.add_step( pt_power_roundtrip_synth )
 
   synth.extend_inputs( ['sram_tt.lib', 'sram.lef', 'sram_tt.db'] )
   synth.extend_inputs(custom_genus_scripts.all_outputs())
@@ -192,8 +239,14 @@ def construct(**kwargs):
   # vcs_sim.extend_inputs(['sram.v', 'design.v'])
   vcs_sim.extend_inputs(['sram.v'])
   vcs_sim_rtl.extend_inputs(['sram.v'])
+  vcs_sim_synth.extend_inputs(['sram.v'])
+  roundtrip_sim_rtl.extend_inputs(['sram.v'])
+  roundtrip_sim_synth.extend_inputs(['sram.v'])
 
   pt_power_synth.extend_inputs(['sram_tt.db'])
+  pt_power_handcrafted_synth.extend_inputs(['sram_tt.db'])
+  pt_power_roundtrip_rtl.extend_inputs(['sram_tt.db'])
+  pt_power_roundtrip_synth.extend_inputs(['sram_tt.db'])
   pt_power_gl.extend_inputs(['sram_tt.db'])
 
   #-----------------------------------------------------------------------
@@ -324,6 +377,65 @@ def construct(**kwargs):
   g.connect_by_name( rtl,        vcs_sim_rtl  )
   # g.connect( rtl.o('testbench.sv'), vcs_sim.i('testbench.sv') )
   g.connect( signoff.o('design.lvs.v'), verif_post_layout.i('design.impl.v') )
+
+  # ---- Round-trip wiring ------------------------------------------------
+  # Compile clockwork against the spec's collateral.
+  g.connect( rtl.o('lake_collateral.json'),
+             roundtrip_compile.i('lake_collateral.json') )
+
+  # Handcrafted on synth: pull handcrafted artifacts from rtl, design.v from synth.
+  g.connect_by_name( adk,        vcs_sim_synth )
+  g.connect_by_name( gen_sram,   vcs_sim_synth )
+  g.connect( rtl.o('bitstream.bs'),  vcs_sim_synth.i('bitstream.bs') )
+  g.connect( rtl.o('gold'),          vcs_sim_synth.i('gold') )
+  g.connect( rtl.o('comp_args.txt'), vcs_sim_synth.i('comp_args.txt') )
+  g.connect( rtl.o('PARGS.txt'),     vcs_sim_synth.i('PARGS.txt') )
+  g.connect( rtl.o('testbench.sv'),  vcs_sim_synth.i('testbench.sv') )
+  g.connect( rtl.o('design.args'),   vcs_sim_synth.i('design.args') )
+  g.connect( synth.o('design.v'),    vcs_sim_synth.i('design.v') )
+  # design.sdf is optional — only wire if synth produces it. Wrap in try
+  # so mflowgen doesn't error out if the synth flow doesn't expose it.
+  try:
+    g.connect( synth.o('design.sdf'), vcs_sim_synth.i('design.sdf') )
+  except Exception:
+    pass
+
+  # Round-trip sim on RTL (un-synthesized) — does NOT depend on synth.
+  g.connect( roundtrip_compile.o('map_results'),
+             roundtrip_sim_rtl.i('map_results') )
+  g.connect_by_name( adk,        roundtrip_sim_rtl )
+  g.connect_by_name( gen_sram,   roundtrip_sim_rtl )
+  g.connect( rtl.o('design.v'),     roundtrip_sim_rtl.i('design.v') )
+  g.connect( rtl.o('testbench.sv'), roundtrip_sim_rtl.i('testbench.sv') )
+
+  # Round-trip sim on synth.
+  g.connect( roundtrip_compile.o('map_results'),
+             roundtrip_sim_synth.i('map_results') )
+  g.connect_by_name( adk,        roundtrip_sim_synth )
+  g.connect_by_name( gen_sram,   roundtrip_sim_synth )
+  g.connect( synth.o('design.v'),   roundtrip_sim_synth.i('design.v') )
+  g.connect( rtl.o('testbench.sv'), roundtrip_sim_synth.i('testbench.sv') )
+
+  # ---- Power for the new sim nodes -------------------------------------
+  # Each new sim node feeds its own vcd2saif → ptpx-synth, mirroring the
+  # gen_saif_rtl → pt_power_synth pair already wired for the existing handcrafted-RTL sim.
+  g.connect_by_name( vcs_sim_synth,         gen_saif_handcrafted_synth )
+  g.connect_by_name( gen_saif_handcrafted_synth, pt_power_handcrafted_synth )
+  g.connect_by_name( adk,                   pt_power_handcrafted_synth )
+  g.connect_by_name( synth,                 pt_power_handcrafted_synth )
+  g.connect_by_name( gen_sram,              pt_power_handcrafted_synth )
+
+  g.connect_by_name( roundtrip_sim_rtl,     gen_saif_roundtrip_rtl )
+  g.connect_by_name( gen_saif_roundtrip_rtl, pt_power_roundtrip_rtl )
+  g.connect_by_name( adk,                   pt_power_roundtrip_rtl )
+  g.connect_by_name( synth,                 pt_power_roundtrip_rtl )
+  g.connect_by_name( gen_sram,              pt_power_roundtrip_rtl )
+
+  g.connect_by_name( roundtrip_sim_synth,   gen_saif_roundtrip_synth )
+  g.connect_by_name( gen_saif_roundtrip_synth, pt_power_roundtrip_synth )
+  g.connect_by_name( adk,                   pt_power_roundtrip_synth )
+  g.connect_by_name( synth,                 pt_power_roundtrip_synth )
+  g.connect_by_name( gen_sram,              pt_power_roundtrip_synth )
 
 
   #-----------------------------------------------------------------------

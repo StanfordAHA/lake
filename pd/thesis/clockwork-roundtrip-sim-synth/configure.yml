@@ -1,0 +1,59 @@
+name: clockwork-roundtrip-sim-synth
+
+# Per-tile round-trip sim against the SYNTHESIZED netlist — design.v from
+# cadence-genus-synthesis. Failures here that don't reproduce on the rtl
+# variant indicate synthesis broke something for the round-trip pattern.
+
+parameters:
+  storage_capacity: 8192
+  data_width:       16
+  fetch_width:      4
+  dimensionality:   6
+  in_ports:         2
+  out_ports:        2
+  dual_port:        False
+  vec_capacity:     2
+  max_extent:       null
+  max_sequence_width: null
+  physical:         True
+  dump_vcd:         0
+
+inputs:
+  - adk
+  - design.v
+  - sram.v
+  - testbench.sv
+  - map_results
+
+outputs:
+  - roundtrip_results.json
+  - run.vcd
+
+commands:
+  - python -c "import json; print(json.dumps({
+      'storage_capacity':$storage_capacity,
+      'data_width':$data_width,
+      'vec_width':$fetch_width,
+      'dims':$dimensionality,
+      'in_ports':$in_ports,
+      'out_ports':$out_ports,
+      'dual_port':$dual_port,
+      'vec_capacity':$vec_capacity,
+      'physical':$physical}))" > spec_kwargs.json
+  - python ../../clockwork-roundtrip-common/run_roundtrip_sim.py
+      --map-results inputs/map_results
+      --design-v inputs/design.v
+      --sram-v inputs/sram.v
+      --tb-sv inputs/testbench.sv
+      --makefile ../../clockwork-roundtrip-common/Makefile
+      --test-comparison ../../clockwork-roundtrip-common/test_comparison.py
+      --variant synth
+      --params "$(cat spec_kwargs.json)"
+      --results-out outputs/roundtrip_results.json
+      --log mflowgen-run.log
+      --dump-vcd $dump_vcd
+  - if [ -f cfg_0/waveforms.vcd ]; then cp cfg_0/waveforms.vcd outputs/run.vcd; else touch outputs/run.vcd; fi
+
+postconditions:
+  - assert 'FAIL' not in File( 'mflowgen-run.log' )
+  - assert 'PASS' in File( 'mflowgen-run.log' )

@@ -1,0 +1,34 @@
+name: synopsys-vcs-sim-synth
+
+# Handcrafted-test sim on the SYNTHESIZED netlist — same handcrafted bitstream
+# / gold / comp_args / PARGS as the existing synopsys-vcs-sim-rtl, but the
+# design.v is wired from cadence-genus-synthesis instead of the rtl step.
+# Pipecleaner: failures here that don't reproduce on the rtl variant indicate
+# synthesis broke the simple handcrafted pattern.
+
+inputs:
+  - adk
+  - design.v
+  - design.sdf
+  - design.args
+  - comp_args.txt
+  - PARGS.txt
+  - bitstream.bs
+  - gold
+
+outputs:
+  - run.vcd
+
+commands:
+  - make sim DUMP_VCD=$dump_vcd
+  - if [ -f waveforms.vcd ]; then cp waveforms.vcd outputs/run.vcd; else touch outputs/run.vcd; fi
+
+parameters:
+  testbench_name: tb
+  dut_name: dut
+  waveform: True
+  dump_vcd: 0
+
+postconditions:
+  - assert 'FAIL' not in File( 'mflowgen-run.log' )
+  - assert 'PASS' in File( 'mflowgen-run.log' )

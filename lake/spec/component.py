@@ -210,9 +210,9 @@ class Component(kratos.Generator):
                     range_ = self.cfg_reg_to_range[self.remap_flatten_config[cfg_reg][i_]]
                     upper, lower = range_
                     diff = upper - lower + 1
-                    # trim the value
-                    # use_value = int(bin(value[i_])[-1 * diff:], 2)
                     use_value = value[i_]
+                    self._check_value_fits(use_value, diff,
+                                           f"{cfg_reg}[{i_}]")
                     self.configuration.append((range_, use_value))
             else:
                 raise NotImplementedError
@@ -220,8 +220,6 @@ class Component(kratos.Generator):
             range_ = self.cfg_reg_to_range[cfg_reg]
             upper, lower = range_
             diff = upper - lower + 1
-            # trim the value
-            # use_value = int(bin(value)[-1 * diff:], 2)
             use_value = value
             # When dimensionality_support == 1, multi-element config_regs (strides, extents,
             # etc.) end up unflattened (size=1 in config_reg), so they're not in
@@ -233,7 +231,31 @@ class Component(kratos.Generator):
                     f"Cannot configure non-flattened reg '{cfg_reg}' with list of len {len(use_value)}"
                 )
                 use_value = use_value[0]
+            self._check_value_fits(use_value, diff, cfg_reg)
             self.configuration.append((range_, use_value))
+
+    @staticmethod
+    def _check_value_fits(value, width, reg_name):
+        '''Raise if a non-negative value would be silently truncated by the
+        eventual ``(value & bmask)`` packing in create_config_int. Catches the
+        APG/ID class of silent miscompile where the spec's narrow stride/offset
+        register can't hold the schedule value clockwork emitted (e.g. spec
+        with ``max_sequence_width=64`` → 6-bit register, but clockwork wrote
+        offset=64). Negative values are allowed through as 2's-complement.
+        '''
+        if not isinstance(value, int) or isinstance(value, bool):
+            return  # non-int: leave to downstream (e.g. kratos varname etc.)
+        if value < 0:
+            return  # signed strides — bit-pattern handled by 2's complement
+        bmask = (1 << width) - 1
+        if value > bmask:
+            raise ValueError(
+                f"Cannot configure '{reg_name}' with value {value}: exceeds "
+                f"{width}-bit register max {bmask}. Spec hardware register is "
+                f"too narrow for the schedule clockwork emitted (re-spec with a "
+                f"wider max_sequence_width / max_extent, or compile against an "
+                f"app whose access pattern fits the spec)."
+            )
 
     def config_reg(self, **kwargs):
         assert 'name' in kwargs

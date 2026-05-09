@@ -1278,12 +1278,12 @@ def get_data_sizes(schedule: dict = None, num_ports=2):
         if port_num < div:
             new_port_num = port_num
             port_plus_arg = f"w{new_port_num}_num_data"
-            if 'vec_in_config' in port_schedule:
+            if port_schedule.get('vec_in_config'):
                 use_port_schedule = port_schedule['vec_in_config']
         else:
             new_port_num = port_num - div
             port_plus_arg = f"r{new_port_num}_num_data"
-            if 'vec_out_config' in port_schedule:
+            if port_schedule.get('vec_out_config'):
                 use_port_schedule = port_schedule['vec_out_config']
 
         dim_ = use_port_schedule['dimensionality']

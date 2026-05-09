@@ -52,12 +52,20 @@ class SingleBankStorage(Storage):
         self._hw_array = self.var("data_array", self._capacity * 8)
 
     def _map_array_to_intf(self, tmp_intf, mp_width, num_addrs, rw=0):
+        # Wire one whole memory word per iteration via a packed bit-slice on
+        # the underlying flat _hw_array. The previous version produced one
+        # `assign` per BIT (num_addrs * mp_width statements), which made VCS
+        # elaboration scale linearly with SRAM bit count — for sc=32768 that
+        # was 262144 assigns per direction, ~5+ minutes of VCS compile.
+        # Word-level slicing is functionally equivalent and reduces statement
+        # count by 32x (typical mp_width).
         for i_ in range(num_addrs):
-            for j_ in range(mp_width):
-                if rw == 1:
-                    self.wire(self._hw_array[i_ * mp_width + j_], tmp_intf[i_][j_])
-                else:
-                    self.wire(tmp_intf[i_][j_], self._hw_array[i_ * mp_width + j_])
+            hi = (i_ + 1) * mp_width - 1
+            lo = i_ * mp_width
+            if rw == 1:
+                self.wire(self._hw_array[hi, lo], tmp_intf[i_])
+            else:
+                self.wire(tmp_intf[i_], self._hw_array[hi, lo])
 
     def create_interface(self):
 

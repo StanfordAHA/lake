@@ -1108,6 +1108,16 @@ class Spec():
         collateral['read_port']['sram'] = 'tb'
         collateral['write_port']['tb'] = 'sram'
 
+        # AGG/TB absorb the SRAM macro's intrinsic R/W latencies — from the
+        # unified buffer's external interface (where compute kernels read and
+        # write), AGG accepts writes in 0 cycles and TB delivers reads in 0
+        # cycles, regardless of whether the underlying SRAM macro is single-
+        # or dual-port. Without this, dual-port SRAM (which has 1-cycle macro
+        # latencies) propagates through to clockwork's op_latency calc and
+        # produces cycle-accurate dependency violations on the schedule.
+        collateral['store_latency'] = 0
+        collateral['load_latency'] = 0
+
     def extract_compiler_information(self, max_chaining=4, wire_chain_en=False,
                                        controller_name_map=None) -> dict:
         """Extract compiler collateral matching clockwork's LakeCollateral struct.
@@ -1922,9 +1932,20 @@ class Spec():
             return val_list if val_list is not None else 0
 
         def _adjust_extents(exts):
-            """IterDomain.gen_bitstream does extent-2, giving extent-1 iterations.
-            Add 1 to each extent so the hardware produces the correct count."""
-            return [e + 1 for e in exts]
+            """Pass through clockwork's raw extents.
+
+            The hardware iteration domain produces ``extent`` distinct
+            counter values from input extent ``E`` (counter visits
+            0..E-1 before ``finished`` latches), matching the software
+            simulator's literal interpretation. AG uses ``extent - 1``
+            internally for recurrence stride compensation; SG likewise.
+            All three components agree on raw extents, so no adjustment
+            is needed here. Earlier versions added +1 based on an
+            incorrect reading of hardware behavior; that double-counted
+            iterations and produced overlapping schedule timestamps when
+            the output was fed to ``calculate_read_out_vec``.
+            """
+            return list(exts)
 
         def _extract_schedule(entry):
             dim = entry.get("dimensionality", 1)
