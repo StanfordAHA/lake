@@ -242,7 +242,8 @@ class StrgRAMRV(MemoryController):
             # For this, the data out is simply the data coming in...
             # self.wire(data_out, self._data_from_strg[self._rd_bank][self._rd_addr[self.word_width - 1, 0]])
             self.wire(data_out, self._data_from_strg)
-            self.wire(self._addr_out, self._rd_addr)
+            # Slice the packed address FIFO output to the physical SRAM address width.
+            self.wire(self._addr_out, rd_addr_in[self.mem_addr_width - 1, 0])
             self.wire(self._data_to_strg, kts.const(0, self._data_to_strg.width))
         else:
             # If fw > 1, we need to send out the top portion of addr and register the sub-word addr, then use that to select

@@ -39,8 +39,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         self.is_PE = 'PE' in name
         self.is_MEM = 'MemCore' in name
-        self.is_Pond = 'Pond' in name
-
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
         self.fifo_depth = fifo_depth
@@ -847,8 +845,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                    data_in=new_input)
 
                     # self.wire(new_input_ready, ~new_reg_fifo.ports.full)
-                    if self.is_Pond:
-                        self.wire(new_input_ready, kts.const(1, 1))
 
                     # Alias the new input across the fifo boundary
                     if input_width != 1:
@@ -944,7 +940,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     for (ctrl_name, port) in signal_dict.items():
                         self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
 
-                if any_rvs and not self.is_Pond:
+                if any_rvs:
                     # print(output_ready_map)
                     self.create_mode_based_mux(out_sig=new_input_ready,
                                                items=output_ready_map,
@@ -1224,11 +1220,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for (idx, (ctrl_name, ctrl_port)) in enumerate(ctrl_ports.items()):
 
                 ctrl_intf = ctrl_port.get_port_interface()
-                # Broadcast the outputs
+                # Broadcast the outputs. Some controllers expose only a subset of
+                # the physical memory-port interface, so skip absent signals.
                 for bc_sign in bc_list:
-                    if ctrl_intf[bc_sign] is not None:
+                    if bc_sign in ctrl_intf and ctrl_intf[bc_sign] is not None:
                         bc_comb.add_stmt(ctrl_intf[bc_sign].assign(local_intf[bc_sign]))
-                ass_stmt = [local_intf[name].assign(ctrl_intf[name]) for name in mux_list if name not in ignore_sigs]
+                ass_stmt = [local_intf[name].assign(ctrl_intf[name])
+                            for name in mux_list
+                            if name not in ignore_sigs and name in ctrl_intf]
                 # Mux in the inputs
                 if idx == 0:
                     mode_num, b_ex = self.ctrl_to_mode[ctrl_name]
