@@ -100,6 +100,34 @@ def extract_synth_area(rpt: Path) -> tuple[float | None, float | None]:
         return None, None
 
 
+def extract_synth_storage_area(rpt: Path) -> float | None:
+    """Return total-area of the ``storage`` sub-instance in um^2.
+
+    This is the SRAM macro footprint (via SingleBankStorage) — separating
+    it out lets the memtile regression treat SRAM as a piecewise-constant
+    lookup and fit only the surrounding logic (Kahng-hybrid).
+    """
+    if not rpt.is_file():
+        return None
+    try:
+        with rpt.open() as f:
+            for line in f:
+                stripped = line.lstrip()
+                if not stripped.startswith("storage"):
+                    continue
+                parts = stripped.split()
+                # Same schema as _first_lakespec_row: total-area is col 5.
+                if len(parts) < 6:
+                    continue
+                try:
+                    return float(parts[5])
+                except ValueError:
+                    continue
+    except OSError:
+        pass
+    return None
+
+
 def extract_pnr_area(rpt: Path) -> tuple[float | None, float | None]:
     """Return (total_area, macro_area) from innovus signoff.area.rpt.
 
@@ -242,6 +270,7 @@ def collect(top: Path) -> tuple[list[dict], list[str]]:
                 pass
 
         synth_cell, synth_total = extract_synth_area(build / REPORT_PATHS["synth_area_rpt"])
+        synth_storage = extract_synth_storage_area(build / REPORT_PATHS["synth_area_rpt"])
         pnr_total, pnr_macro = extract_pnr_area(build / REPORT_PATHS["pnr_area_rpt"])
         synth_pwr = extract_total_power(build / REPORT_PATHS["synth_power_rpt"])
         pnr_pwr = extract_total_power(build / REPORT_PATHS["pnr_power_rpt"])
@@ -259,6 +288,7 @@ def collect(top: Path) -> tuple[list[dict], list[str]]:
             **params,
             "synth_cell_area_um2": synth_cell,
             "synth_total_area_um2": synth_total,
+            "synth_storage_area_um2": synth_storage,
             "pnr_total_area_um2": pnr_total,
             "pnr_macro_area_um2": pnr_macro,
             "synth_power_w": synth_pwr,
@@ -277,6 +307,7 @@ def collect(top: Path) -> tuple[list[dict], list[str]]:
         + [
             "synth_cell_area_um2",
             "synth_total_area_um2",
+            "synth_storage_area_um2",
             "pnr_total_area_um2",
             "pnr_macro_area_um2",
             "synth_power_w",

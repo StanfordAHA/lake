@@ -19,6 +19,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from . import regression, tables
 from .errors import MissingDataError
 from .ingest import symlink_builds
 
@@ -268,3 +269,44 @@ def storage_power_vs_capacity(ctx: GenContext, outpath: Path) -> None:
         title="Storage power vs capacity",
         xlabel="storage_cap (bytes)", ylabel="synth power (W)", outpath=outpath,
     )
+
+
+# ---- Memtile PPA regression tables -----------------------------------------
+
+
+def memtile_model_coeff(ctx: GenContext, outpath: Path) -> None:
+    """Lasso-fit coefficient table (Kahng-hybrid area + power + delay)."""
+    regression.emit_coef_table(ctx.df, outpath)
+
+
+def memtile_model_verif(ctx: GenContext, outpath: Path) -> None:
+    """Leave-one-experiment-out predicted-vs-actual residuals table."""
+    regression.emit_verif_table(ctx.df, outpath)
+
+
+# ---- Exploration & compiler tables (populated / skeletons) -----------------
+
+
+def ul_ppa_summary(ctx: GenContext, outpath: Path) -> None:
+    """PPA rollup per DesignPoint. Power blank until sweep runs."""
+    tables.emit_ul_ppa_summary(ctx.df, outpath)
+
+
+def ul_design_points(ctx: GenContext, outpath: Path) -> None:
+    """DesignPoint axis enumeration with round-trip validation flag."""
+    tables.emit_ul_design_points(ctx.df, outpath)
+
+
+def exploration_applications(ctx: GenContext, outpath: Path) -> None:
+    """Render the AppSpec registry as a LaTeX table."""
+    tables.emit_exploration_applications(outpath)
+
+
+def lake_interfaces(ctx: GenContext, outpath: Path) -> None:
+    """Component × constructor-signature skeleton (prose TODOs inline)."""
+    tables.emit_lake_interfaces(outpath)
+
+
+def compiler_info(ctx: GenContext, outpath: Path) -> None:
+    """Compiler ↔ Component metadata skeleton (prose TODOs inline)."""
+    tables.emit_compiler_info(outpath)

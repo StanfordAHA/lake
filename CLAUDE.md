@@ -133,6 +133,71 @@ If a new `THESIS_BUILDS/<EXP>/` directory shows up:
 3. Add generators + registry entries for whatever figures the new
    experiment feeds.
 
+### 1.6 Memtile PPA regression (Kahng-hybrid)
+
+`THESIS/pipeline/regression.py` fits area/power/delay for the two
+memtile-model tables using the Kahng-hybrid recipe (Kahng et al., DATE
+2015 / SLIP 2013). Key design decisions live in the module docstring;
+the short version:
+
+- **SRAM split:** total area minus `synth_storage_area_um2` (added to
+  the extractor for this purpose). Lasso fits only the surrounding
+  logic — SRAM stays a piecewise lookup.
+- **Features:** `dim, fw, vc, inp, outp, me, log2(msw),
+  log2(storage_cap), log2(data_width)`. Powers-of-two are log-encoded
+  so coefficients read as "cost per doubling."
+- **CV:** leave-one-experiment-out. Random k-fold silently leaks
+  because features co-vary within each per-component sweep.
+- **Delay:** censored — only unsaturated points (crit_delay < 99% of
+  clock target). PORT_EXP drops out entirely (all pegged at 700 MHz),
+  which is the correct signal not a bug.
+- **Power:** same fit, but raises `MissingDataError` until `ptpx-synth`
+  lands and drops in automatically when it does.
+
+Regenerate the tables in isolation:
+```bash
+python3 THESIS/generate_thesis_artifacts.py --only memtile_model_coeff memtile_model_verif
+```
+
+### 1.7a Auto-generated LaTeX tables
+
+`THESIS/pipeline/tables.py` renders five thesis tables as
+`\begin{tabular}` snippets under `THESIS/output/tables/`:
+
+| Table | Status | Source |
+| --- | --- | --- |
+| `tab:ul_ppa_summary` | data-driven (power col blank until sweep) | extractor DataFrame × `DesignPoint` list |
+| `tab:ul_design_points` | data-driven | `THESIS/apps/design_points.DESIGNS_SINGLE_LEVEL` |
+| `tab:exploration_applications` | data-driven | `THESIS/apps/registry.APPS` |
+| `tab:lake_interfaces` | skeleton (prose TODO) | `lake/spec/*.py` `__init__` signatures |
+| `tab:compiler_info` | skeleton (prose TODO) | Component list + `% TODO` per column |
+
+Each `\input{}`-able from `main_thesis.tex`. Skeletons include a
+`% skeleton — …` comment header so it's obvious in-file that prose
+still needs authoring.
+
+### 1.7 App-mapping harness (Ch. 5, skeleton)
+
+The exploration figures (`single_level_*`, `two_level_*`,
+`tab:ul_perf`, `tab:ul_ppa_summary`) will be fed by
+`THESIS/apps/` — see [`THESIS/apps/README.md`](THESIS/apps/README.md)
+for the milestone plan. Today it's **skeleton only**:
+
+- `THESIS/apps/registry.py` — 6 `AppSpec` entries with `??` markers
+  where Halide app dirs need verifying against the local
+  Halide-to-Hardware checkout.
+- `THESIS/apps/design_points.py` — empty `DESIGNS_SINGLE_LEVEL` list;
+  populate from the 8 round-trip-validated configs in
+  `THESIS_ROUNDTRIP_PROGRESS.md`.
+- `THESIS/apps/run_matrix.py` — CLI shell; `run_one_cell` raises
+  `NotImplementedError` until the mflowgen dispatch is parameterized
+  per app.
+- `THESIS/apps/compose.py` — CGRA-level PPA composer with placeholder
+  PE-tile numbers.
+
+Milestone 1 (~1 week of work) flips 6 registry entries `bogus` →
+`real` — full plan in the README.
+
 ---
 
 ## 2. Running the physical-design flow
@@ -158,9 +223,17 @@ If a new `THESIS_BUILDS/<EXP>/` directory shows up:
 
 - [`README.md`](README.md) — Lake project overview (install, run a test,
   wiki link).
+- [`THESIS/PIPELINE.md`](THESIS/PIPELINE.md) — thesis artifact
+  pipeline (indexed above in §1).
+- [`THESIS/apps/README.md`](THESIS/apps/README.md) — app-mapping
+  harness scope + milestone plan (Ch. 5 exploration figures).
+- [`THESIS/REPLICATION.md`](THESIS/REPLICATION.md) — mflowgen synth
+  flow (indexed above in §2).
 - [`THESIS_ROUNDTRIP_PROGRESS.md`](THESIS_ROUNDTRIP_PROGRESS.md) —
   status of the Lake→Clockwork→Lake spec round-trip smoke tests as of
   2026-05-08 (which sweep configs have validated end-to-end).
+- [`pd/thesis/README.md`](pd/thesis/README.md) — mflowgen design
+  definition.
 - [`configure/README.md`](configure/README.md) — configuration-finder
   framework (placeholder, "under construction").
 

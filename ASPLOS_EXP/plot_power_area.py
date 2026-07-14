@@ -31,6 +31,7 @@ LEADING_COLS = ["experiment", "sweep_group", "sweep_name", "frequency_mhz"]
 METRIC_COLS = [
     "synth_cell_area_um2",
     "synth_total_area_um2",
+    "synth_storage_area_um2",
     "pnr_total_area_um2",
     "pnr_macro_area_um2",
     "synth_power_w",
