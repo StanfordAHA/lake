@@ -110,7 +110,17 @@ class CoreCombiner(Generator):
 
         print("Using tech map (lake): ", self.tech_map_name)
 
-        if self.tech_map_name == 'TSMC':
+        # A tech map describes a physical macro. With sim SRAM there is no
+        # macro to describe: set_memory_interface() below discards tech_map
+        # when sim_macro_n is True, and MemoryInterface defaults it to None.
+        # Building one anyway is not just wasted work -- the *_Tech_Map
+        # constructors assert when no macro matches the requested geometry,
+        # so small memories (e.g. a depth-32 pond) fail here despite never
+        # needing a macro at all.
+        self.tech_map = None
+        if self.use_sim_sram:
+            pass
+        elif self.tech_map_name == 'TSMC':
             self.tech_map = TSMC_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns))
         elif self.tech_map_name == 'Intel':
             self.tech_map = Intel_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns),
