@@ -126,8 +126,15 @@ class CoreCombiner(Generator):
             self.tech_map = Intel_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns),
                                            async_reset=~MTB.get_async_reset())
         elif self.tech_map_name == 'GF':
+            # A dual-port (rw_same_cycle) memory builds a [RW, R] port list
+            # above, so the tech map must advertise the matching 2 physical
+            # ports (SDPB 1rw1r macro). Without dual_port here GF_Tech_Map
+            # defaults to the single-port S1xB map (1 port), and
+            # create_physical_memory then indexes port_maps[1] on the R port
+            # -> IndexError. Single-port memories ([RW]) keep dual_port False.
             self.tech_map = GF_Tech_Map(depth=self.mem_depth,
-                                        width=int(self.mem_width / self.sram_columns))
+                                        width=int(self.mem_width / self.sram_columns),
+                                        dual_port=self.rw_same_cycle)
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 

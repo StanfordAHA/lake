@@ -113,8 +113,19 @@ class PhysicalMemoryPort(MemoryPort):
         assert self.port_map is not None, f"Need to provide port map first..."
 
         if self.mpt == MemoryPortType.READ:
-            self.port_interface['data_out'] = self.port_map['data_out']
-            self.port_interface['read_addr'] = self.port_map['read_addr']
+            # Physical read ports may name signals in either the "logical"
+            # convention (data_out/read_addr) or the macro convention
+            # (read_data/addr) -- the GF SDPB dual-port read map (dual_port_p1r)
+            # uses the latter. Mirror the READWRITE fallbacks below so a
+            # standalone READ physical port resolves against either naming.
+            try:
+                self.port_interface['data_out'] = self.port_map['data_out']
+            except KeyError:
+                self.port_interface['data_out'] = self.port_map['read_data']
+            try:
+                self.port_interface['read_addr'] = self.port_map['read_addr']
+            except KeyError:
+                self.port_interface['read_addr'] = self.port_map['addr']
             self.port_interface['cen'] = self.port_map['cen']
             self.port_interface['clk'] = self.port_map['clk']
             self.port_interface_set = True
@@ -303,10 +314,14 @@ class PhysicalMemoryStub(kts.Generator):
                     concat_data_outs.append(concat_data_out)
                     # self.wire(port_intf['data_out'], concat_data_out)
                     # Deal with data out (in the delay version)
-                    concat_addr_in = kts.concat(*[cintf['read_addr'] for cintf in child_ports_wide_intf])
-                    self.wire(port_intf['read_addr'], concat_addr_in)
                     for ix in range(num_wide):
                         self.wire(port_intf['clk'], child_ports_wide_intf[ix]['clk'])
+                        # Address is a WORD address shared by every column macro
+                        # (only the data is split across the num_wide columns), so
+                        # broadcast it to each child -- do NOT concat the per-child
+                        # addresses (that would be num_wide x too wide). Mirrors the
+                        # READWRITE branch's addr broadcast below.
+                        self.wire(child_ports_wide_intf[ix]['read_addr'], port_intf['read_addr'])
                         # Now decode cen...
                         if num_deep == 1:
                             self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'])
