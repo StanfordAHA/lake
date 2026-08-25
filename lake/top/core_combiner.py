@@ -126,15 +126,7 @@ class CoreCombiner(Generator):
             self.tech_map = Intel_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns),
                                            async_reset=~MTB.get_async_reset())
         elif self.tech_map_name == 'GF':
-            # A dual-port (rw_same_cycle) memory builds a [RW, R] port list
-            # above, so the tech map must advertise the matching 2 physical
-            # ports (SDPB 1rw1r macro). Without dual_port here GF_Tech_Map
-            # defaults to the single-port S1xB map (1 port), and
-            # create_physical_memory then indexes port_maps[1] on the R port
-            # -> IndexError. Single-port memories ([RW]) keep dual_port False.
-            self.tech_map = GF_Tech_Map(depth=self.mem_depth,
-                                        width=int(self.mem_width / self.sram_columns),
-                                        dual_port=self.rw_same_cycle)
+            self.tech_map = self._select_gf_tech_map()
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
@@ -161,6 +153,57 @@ class CoreCombiner(Generator):
                        do_lift_config=do_config_lift)
 
         self.dut = MTB
+
+    def _select_gf_tech_map(self):
+        '''
+        Pick the GF SRAM tech map by choosing how many column-macros to lay
+        side by side to build one mem_width word. A word is realized as
+        `cols` physical macros, each mem_width/cols bits wide, driven by the
+        same address (PhysicalMemoryStub broadcasts addr, splits data).
+
+        Prefer cols=2 (the long-standing default): splitting the word across
+        two half-width macros keeps each physical macro narrower -- and, for
+        this library, physically shorter -- which matters because the MemCore
+        tile has a FIXED height in PnR (it must abut PE tiles), and a single
+        full-width macro can overflow that height. Keeping cols=2 the default
+        also leaves every geometry that already had a 2-column macro
+        byte-identical to the previously validated RTL.
+
+        Fall back to a single full-width macro (cols=1), then to more columns,
+        only when no macro exists for the 2-way split -- e.g. a narrow fw=2
+        word (mem_width=32, depth=512) whose 16b half-columns undershoot the
+        library's minimum width but which fits as one 32b macro. The old code
+        hardcoded cols=2 and simply asserted "No valid macros" on those.
+
+        A dual-port (rw_same_cycle) memory has a [RW, R] port list, so the map
+        must advertise the matching 2 physical ports (SDPB 1rw1r); single-port
+        keeps dual_port False (one S1xB port). Passing the wrong one otherwise
+        mismatches create_physical_memory's port_maps -> IndexError.
+        '''
+        # Column counts that divide the word evenly (num_wide == cols, no
+        # wasted macro bits). Try 2 first (preferred), then start over at 1
+        # and go up.
+        divisors = [c for c in range(1, self.mem_width + 1)
+                    if self.mem_width % c == 0]
+        order = ([2] if 2 in divisors else []) + [c for c in divisors if c != 2]
+        last_err = None
+        for cols in order:
+            width = self.mem_width // cols
+            try:
+                tech_map = GF_Tech_Map(depth=self.mem_depth, width=width,
+                                       dual_port=self.rw_same_cycle)
+            except AssertionError as err:
+                last_err = err
+                continue
+            self.sram_columns = cols
+            print(f"Using tech map (lake): GF, {cols} column macro(s) of "
+                  f"width {width} (mem_width={self.mem_width}, "
+                  f"depth={self.mem_depth}) -> {tech_map['name']}")
+            return tech_map
+        raise AssertionError(
+            f"No GF SRAM macro for mem_width={self.mem_width} "
+            f"depth={self.mem_depth} dual_port={self.rw_same_cycle} at any "
+            f"column count {order}; last error: {last_err}")
 
     def __str__(self):
         return str(self.dut)
