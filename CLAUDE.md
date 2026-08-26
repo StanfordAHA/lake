@@ -207,6 +207,12 @@ Milestone 1 (~1 week of work) flips 6 registry entries `bogus` →
   through post-PnR power on 2026-04-26, includes step numbers,
   runtimes, and gotchas.
 - **mflowgen design definition:** [`pd/thesis/README.md`](pd/thesis/README.md)
+- **Generic (no-ADK) synthesis → power path:**
+  [`pd/thesis/generic-synth-power/GENERIC_SYNTH_POWER.md`](pd/thesis/generic-synth-power/GENERIC_SYNTH_POWER.md)
+  — self-contained Genus/DC + generic `.lib` + PrimeTime idle/active power,
+  no gf12 ADK / macros / PnR. Fast portable "synth results → power" check;
+  45nm behavioural, relative numbers only. Driver:
+  `pd/thesis/generic-synth-power/generic_synth_power.sh`.
 - **Extraction scripts consumed by the thesis pipeline:**
   - `ASPLOS_EXP/extract_power_area.py` — walks THESIS_BUILDS → CSV of
     area/power/timing per build (also parses critical-path endpoints).
@@ -234,6 +240,8 @@ Milestone 1 (~1 week of work) flips 6 registry entries `bogus` →
   2026-05-08 (which sweep configs have validated end-to-end).
 - [`pd/thesis/README.md`](pd/thesis/README.md) — mflowgen design
   definition.
+- [`pd/thesis/generic-synth-power/GENERIC_SYNTH_POWER.md`](pd/thesis/generic-synth-power/GENERIC_SYNTH_POWER.md)
+  — generic no-ADK synthesis→power path (indexed above in §2).
 - [`configure/README.md`](configure/README.md) — configuration-finder
   framework (placeholder, "under construction").
 
@@ -253,3 +261,63 @@ relevant to future tasks, add a one-line pointer here.
 | `THESIS/` | Thesis-artifact pipeline + REPLICATION doc. |
 | `THESIS_BUILDS/` (outside repo) | Where mflowgen builds land, one dir per sweep config. |
 | `main_thesis.tex` | The thesis itself (untracked). |
+
+---
+
+## 5. Spec MemCore RTL generation (the garnet lake-spec sweep)
+
+Garnet's per-spec MemCore sweep drives `garnet.py --lake-spec-config` (see
+`garnet/mflowgen/sweep_specs.py` and `garnet/mflowgen/CLAUDE.md`). RTL comes
+out of `CoreCombiner` (`lake/top/core_combiner.py`) → `MemoryTileBuilder`
+(`lake/top/memtile_builder.py`) → `MemoryInterface`
+(`lake/top/memory_interface.py`), NOT the standalone `build_spec*` helpers in
+`lake/spec/spec_memory_controller.py`. It runs locally on /aha (no
+ADK/Cadence needed); the memory note
+`reference_local_memcore_rtl_validation` has the exact command.
+
+### 5.1 SRAM tech-map / physical-macro selection
+
+`CoreCombiner._select_gf_tech_map()` picks the GF SRAM macro by choosing how
+many **column-macros** build one `mem_width` word (`mem_width =
+data_width * fetch_width`). Each column is `mem_width/cols` bits wide;
+`PhysicalMemoryStub` (`memory_interface.py`) lays `cols` of them side by
+side, **broadcasting** the (word) address to every column and **splitting**
+the data across them. Rules:
+
+- **Prefer `cols=2`, fall back to `cols=1` then up.** cols=2 keeps each
+  macro narrow/short for the fixed-height MemCore tile (PnR abutment) and
+  leaves already-valid geometries byte-identical to prior RTL. cols=1 (one
+  full-width macro) is used only when no 2-column macro exists — e.g. a
+  narrow fw=2 word (`mem_width=32, depth=512`) whose 16b half-columns
+  undershoot the library floor (16b macros need `depth>=1024`) but which
+  fits as one 32b macro. The library table + range/granularity check live in
+  `lake/top/tech_maps.py` (`GF_Tech_Map`, `get_gf_macro_options`).
+- **Dual-port** (spec `dual_port=True` → CoreCombiner `rw_same_cycle`) builds
+  a `[RW, R]` port list and MUST map onto the SDPB 1rw1r macro (2 port maps).
+  `_select_gf_tech_map` passes `dual_port=rw_same_cycle` so `GF_Tech_Map`
+  returns the SDPB (not single-port S1xB) map; otherwise the R port indexes a
+  missing `port_maps[1]` → IndexError.
+
+### 5.2 Dual-port bugs fixed (lake THESIS `8bc6995f`, `897f96f1`)
+
+Dual-port spec MemCores were never exercised through this flow; three
+single-port assumptions crashed `garnet.py` RTL gen for `fw2_*_dp*`:
+
+1. `core_combiner` built the tech map without `dual_port` → single-port map,
+   1 port → `port_maps[1]` IndexError. (Now `_select_gf_tech_map`.)
+2. `memory_interface.py` `PhysicalMemoryPort.create_port_interface` READ
+   branch only knew `data_out`/`read_addr`; the SDPB read map names them
+   `read_data`/`addr` → KeyError. Added the same fallbacks the READWRITE
+   branch had.
+3. `PhysicalMemoryStub` READ branch **concatenated** per-column child
+   `read_addr`s into the parent (num_wide× too wide → width mismatch).
+   Address is a shared word address → **broadcast** it like the READWRITE
+   branch. Latent until a READ port with `num_wide>1` (dual-port is first).
+
+### 5.3 Gotcha: flaky coreir/kratos SIGSEGV
+
+`garnet.py` intermittently core-dumps (`rc=139`, "dumped core") in the C++
+backend, well past tech-map selection ("Printing mode map..."). It is
+non-deterministic — the same geometry passes on retry. The `aha` driver
+wraps garnet.py in `retry()` (`aha/util/garnet.py`); any bare local sweep
+must retry too or a transient crash reads as a config failure.
