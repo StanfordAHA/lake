@@ -829,7 +829,7 @@ def get_broadcast_mem(input_stream_size=128, replicate_factor=4, raw_scalar=4):
     return linear_test
 
 
-def get_mem_dual_read(input_stream_size=128):
+def get_mem_dual_read(input_stream_size=128, row_size=None):
     '''
     Single write port, dual read ports
     '''
@@ -933,7 +933,41 @@ def get_mem_dual_read(input_stream_size=128):
 
     linear_test['constraints'] = [raw_0, raw_1, war_0, war_1]
 
+    if row_size is not None:
+        # Bound a streaming circular buffer using row/block counters. The
+        # default inner counter wraps before reaching the 2048-word capacity,
+        # so its WAR comparison cannot protect a slow second reader.
+        assert 0 < row_size <= MAX_EXTENT
+        assert input_stream_size % row_size == 0
+        rows = input_stream_size // row_size
+        assert rows <= MAX_EXTENT
+        buffered_rows = mem_tile_size // row_size - 2
+        assert buffered_rows >= 2
+        for port in (port_data_in_0, port_data_out_0, port_data_out_1):
+            config = linear_test[port]['config']
+            config['dimensionality'] = 2
+            config['extents'] = [row_size, rows]
+            config['address']['strides'] = [1, row_size]
+        # Leave one extra block for pending SRAM writes. A just-completed
+        # block can still have its final four words in the write aggregator.
+        linear_test['constraints'] = [
+            (reader, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, 1)
+            for reader in (port_data_out_0, port_data_out_1)
+        ] + [
+            (port_data_in_0, 1, reader, 1, LFComparisonOperator.LT.value, -buffered_rows)
+            for reader in (port_data_out_0, port_data_out_1)
+        ]
+
     return linear_test
+
+def get_mem_fifo(input_stream_size, row_size):
+    """Elastic single-reader FIFO with pending-write and circular-buffer guards."""
+    application = get_mem_dual_read(input_stream_size, row_size=row_size)
+    del application[4]
+    application['constraints'] = [c for c in application['constraints']
+                                  if c[0] != 4 and c[2] != 4]
+    return application
+
 
 def get_mem_single_read(input_stream_size=128, rv_stride=1, filter_offset_scalar=0):
     '''
@@ -1342,7 +1376,7 @@ def get_filter_scale_mem(img_size, total_channels, mu_OC=32, packed=True):
     return linear_test
 
 
-def get_filter_mem_two_streams(input_stream_size=512):
+def get_filter_mem_two_streams(input_stream_size=512, row_size=None):
     '''
     Helper function to create config for filter mem to demux reduction results into two interleaving streams
     '''
@@ -1452,6 +1486,29 @@ def get_filter_mem_two_streams(input_stream_size=512):
     raw_1 = (port_data_out_1, 0, port_data_in_0, 1, LFComparisonOperator.LT.value, 3)
 
     linear_test['constraints'] = [raw_0, raw_1]
+    if row_size is not None:
+        # Keep reduction blocks contiguous and protect unread partial sums.
+        assert 0 < row_size <= MAX_EXTENT and row_size % 2 == 0
+        assert input_stream_size % row_size == 0
+        rows = input_stream_size // row_size
+        assert rows <= MAX_EXTENT
+        buffered_rows = 2048 // row_size - 2
+        assert buffered_rows >= 2
+        linear_test[0]['config'].update(
+            dimensionality=3, extents=[2, row_size // 2, rows],
+            address={'strides': [1, 2, row_size], 'offset': 0})
+        for reader, offset in ((3, 0), (4, 1)):
+            linear_test[reader]['config'].update(
+                dimensionality=2, extents=[row_size // 2, rows],
+                address={'strides': [2, row_size], 'offset': offset})
+        # As above, reserve one complete block for pending SRAM writes.
+        linear_test['constraints'] = [
+            (reader, 1, 0, 2, LFComparisonOperator.LT.value, 1)
+            for reader in (3, 4)
+        ] + [
+            (0, 2, reader, 1, LFComparisonOperator.LT.value, -buffered_rows)
+            for reader in (3, 4)
+        ]
     return linear_test
 
 def get_filter_mem_transpose(

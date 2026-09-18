@@ -1489,7 +1489,15 @@ class Spec():
                 rv_params = json.loads(rv_params)
             rv_type = rv_params.get("type")
             if rv_type == "dual_read":
-                application = get_mem_dual_read(input_stream_size=rv_params["input_stream_size"])
+                application = get_mem_dual_read(
+                    input_stream_size=rv_params["input_stream_size"],
+                    row_size=rv_params.get("row_size"),
+                )
+            elif rv_type == "fifo":
+                application = get_mem_fifo(
+                    input_stream_size=rv_params["input_stream_size"],
+                    row_size=rv_params["row_size"],
+                )
             elif rv_type == "filter_mem_transpose":
                 application = get_filter_mem_transpose(
                     X=rv_params["X"],
@@ -1499,7 +1507,10 @@ class Spec():
                     unroll=rv_params.get("unroll", 32),
                 )
             elif rv_type == "get_filter_mem_two_streams":
-                application = get_filter_mem_two_streams(input_stream_size=rv_params["input_stream_size"])
+                application = get_filter_mem_two_streams(
+                    input_stream_size=rv_params["input_stream_size"],
+                    row_size=rv_params.get("row_size"),
+                )
             elif rv_type == "get_vec_accum_pond":
                 application = get_vec_accum_pond(
                     num_partial_reduction=rv_params["num_partial_reduction"],
