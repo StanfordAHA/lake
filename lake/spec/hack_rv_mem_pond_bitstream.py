@@ -3,6 +3,7 @@ from lake.utils.spec_enum import Direction, LFComparisonOperator
 import os
 import math
 import json
+import copy
 
 APPS_NEEDING_HACKS = [
     "gelu_pass1_mu_input_fp",
@@ -966,6 +967,117 @@ def get_mem_fifo(input_stream_size, row_size):
     del application[4]
     application['constraints'] = [c for c in application['constraints']
                                   if c[0] != 4 and c[2] != 4]
+    return application
+
+
+def get_merge_dual_read_mem(single_input_stream_size, row_size):
+    """Two writers, two readers of streams merged in four-word blocks.
+
+    Configuration only: use the existing MEM write aggregators, address
+    generators and RAW/WAR comparison network. Each writer owns disjoint
+    four-word SRAM blocks; both readers visit w0[0:4], w1[0:4], w0[4:8], ... .
+    Contiguous reads avoid repeatedly fetching the same SRAM words into the
+    existing two-entry read buffer, preserving streaming bandwidth.
+    Block counters guard pending writes and both readers across SRAM wraps.
+    ``row_size`` counts output words in a scheduling block, not a tensor row.
+    """
+    capacity = 2048  # 4 KiB, in BF16 words
+    max_extent = 1024  # signed 11-bit loop counter
+    if row_size < 8 or row_size % 8:
+        raise ValueError("Interleave block size must be a positive multiple of 8")
+    if single_input_stream_size < 1 or (2 * single_input_stream_size) % row_size:
+        raise ValueError("Both input streams must fill complete interleave blocks")
+    blocks = 2 * single_input_stream_size // row_size
+    buffered_blocks = capacity // row_size - 2
+    if row_size > max_extent or blocks > max_extent or buffered_blocks < 2:
+        raise ValueError("Interleave schedule exceeds MEM counter or buffer capacity")
+
+    readers = (3, 4)
+    # The taped-out loop controller cannot represent an extent of one.
+    # For an eight-word block, omit the redundant four-word-group loop.
+    writer_block_dim = 1 if row_size == 8 else 2
+    application = {}
+    for port in (0, 1) + readers:
+        writing = port < 3
+        extents = ([4, row_size // 8, blocks] if writing
+                   else [row_size, blocks])
+        strides = ([1, 8, row_size] if writing
+                   else [1, row_size])
+        if writing and row_size == 8:
+            extents = [4, blocks]
+            strides = [1, row_size]
+        application[port] = {
+            'name': f'port_w{port}' if writing else f'port_r{port - 3}',
+            'type': Direction.IN if writing else Direction.OUT,
+            'config': {
+                'dimensionality': len(extents),
+                'extents': extents,
+                'address': {'strides': strides, 'offset': 4 * port if writing else 0},
+                'schedule': {},
+            },
+            'vec_in_config': {}, 'vec_out_config': {}, 'vec_constraints': [],
+        }
+    application['constraints'] = [
+        (reader, 1, writer, writer_block_dim, LFComparisonOperator.LT.value, 1)
+        for reader in readers for writer in (0, 1)
+    ] + [
+        (writer, writer_block_dim, reader, 1, LFComparisonOperator.LT.value, -buffered_blocks)
+        for writer in (0, 1) for reader in readers
+    ]
+    return application
+
+
+def get_deinterleave_blocks_mem(input_stream_size, row_size):
+    """Split consecutive four-word blocks between two output streams.
+
+    For the 32-to-16 LayerNorm layout this restores exactly the two partial
+    sum streams of the original 16-lane reduction, including rounding order.
+    After affine, the same schedule scatters into canonical 32-lane stripes.
+    """
+    if row_size < 8 or row_size % 8:
+        raise ValueError("Deinterleave block size must be a positive multiple of 8")
+    application = get_mem_dual_read(input_stream_size, row_size=row_size)
+    reader_block_dim = 1 if row_size == 8 else 2
+    for reader in (3, 4):
+        application[reader]['config'].update({
+            'dimensionality': reader_block_dim + 1,
+            'extents': ([4, input_stream_size // row_size] if row_size == 8
+                        else [4, row_size // 8, input_stream_size // row_size]),
+            'address': {'strides': ([1, row_size] if row_size == 8
+                                    else [1, 8, row_size]),
+                        'offset': 4 * (reader - 3)},
+        })
+    buffered_blocks = 2048 // row_size - 2
+    application['constraints'] = [
+        (reader, reader_block_dim, 0, 1, LFComparisonOperator.LT.value, 1)
+        for reader in (3, 4)
+    ] + [
+        (0, 1, reader, reader_block_dim, LFComparisonOperator.LT.value, -buffered_blocks)
+        for reader in (3, 4)
+    ]
+    return application
+
+
+def get_paired_mem_fifo(input_stream_size, row_size):
+    """Two independent FIFOs sharing disjoint four-word SRAM blocks.
+
+    Each stream has one writer, one reader, and half of the MEM capacity.
+    Dependencies stay within each stream, so a stalled lane does not impose
+    a read-after-write dependency on its partner.
+    ``row_size`` counts words per stream in each scheduling block.
+    """
+    application = get_merge_dual_read_mem(input_stream_size, 2 * row_size)
+    for reader, writer in ((3, 0), (4, 1)):
+        application[reader]['config'] = copy.deepcopy(application[writer]['config'])
+    block_dim = application[0]['config']['dimensionality'] - 1
+    buffered_blocks = 2048 // (2 * row_size) - 2
+    application['constraints'] = [
+        (reader, block_dim, writer, block_dim, LFComparisonOperator.LT.value, 1)
+        for reader, writer in ((3, 0), (4, 1))
+    ] + [
+        (writer, block_dim, reader, block_dim, LFComparisonOperator.LT.value, -buffered_blocks)
+        for reader, writer in ((3, 0), (4, 1))
+    ]
     return application
 
 

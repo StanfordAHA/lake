@@ -1498,6 +1498,21 @@ class Spec():
                     input_stream_size=rv_params["input_stream_size"],
                     row_size=rv_params["row_size"],
                 )
+            elif rv_type == "merge_dual_read":
+                application = get_merge_dual_read_mem(
+                    single_input_stream_size=rv_params["single_input_stream_size"],
+                    row_size=rv_params["row_size"],
+                )
+            elif rv_type == "deinterleave_blocks":
+                application = get_deinterleave_blocks_mem(
+                    input_stream_size=rv_params["input_stream_size"],
+                    row_size=rv_params["row_size"],
+                )
+            elif rv_type == "paired_fifo":
+                application = get_paired_mem_fifo(
+                    input_stream_size=rv_params["input_stream_size"],
+                    row_size=rv_params["row_size"],
+                )
             elif rv_type == "filter_mem_transpose":
                 application = get_filter_mem_transpose(
                     X=rv_params["X"],
