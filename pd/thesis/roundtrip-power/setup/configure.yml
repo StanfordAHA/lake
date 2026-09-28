@@ -1,0 +1,27 @@
+#=========================================================================
+# roundtrip-power-setup
+#=========================================================================
+# Stage the artifacts the garnet driver placed in the sub-graph's inputs/ dir
+# so the lean round-trip-power graph can consume them by name. Mirrors
+# garnet/mflowgen/common/tile-post-pnr-power/setup (which copies ../../inputs/*
+# up as this step's outputs).
+#
+#   design.v            -- the SYNTHESIZED netlist to simulate + power
+#   sram.v / sram_tt.db -- the SRAM behavioral model + timing/power .db
+#   testbench.sv        -- the lake spec testbench harness
+#   spec_config.json    -- single source of truth for the spec (context B regen)
+#   lake_collateral.json-- context A collateral (from the CGRA/garnet build)
+
+name: roundtrip-power-setup
+
+outputs:
+  - design.v
+  - sram.v
+  - sram_tt.db
+  - testbench.sv
+  - spec_config.json
+  - lake_collateral.json
+
+commands:
+  - mkdir -p outputs
+  - cp ../../inputs/*.* outputs
