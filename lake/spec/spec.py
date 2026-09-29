@@ -2172,8 +2172,15 @@ class Spec():
             print("APPLICATION BEFORE")
             print(application)
 
-            # Detect clockwork lake-format config and convert directly to port config
-            if self._is_clockwork_format(application):
+            # Detect clockwork lake-format config and convert directly to port config.
+            # A clockwork DENSE_READY_VALID tile carries the static controller keys
+            # (in2agg_/tb2out_/...) *alongside* its RV program (dep_values,
+            # access_map, domain, port_mappings); on a ready-valid spec it must
+            # take the RV path, as it does on master (where this static-format
+            # detection doesn't exist). Pure static tiles, and any tile on a
+            # static spec, keep the static path.
+            is_rv_app = self.any_rv_sg and "dep_values" in application
+            if self._is_clockwork_format(application) and not is_rv_app:
                 print("Detected clockwork format — converting to spec port config")
                 application = self._convert_clockwork_to_port_config(application)
             else:
