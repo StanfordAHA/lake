@@ -11,6 +11,7 @@ inputs:
   - design.v
   - design.sdf
   - design.args
+  - testbench.sv
   - comp_args.txt
   - PARGS.txt
   - bitstream.bs

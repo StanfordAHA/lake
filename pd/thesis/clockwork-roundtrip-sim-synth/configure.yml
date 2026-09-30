@@ -30,7 +30,7 @@ outputs:
   - run.vcd
 
 commands:
-  - python -c "import json; print(json.dumps({
+  - python -c "import json; print(json.dumps({{
       'storage_capacity':$storage_capacity,
       'data_width':$data_width,
       'vec_width':$fetch_width,
@@ -39,7 +39,7 @@ commands:
       'out_ports':$out_ports,
       'dual_port':$dual_port,
       'vec_capacity':$vec_capacity,
-      'physical':$physical}))" > spec_kwargs.json
+      'physical':$physical}}))" > spec_kwargs.json
   - python ../../clockwork-roundtrip-common/run_roundtrip_sim.py
       --map-results inputs/map_results
       --design-v inputs/design.v
