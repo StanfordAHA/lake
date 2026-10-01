@@ -157,7 +157,10 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 
 def build_pond_rv(storage_capacity: int = 64, data_width=16,
                   dims: int = 6, physical=False, reg_file=True,
-                  remote_storage=True, opt_rv=True) -> Spec:
+                  remote_storage=True, opt_rv=True, filter=False) -> Spec:
+    """Ready-valid pond. filter=True gives the data input lake's filter
+    (item-drop) hardware, so a broadcast-banked writer (one stream feeding
+    several ponds, e.g. weight banks) keeps only its own items."""
 
     # TODO: Override this in garnet and not here...
     id_width = 11
@@ -167,16 +170,16 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     ls = Spec(name="lakespec_pond", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
               config_passthru=True, comply_17=True)
 
-    in_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
-                   direction=Direction.IN, opt_rv=opt_rv)
+    in_port = Port(ext_data_width=data_width, int_data_width=data_width, runtime=Runtime.DYNAMIC,
+                   direction=Direction.IN, opt_rv=opt_rv, filter=filter)
     # in_port2 = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
     #                 direction=Direction.IN, opt_rv=opt_rv)
-    out_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+    out_port = Port(ext_data_width=data_width, int_data_width=data_width, runtime=Runtime.DYNAMIC,
                     direction=Direction.OUT, opt_rv=opt_rv)
-    out_port2 = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+    out_port2 = Port(ext_data_width=data_width, int_data_width=data_width, runtime=Runtime.DYNAMIC,
                      direction=Direction.OUT, opt_rv=opt_rv)
 
-    flush_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+    flush_port = Port(ext_data_width=data_width, int_data_width=data_width, runtime=Runtime.DYNAMIC,
                       direction=Direction.IN, opt_rv=opt_rv, dangling=True)
 
     # ls.register(in_port, in_port2, out_port, out_port2)
@@ -220,13 +223,14 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
 
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map, remote=True)
 
-    wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
+    wr_mem_port = MemoryPort(data_width=data_width, mptype=MemoryPortType.W, delay=1)
     # wr_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
     # rd_wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.RW, delay=1)
-    rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
-    rd_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
+    rd_mem_port = MemoryPort(data_width=data_width, mptype=MemoryPortType.R, delay=read_delay)
+    rd_mem_port2 = MemoryPort(data_width=data_width, mptype=MemoryPortType.R, delay=read_delay)
 
-    wr_mem_port_flush = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=read_delay, flush_mem=True)
+    wr_mem_port_flush = MemoryPort(data_width=data_width, mptype=MemoryPortType.W, delay=read_delay,
+                                   flush_mem=True)
 
     # rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
     # rd_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
@@ -283,6 +287,125 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     ls.connect(wr_mem_port_flush, stg)
 
     return ls
+
+
+def build_pond(storage_capacity: int = 64, data_width=16, dims: int = 4,
+               in_ports=2, out_ports=2, max_extent=None, max_sequence_width=None,
+               physical=False, reg_file=True, remote_storage=True,
+               config_passthru=True, comply_17=True, name="lakespec_pond_static") -> Spec:
+    """Static (fixed-schedule) pond: the lake-spec replacement for the legacy
+    LakeTop pond and the static sibling of build_pond_rv.
+
+    A fw=1 register file. Every input port shares one W memory port (inputs are
+    scheduled not to collide, as in the legacy pond) and each output port has its
+    own delay-0 R port, so read data appears in the cycle its schedule fires. With
+    2 outputs the memory ports are [W, R, R], which CoreCombiner's new_pond
+    interface hosts directly (its 4th, clear, port stays unused: the tile flush
+    clears the pond).
+
+    Args:
+        storage_capacity: Capacity in bytes.
+        data_width: Data width in bits.
+        dims: Iteration domain dimensions per port.
+        in_ports / out_ports: Port counts (in2regfile_N / regfile2out_N).
+        max_extent / max_sequence_width: Size the ID / schedule counters (see build_spec).
+        physical / reg_file: Use a GF register-file tech map.
+        remote_storage: Storage lives outside the spec (CGRA tile); False for standalone sims.
+        config_passthru: True inside a CGRA tile (see build_spec).
+        comply_17: 17-bit ports (16 data + 1) to match a ready-valid fabric.
+        name: Spec / module name.
+    """
+    id_width = 11
+    if max_extent is not None:
+        id_width = max(1, math.ceil(math.log2(max(max_extent, 2))))
+    stride_width = 16
+    if max_sequence_width is not None:
+        stride_width = max(1, math.ceil(math.log2(max(max_sequence_width, 2))))
+
+    ls = Spec(name=name, opt_rv=False, remote_storage=remote_storage, run_flush_pass=False,
+              config_passthru=config_passthru, comply_17=comply_17)
+
+    in_port_list = [Port(ext_data_width=data_width, int_data_width=data_width, runtime=Runtime.STATIC,
+                         direction=Direction.IN, opt_rv=False, opt_timing=False) for _ in range(in_ports)]
+    out_port_list = [Port(ext_data_width=data_width, int_data_width=data_width, runtime=Runtime.STATIC,
+                          direction=Direction.OUT, opt_rv=False) for _ in range(out_ports)]
+    ls.register(*in_port_list)
+    ls.register(*out_port_list)
+
+    for p in in_port_list + out_port_list:
+        id_ = IterationDomain(dimensionality=dims, extent_width=id_width)
+        ag_ = AddressGenerator(dimensionality=dims)
+        sg_ = ScheduleGenerator(dimensionality=dims, stride_width=stride_width)
+        ls.register(id_, ag_, sg_)
+        ls.connect(p, id_)
+        ls.connect(p, ag_)
+        ls.connect(p, sg_)
+
+    tech_map = None
+    if physical:
+        tech_map = GF_Tech_Map(depth=storage_capacity // (data_width // 8), width=data_width,
+                               dual_port=True, reg_file=reg_file)
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map, remote=remote_storage)
+
+    wr_mem_port = MemoryPort(data_width=data_width, mptype=MemoryPortType.W, delay=1)
+    rd_mem_ports = [MemoryPort(data_width=data_width, mptype=MemoryPortType.R, delay=0)
+                    for _ in range(out_ports)]
+    ls.register(stg, wr_mem_port, *rd_mem_ports)
+
+    for p in in_port_list:
+        ls.connect(p, wr_mem_port)
+    for p, mp in zip(out_port_list, rd_mem_ports):
+        ls.connect(p, mp)
+
+    # Storage-neighbor order = memory-interface port order in the tile: [W, R, R]
+    ls.connect(wr_mem_port, stg)
+    for mp in rd_mem_ports:
+        ls.connect(mp, stg)
+
+    return ls
+
+
+# Pond-spec JSON keys (garnet --lake-pond-spec-config / lake.utils.pond_collateral)
+CGRA_POND_KEYS = {"storage_capacity", "dims", "data_width", "max_extent", "max_sequence_width"}
+CGRA_POND_KEYS_RV = {"storage_capacity", "dims", "data_width", "filter"}
+
+
+def resolve_cgra_pond_params(params=None, rv=False):
+    """Pond-spec JSON -> full geometry of the PE-tile pond, with defaults:
+    64 B, 16-bit data, 4 dims; the static pond also gets 16-bit iteration
+    ranges (max_extent 2**16) like the legacy LakeTop pond it replaces, the RV
+    pond gets input filter hardware (filter=True: broadcast-banked weight
+    ponds). Unknown keys raise (a typo would silently mean the default)."""
+    params = dict(params or {})
+    allowed = CGRA_POND_KEYS_RV if rv else CGRA_POND_KEYS
+    unknown = set(params) - allowed
+    if unknown:
+        raise ValueError(f"unsupported pond spec keys {sorted(unknown)} "
+                         f"({'rv' if rv else 'static'} pond takes {sorted(allowed)})")
+    resolved = {"storage_capacity": 64, "data_width": 16, "dims": 4}
+    if rv:
+        resolved["filter"] = True
+    else:
+        resolved["max_extent"] = 2 ** 16
+    resolved.update(params)
+    return resolved
+
+
+def build_cgra_pond(params=None, rv=False, comply_17=True) -> Spec:
+    """The PE-tile pond exactly as garnet hosts it (garnet cgra/util_onyx.py
+    make_pond) - the single source of truth for both the hardware and the
+    compiler collateral (lake.utils.pond_collateral), like the MEM spec.
+
+    rv=True: build_pond_rv (garnet's RV mode); else the static build_pond."""
+    p = resolve_cgra_pond_params(params, rv)
+    if rv:
+        return build_pond_rv(storage_capacity=p["storage_capacity"], data_width=p["data_width"],
+                             dims=p["dims"], physical=False, reg_file=True, opt_rv=True,
+                             filter=p["filter"])
+    return build_pond(storage_capacity=p["storage_capacity"], data_width=p["data_width"], dims=p["dims"],
+                      max_extent=p.get("max_extent"), max_sequence_width=p.get("max_sequence_width"),
+                      physical=False, reg_file=True, remote_storage=True, config_passthru=True,
+                      comply_17=comply_17)
 
 
 class SpecMemoryController(MemoryController):

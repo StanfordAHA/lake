@@ -7,7 +7,7 @@ from lake.top.memory_controller import MemoryPort as MemoryPortMC
 from lake.utils.spec_enum import *
 from lake.spec.iteration_domain import IterationDomain
 from lake.spec.address_generator import AddressGenerator
-from lake.spec.schedule_generator import ScheduleGenerator
+from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGenerator
 from lake.spec.port import Port
 from lake.modules.memory_interface_decoder import MemoryInterfaceDecoder
 import kratos as kts
@@ -1118,8 +1118,8 @@ class Spec():
         collateral['store_latency'] = 0
         collateral['load_latency'] = 0
 
-    def extract_compiler_information(self, max_chaining=4, wire_chain_en=False,
-                                       controller_name_map=None) -> dict:
+    def extract_compiler_information(self, max_chaining=None, wire_chain_en=False,
+                                       controller_name_map=None, level="mem") -> dict:
         """Extract compiler collateral matching clockwork's LakeCollateral struct.
 
         For wide-fetch specs with a single primary storage (ONYX pattern),
@@ -1129,13 +1129,26 @@ class Spec():
 
         Args:
             max_chaining: Maximum chaining depth (no direct Spec equivalent).
+                Default 4 for the "mem" level, 1 for "regfile" (ponds do not chain).
             wire_chain_en: Wire chaining enabled (no direct Spec equivalent).
             controller_name_map: Optional dict mapping Storage node -> str name for the controller.
                 If None, auto-inferred (maps primary storage to "sram" for wide-fetch specs).
+            level: clockwork memory-hierarchy level this collateral is for
+                (LAKE_COLLATERAL_JSON_<LEVEL>). "mem" = the MEM tile. "regfile" = the
+                PE-tile pond (fw=1, one storage): storage / iter_level_map keys are
+                named "regfile" as clockwork's regfile level expects, the
+                interconnect counts are the CONCURRENT accesses per cycle (W / R memory
+                ports, clear-only ports excluded) since clockwork's scheduler uses them
+                as a per-buffer resource count, and two extra keys are emitted:
+                sched_counter_ub (schedule-cycle counter bound, distinct from the
+                iteration-extent counter_ub) and data_width.
 
         Returns:
             dict with keys matching LakeCollateral fields.
         """
+        assert level in ("mem", "regfile"), f"unsupported collateral level {level}"
+        if max_chaining is None:
+            max_chaining = 1 if level == "regfile" else 4
         controller_name_map = self._resolve_controller_name_map(controller_name_map)
         controller_names = set(controller_name_map[stg] for stg in self.get_nodes(Storage))
 
@@ -1178,19 +1191,42 @@ class Spec():
         # For fw==1 specs, clockwork's dual-port compile path expects the
         # storage key to be "mem" (not "sram") and controller_name = ["regfile"].
         # Remap all maps accordingly.
+        # The regfile (pond) level instead keys everything "regfile" (clockwork's
+        # regfile level looks up capacity.at("regfile"), in2regfile_N, ...).
+        if level == "regfile":
+            assert collateral['fetch_width'] == 1 and len(collateral['capacity']) == 1, \
+                "regfile-level collateral is for a fw=1, single-storage spec (a pond)"
+        storage_key = 'regfile' if level == "regfile" else 'mem'
         if collateral['fetch_width'] == 1 and 'sram' in collateral['capacity']:
             for map_key in ('capacity', 'word_width', 'in_port_width',
                             'out_port_width', 'bank_num', 'single_port'):
                 d = collateral.get(map_key, {})
                 if 'sram' in d:
-                    d['mem'] = d.pop('sram')
+                    d[storage_key] = d.pop('sram')
             # Remap iter_level_map keys: in2sram_N → in2mem_N, sram2out_N → mem2out_N
             new_ilm = {}
             for k, v in collateral.get('iter_level_map', {}).items():
-                new_ilm[k.replace('sram', 'mem')] = v
+                new_ilm[k.replace('sram', storage_key)] = v
             collateral['iter_level_map'] = new_ilm
             # Set controller_name to match clockwork's dual-port convention
             collateral['controller_name'] = ['regfile']
+
+        if level == "regfile":
+            # Concurrent accesses per cycle = memory ports (a pond's input Ports
+            # share its write port), not Ports.
+            stg = self.get_nodes(Storage)[0]
+            mps = self._get_memports_for_storage(stg)
+            collateral['interconnect_in_num'] = sum(
+                1 for mp in mps if mp.get_type() in (MemoryPortType.W, MemoryPortType.RW)
+                and not mp.get_clear_mem())
+            collateral['interconnect_out_num'] = sum(
+                1 for mp in mps if mp.get_type() in (MemoryPortType.R, MemoryPortType.RW))
+            static_sgs = [sg for sg in self.get_nodes(ScheduleGenerator)
+                          if not isinstance(sg, ReadyValidScheduleGenerator)]
+            if static_sgs:
+                collateral['sched_counter_ub'] = max((2 ** sg.stride_width) - 1 for sg in static_sgs)
+            data_ports = [p for p in self.get_in_ports() + self.get_out_ports()]
+            collateral['data_width'] = data_ports[0]._ext_data_width if data_ports else 16
 
         # Convert capacity from bytes to number of addresses.
         # Each address holds word_width[ctrl] words, each word is

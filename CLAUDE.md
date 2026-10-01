@@ -321,3 +321,62 @@ backend, well past tech-map selection ("Printing mode map..."). It is
 non-deterministic — the same geometry passes on retry. The `aha` driver
 wraps garnet.py in `retry()` (`aha/util/garnet.py`); any bare local sweep
 must retry too or a transient crash reads as a config failure.
+
+---
+
+## 7. Lake-spec ponds (static `build_pond` + `build_pond_rv`) (2026-09-30)
+
+The PE-tile pond is a lake spec in both modes (user direction: the legacy
+static pond — garnet `PondCore` → `LakeTop`/`StrgUBThin` — was a separate block
+only for historical reasons).
+
+- **`build_pond`** (`lake/spec/spec_memory_controller.py`, static sibling of
+  `build_pond_rv`): fw=1 register file, `in_ports` STATIC IN ports sharing ONE W
+  memory port, one delay-0 R memory port per OUT port → `[W, R, R]`, which
+  CoreCombiner's `new_pond` interface hosts unchanged (its clear port stays
+  unused; the tile flush clears the pond). Args: `storage_capacity` (bytes),
+  `data_width`, `dims`, `in_ports/out_ports`, `max_extent`,
+  `max_sequence_width`, `remote_storage`, `config_passthru`, `comply_17`.
+  Clockwork's static keys map directly (`in2regfile_N` → port N,
+  `regfile2out_N` → port n_in+N) via `_convert_clockwork_to_port_config`.
+- `build_pond_rv` now passes `data_width` to its Ports (`int_data_width`) and
+  memory ports (were hardcoded 16 → any other width asserted / mismatched).
+  RTL at 16 bits unchanged.
+- **Equivalence vs the legacy pond (co-sim, xrun)**: the tile's delay-0 READ
+  memory-interface port is an ungated `data_array[read_addr]`, so each spec
+  pond output shows `mem[AG addr]` every cycle — the legacy contract clockwork's
+  static schedules rely on (e.g. accumulation: the co-located PE consumes the
+  pond at WRITE time, not at the scheduled read). Closed-loop co-sim (PE model
+  `in0 = out0 + r(t)`, identical flush/stall stimulus) on 8 real clockwork
+  static pond configs (resnet_pond acc + weights, matmul, resnet_block 2-D,
+  avgpool RMW, pond_accum, depthwise const, legacy unit test) + 4 stalled
+  variants: 12/12 match (data at every scheduled read, identical valid
+  schedule). Known, unobservable differences: (1) legacy outputs mirror ONE
+  shared read address (single dual-config sequencer: `_0`/`_1` are sequential
+  phases), spec outputs have independent addresses — differs only on cycles an
+  output is not read; (2) legacy can fire a scheduled event in a flush cycle
+  (valid only; same data), the spec's SG step is gated by flush; (3) no 1-bit
+  `valid_out` data outputs. The spec runs interleaved `_0`/`_1` configs the
+  legacy pond cannot. Harness (session scratchpad, not in repo):
+  `pond/cosim/{gen.py,run.sh,compare.py}`.
+- garnet hosting/knob: `garnet/mflowgen/CLAUDE.md` "PE-tile pond knobs".
+- **Compiler collateral (round trip like the MEM spec)**: `build_cgra_pond(params, rv)`
+  (`spec_memory_controller.py`) is the single pond factory for garnet's
+  `make_pond()` AND the collateral; `resolve_cgra_pond_params` validates the
+  pond JSON. The static CGRA pond defaults to 16-bit iteration ranges
+  (`max_extent` 2**16, like the legacy LakeTop pond) → its collateral equals
+  clockwork's built-in regfile preset (capacity 32, counter_ub 65535).
+  `extract_compiler_information(level="regfile")` keys the pond `regfile`
+  (`in2regfile_N`), `max_chaining` 1, `interconnect_*` = concurrent W/R
+  memory ports (clockwork scheduler resource count), plus `sched_counter_ub`
+  and `data_width`; `level="mem"` output is byte-identical to before.
+  CLI: `python -m lake.utils.pond_collateral [--pond-spec p.json] [--rv] -o c.json`;
+  aha: `aha map --pond-collateral c.json` → `LAKE_COLLATERAL_JSON_REGFILE`.
+  Clockwork side (applied 2026-09-30) + verification: `/aha/clockwork/CLAUDE.md` "Pond (regfile level)".
+- **RV pond filter (2026-09-30)**: `build_pond_rv(filter=)` gives the data input
+  lake's filter hardware; the CGRA RV pond (`build_cgra_pond(rv=True)`) has it by
+  default (pond-spec key `filter`, user: ponds mostly serve weights or
+  accumulations directly, and broadcast-banked weight ponds need it). Before, a
+  configured `filter` was silently dropped (no filter HW) → each resnet_pond RV
+  weight bank kept the first 27 broadcast items; now 4/4 banks PASS (pond
+  round trip). A port without filter HW still drops a filter config silently.
