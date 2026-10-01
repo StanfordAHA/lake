@@ -380,3 +380,11 @@ only for historical reasons).
   configured `filter` was silently dropped (no filter HW) → each resnet_pond RV
   weight bank kept the first 27 broadcast items; now 4/4 banks PASS (pond
   round trip). A port without filter HW still drops a filter config silently.
+- **Full-CGRA run on a spec pond (2026-09-30)**: RV `matmul_rvtry3` (n=16,
+  accumulation pond) on a 16x16 CGRA — MEM `build_spec_rv(8192,16,4,2,2)` +
+  pond spec `{"storage_capacity": 128, "dims": 6}` (`garnet.py
+  --lake-pond-spec-config`, filter on) compiled with that pond's collateral
+  (`aha map --pond-collateral`): Integer bit-accurate PASS (hooks
+  rv_drop_pond_init_pe + rv_compact_output_sched, as for the default pond).
+  Driver (session scratchpad): `pond/e2e/run_e2e.sh` (private aha tree via
+  `aha --dir`, private garnet with `GARNET_HOME` pinned to it).
