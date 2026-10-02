@@ -1,4 +1,5 @@
 import math
+from lake.attributes.hybrid_port_attr import HybridPortAddr
 from lake.top.memory_controller import MemoryController
 from lake.spec.spec import Spec
 from lake.spec.port import Port
@@ -300,6 +301,15 @@ class SpecMemoryController(MemoryController):
 
         # Annotate liftable ports...
         self.spec.annotate_liftable_ports()
+        # A static spec's ports run off their schedules and ignore the handshake, so
+        # mark the data ports hybrid (as the PEs do): the MemTile then gets *_bypass_rv
+        # config to skip its input/output fifos and hold valid/ready high.
+        if not self.spec.opt_rv:
+            int_gen = self.spec.get_internal_generator()
+            port_names = set(int_gen.get_port_names())
+            for pname in port_names:
+                if f"{pname}_valid" in port_names and f"{pname}_ready" in port_names:
+                    int_gen.get_port(pname).add_attribute(HybridPortAddr())
         # self.internal_generator = self.spec.get_generator())
 
         print("Before internal generator")
@@ -372,7 +382,7 @@ if __name__ == "__main__":
 def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
                dims=6, in_ports=2, out_ports=2, dual_port=False,
                vec_capacity=2, max_extent=None, max_sequence_width=None,
-               physical=False):
+               physical=False, config_passthru=False):
     """Factory function to build a lake Spec for any thesis configuration.
 
     Args:
@@ -387,6 +397,10 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
         max_extent: Maximum iteration extent (affects counter upper bound).
         max_sequence_width: Maximum sequence width (affects stride width).
         physical: Use a physical SRAM tech map.
+        config_passthru: Feed config_memory straight to the ports (True) instead of
+            through the hardened ConfigMemory register loaded on config_memory_wen
+            (False). Use True inside a CGRA MemTile, whose own configuration
+            register space already holds the config; False for a standalone spec.
 
     Returns:
         A lake Spec instance.
@@ -399,7 +413,7 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
         stride_width = max(1, math.ceil(math.log2(max(max_sequence_width, 2))))
 
     ls = Spec(name="lakespec", opt_rv=False, remote_storage=True,
-              config_passthru=False, comply_17=True)
+              config_passthru=config_passthru, comply_17=True)
 
     vc = vec_capacity if vec_width > 1 else None
     int_dw = data_width * vec_width

@@ -454,6 +454,8 @@ class MemoryControllerFlatWrapper(MemoryController):
                         continue
                     # Correct size - copy it
                     elif legal_width == port_width:
+                        # The intercept below replaces port, so keep the original's attributes
+                        attr_src = port
                         if in_outn:
                             if port_width != 1:
                                 # If it is not packed, wire it into a 1D packed deal
@@ -475,7 +477,7 @@ class MemoryControllerFlatWrapper(MemoryController):
                                 tmp_port = self.output(f"{name}_f_{suffix}", port_width)
                         self.wire(tmp_port, port)
                         # Copy attributes
-                        self.copy_attributes(copy_to=tmp_port, copy_from=port)
+                        self.copy_attributes(copy_to=tmp_port, copy_from=attr_src)
                         break
                     # Still a mismatch
                     elif legal_width < port_width and legal_width != 1:
