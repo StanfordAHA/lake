@@ -233,12 +233,15 @@ class RVComparisonNetwork(Component):
             read_width = read_iters.width
             read_extents = self._reader_extents[i]
             num_read_ctrs = read_sg.get_dimensionality()
-            num_read_ctrs_bw = max(1, kts.clog2(num_write_ctrs))
+            # 2026-09-30: sized from the reader's own dimensionality (was the
+            # last writer's, leaked from the loop above; identical when all
+            # ports have equal dimensionality, as in every spec builder)
+            num_rd_dims_bw = max(1, kts.clog2(num_read_ctrs))
             # in_sel = kts.const(0, num_read_ctrs_bw)
             # in_sel = self.config_reg(name=f"read_{i}_to_write_sel", width=num_write_ctrs_bw)
             for j in range(len(self.writes)):
                 # in_sel = self.config_reg(name=f"read_{i}_to_write_{j}_sel", width=num_write_ctrs_bw)
-                in_sel = self.config_reg(name=f"read_{i}_to_write_{j}_sel_in", width=num_write_ctrs_bw)
+                in_sel = self.config_reg(name=f"read_{i}_to_write_{j}_sel_in", width=num_rd_dims_bw)
                 # self.in_sels_rd_to_wr.append(in_sel)
                 write_sg = self.writes[j]
                 write_iters = self._writer_iterators[j]
@@ -312,6 +315,26 @@ class RVComparisonNetwork(Component):
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
 
+    def _check_fixup_level(self, p, level, comparator, scalar, constraint):
+        """2026-09-30: the wrap fixup reads the iterator one level above the
+        selected one through `sel + 1` in clog2(dims) bits. At the top level of
+        a power-of-2 dimensionality it wraps to level 0, and with dims 1 the
+        one-entry mux ignores the select, so the extent is added whenever the
+        two ports' level-0 iterators differ. That cannot open a barrier
+        (LT with scalar >= 16383: no in-range counter passes), but any other
+        comparison there is silently wrong, so refuse it."""
+        dims = self.get_port_from_index(p).get_dimensionality()
+        sel_bits = max(1, kts.clog2(dims))
+        wraps = dims == 1 or (level + 1 == (1 << sel_bits) and level + 1 >= dims)
+        barrier = comparator == LFComparisonOperator.LT.value and scalar >= 16383
+        if wraps and not barrier:
+            raise ValueError(
+                f"RV constraint {constraint}: level {level} is the top level of a "
+                f"{dims}-level port, where the comparison network's wrap fixup reads "
+                f"level 0 instead of 'no outer level' (only barriers are safe there). "
+                f"Use a lower level, a spec with a non-power-of-2 dimensionality, or "
+                f"the RTL fix (outer-level select widened).")
+
     def gen_bitstream(self, constraints):
         self.clear_configuration()
         # Every constraint in constraints is between a port,port,comparator,offset
@@ -320,6 +343,8 @@ class RVComparisonNetwork(Component):
         # print(constraints)
         for constraint in constraints:
             p1, p1_ctr, p2, p2_ctr, comparator, scalar = constraint
+            self._check_fixup_level(p1, p1_ctr, comparator, scalar, constraint)
+            self._check_fixup_level(p2, p2_ctr, comparator, scalar, constraint)
             p1reg, p2reg = self.get_mux_sel_reg_from_indexes(p1, p2)
             # p1 and p2 go to local, comparator and scalar go below
             self.configure(p1reg, p1_ctr)

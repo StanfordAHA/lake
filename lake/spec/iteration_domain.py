@@ -31,11 +31,15 @@ class IterationDomain(Component):
         else:
             self.configure(self._dimensionality, dimensionality)
 
-        # Validate that each active extent fits in extent_width bits before we
-        # silently truncate it into the configuration register. The encoded
-        # value is `extent - 2`; the register is unsigned `self.extent_width`
-        # wide, so encoded must be in [0, 2**extent_width - 1].
-        max_repr = (1 << self.extent_width) - 1
+        # Validate that each active extent fits before we silently truncate it
+        # into the configuration register. The encoded value is `extent - 2`
+        # in an unsigned `self.extent_width` register, and the counters (the
+        # `iterators` port) are `extent_width` bits wide, so the largest index
+        # extent - 1 must fit too: extent in [2, 2**extent_width]. (2026-09-30:
+        # extent 2**extent_width + 1 used to be accepted; its last index
+        # wrapped to 0 on `iterators`, which the RV comparison network, the
+        # Port filter and non-recurrent AG/SG read.)
+        max_repr = (1 << self.extent_width) - 2
         for i in range(dimensionality):
             encoded = extents[i] - 2
             if encoded < 0 or encoded > max_repr:

@@ -110,7 +110,13 @@ class AddressGenerator(Component):
 
         self.clear_configuration()
 
-        self.configure(self._starting_addr, address_map['offset'])
+        # 2026-09-30: an address generator computes its address in addr_width
+        # bits, i.e. modulo the memory it addresses, so reducing the offset and
+        # strides modulo 2**addr_width is exact (a stride of 16 into a 16-entry
+        # transpose buffer is a stride of 0). Negative values keep their
+        # two's-complement bits. Values that already fit are unchanged.
+        amask = (1 << self.addr_width) - 1
+        self.configure(self._starting_addr, address_map['offset'] & amask)
         if self.exploit_recurrence:
             extent_sub_1 = [extent_item - 1 for extent_item in extents]
             tform_strides = [address_map['strides'][0]]
@@ -119,9 +125,9 @@ class AddressGenerator(Component):
                 offset -= (extent_sub_1[i] * address_map['strides'][i])
                 tform_strides.append(address_map['strides'][i + 1] + offset)
 
-            self.configure(self._strides, tform_strides)
+            self.configure(self._strides, [st & amask for st in tform_strides])
         else:
-            self.configure(self._strides, address_map['strides'])
+            self.configure(self._strides, [st & amask for st in address_map['strides']])
         # This will return pairs of ranges with values w.r.t. the node's configuration
         return self.get_configuration()
 

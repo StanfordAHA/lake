@@ -82,8 +82,10 @@ class Arbiter(Generator):
 
         if self.ins == 1:
             print("Size one arbiter...")
-            # self.wire(self._grant_out[0], self._resource_ready & self._request_in[0])
-            self.wire(self._grant_out[0], self._resource_ready)
+            # Grant only a request: spec.py steps a port's ID/AG on its grant
+            # (and uses it as an IN port's ready), so an unqualified grant
+            # steps single-requester ports every cycle (lake master behavior)
+            self.wire(self._grant_out[0], self._resource_ready & self._request_in[0])
             return
 
         # Algorithmically set grant line...

@@ -474,13 +474,20 @@ class Port(Component):
                     ###############################################################
                     ###############################################################
 
+                    # The entry the incoming data lands in (matches addr_into_wcb_comb) - on a new address this is the
+                    # NEXT entry, which may still hold an uncommitted word from two addresses back (short row tails)
+                    self._wcb_target_entry = self.var("wcb_target_entry", self._linear_wcb_write.width)
+                    self.wire(self._wcb_target_entry, kts.ternary(self._already_written & self._new_address,
+                                                                  self._linear_wcb_write_p1,
+                                                                  self._linear_wcb_write))
+
                     @always_comb
                     def write_port_comb_logic():
                         # Need to set the writing wcb
                         self._write_wcb = 0
                         # We should write it as long as there is no valid bit or the valid bit is high but the entry is being written (and the input data is valid)
                         # to the SRAM
-                        if self._sg_step_in & ub_interface['valid'] & (~self._write_can_commit_sticky[self._linear_wcb_write] | ~self._already_written | (self._write_can_commit_sticky[self._linear_wcb_write] & self._write_memory_out & (self._linear_wcb_read == self._linear_wcb_write))):
+                        if self._sg_step_in & ub_interface['valid'] & (~self._write_can_commit_sticky[self._wcb_target_entry] | ~self._already_written | (self._write_can_commit_sticky[self._wcb_target_entry] & self._write_memory_out & (self._linear_wcb_read == self._wcb_target_entry))):
                             self._write_wcb = ~self._finished
 
                     self.add_code(write_port_comb_logic)
@@ -1065,7 +1072,10 @@ class Port(Component):
 
                         # We only push a pop in when there is a read to a new address
                         # self._addr_q_pop_wcb_in = self._read_memory_out
-                        self._addr_q_pop_wcb_in = self._read_memory_out & self._grant
+                        # ... and not for the very first read: there is no older word to evict, and if a second word was
+                        # prefetched before this entry pops (reader starts under backpressure) the pop would evict the word
+                        # the next entries still need
+                        self._addr_q_pop_wcb_in = self._read_memory_out & self._grant & self._already_read
                         # The tag is just another set of bits
                         # self._addr_q_tag_in = self._last_read_addr[tag_addr_range[0], tag_addr_range[1]]
                         self._addr_q_tag_in = self._full_addr_in[tag_addr_range[0], tag_addr_range[1]]
@@ -1079,7 +1089,11 @@ class Port(Component):
                         # Only time we should make a read is if the input step is high, and there's never been a read, or the read address is new, plus there is
                         # either room on the current bus or the current bus is being written
                         # if self._sg_step_in & (~self._already_read | ((self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~self._data_on_bus | self._data_being_written))):
-                        if ~self._finished & self._sg_step_in & (~self._already_read | ((self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~self._data_on_bus | self._data_being_written))):
+                        # ~full: the read of a new word must push its addr queue entry in the same cycle (addr_q_in_comb only
+                        # pushes when the queue has room) - otherwise the entry is pushed later as a same-word access and loses
+                        # its pop_wcb flag, the oldest word is never evicted, and the next new word deadlocks (full queue = reader
+                        # backpressure, e.g. a word re-read many times)
+                        if ~self._finished & self._sg_step_in & ~reg_fifo.ports.full & (~self._already_read | ((self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~self._data_on_bus | self._data_being_written))):
                             self._read_memory_out = 1
 
                         # self._sg_step_out = 0

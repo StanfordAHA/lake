@@ -446,6 +446,24 @@ class Spec():
             assembled_port = {}
             assembled_port['dir'] = port.get_direction()
             assembled_port['data'] = port.get_mp_intf()['data']
+
+            # 2026-09-30: a narrow (not wide-fetch opt_rv) ready-valid OUT port on
+            # a memory port with read delay 1 returns its data one cycle after
+            # the read is issued. Without buffering, the read was issued on the
+            # schedule step alone, the ID/AG stepped on the downstream ready of
+            # the ISSUE cycle, and the returning data was presented for one
+            # cycle only: whenever ready changed between issue and return, an
+            # item was duplicated or dropped. Buffer the returning data in a
+            # 2-entry FIFO, issue a read (and step) only when it will fit.
+            rd_buf = None
+            if (self.any_rv_sg and port.get_direction() == Direction.OUT and
+                    not (port.get_fw() > 1 and self.opt_rv) and
+                    max([mp.get_port_delay() for mp in memports_] + [0]) > 0):
+                assert max(mp.get_port_delay() for mp in memports_) == 1, "read buffer supports read delay 1"
+                rd_buf = RegFIFO(data_width=port.get_mp_intf()['data'].width, width_mult=1, depth=2,
+                                 almost_full_diff=1)
+                rd_buf_in = self._final_gen.var(f"port_{i_}_rd_buf_data_in", port.get_mp_intf()["data"].width)
+                assembled_port['data'] = rd_buf_in
             # assembled_port['addr'] = port_ag.get_address()
             assembled_port['addr'] = port_ag.get_memory_address()
             # assembled_port['en'] = quali_step
@@ -498,16 +516,38 @@ class Spec():
 
                     port_ready = port.get_mp_intf()['ready']
                     sg_step = port_sg.ports.step
-                    # Don't give grant unless there is a ready from port...
-                    mid_grant = memintf_dec.get_p_intf()['grant'] & port_ready
-                    # The enable to mid is memintf decoder resource available ready + step
-                    quali_step = sg_step & memintf_dec.ports.resource_ready
-                    # quali_step = sg_step & port_ready
-                    # The grant is the ready/final step to ID, AG, ready
-                    # self._final_gen.wire(port.get_mp_intf()['valid'], mid_grant)
-                    self._final_gen.wire(port.get_mp_intf()['valid'], memintf_dec.ports.data_valid)
-                    # The ready comes out of the memintf decoder
-                    self._final_gen.wire(memintf_dec.ports.data_ready, port_ready)
+                    if rd_buf is not None:
+                        self._final_gen.add_child(f"port_{i_}_rd_buf", rd_buf,
+                                                  clk=self.hw_attr['clk'],
+                                                  rst_n=self.hw_attr['rst_n'],
+                                                  clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
+                        rd_arrive = memintf_dec.ports.data_valid
+                        rd_pop = self._final_gen.var(f"port_{i_}_rd_buf_pop", 1)
+                        self._final_gen.wire(rd_pop, rd_buf.ports.valid & port_ready)
+                        self._final_gen.wire(rd_buf.ports.push, rd_arrive)
+                        self._final_gen.wire(rd_buf.ports.data_in[0], rd_buf_in)
+                        self._final_gen.wire(rd_buf.ports.pop, rd_pop)
+                        self._final_gen.wire(port.get_mp_intf()['data'], rd_buf.ports.data_out[0])
+                        self._final_gen.wire(port.get_mp_intf()['valid'], rd_buf.ports.valid)
+                        # items + arriving - popping < 2
+                        rd_room = self._final_gen.var(f"port_{i_}_rd_buf_room", 1)
+                        self._final_gen.wire(rd_room, ~rd_buf.ports.almost_full |
+                                             (~rd_buf.ports.full & ~(rd_arrive & ~rd_pop)) |
+                                             (rd_buf.ports.full & rd_pop & ~rd_arrive))
+                        mid_grant = memintf_dec.get_p_intf()['grant'] & rd_room
+                        quali_step = sg_step & memintf_dec.ports.resource_ready & rd_room
+                        self._final_gen.wire(memintf_dec.ports.data_ready, kts.const(1, 1))
+                    else:
+                        # Don't give grant unless there is a ready from port...
+                        mid_grant = memintf_dec.get_p_intf()['grant'] & port_ready
+                        # The enable to mid is memintf decoder resource available ready + step
+                        quali_step = sg_step & memintf_dec.ports.resource_ready
+                        # quali_step = sg_step & port_ready
+                        # The grant is the ready/final step to ID, AG, ready
+                        # self._final_gen.wire(port.get_mp_intf()['valid'], mid_grant)
+                        self._final_gen.wire(port.get_mp_intf()['valid'], memintf_dec.ports.data_valid)
+                        # The ready comes out of the memintf decoder
+                        self._final_gen.wire(memintf_dec.ports.data_ready, port_ready)
 
                     # If wide and optimizing rv, we should just give them the port's step out
                     if port.get_fw() > 1 and self.opt_rv:
@@ -1741,6 +1781,23 @@ class Spec():
         # Process the dependencies...
         ret_config["constraints"] = []
         deps_map = app_json["dep_values"]
+        # 2026-09-30: line buffers that leave NO spare row for the writer
+        # (R - D - c < 1, see _war_rows_allowed; e.g. unsharp's 6-row gray tap,
+        # pitch 68, on a 512-word memory) deadlock with the default RAW
+        # encoding (the reader may only lead the writer within one row), but fit
+        # with a ROW-level RAW (writer >= reader row - D + 2) and a WAR scalar
+        # <= 0 (writer trails the reader's row counter), provided the window is
+        # non-empty: R - c >= 3. Those readers get the row-level RAW below.
+        # Only for 2-level domains: with a level above the rows, the row
+        # comparison's wrap fixup assumes the writer leads.
+        force_row_raw = set()
+        for (dep_this, dep_on), dep_idx in deps_map.items():
+            if dep_idx is None and "port_w" in dep_this:
+                war_rows = self._war_rows_allowed(app_json, dep_this, dep_on)
+                if (war_rows is not None and war_rows < 1 and
+                        len(app_json["domain"][dep_on]["extents"]) == 2 and
+                        len(app_json["domain"][dep_this]["extents"]) == 2):
+                    force_row_raw.add(dep_on)
         # (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
         # LFComparisonOperator.LT.value
         for dep_pair, indices in deps_map.items():
@@ -1774,6 +1831,22 @@ class Spec():
                     this_depends_idx = 1
                     on_this_idx = 1
                     scalar = 8
+                    # 2026-09-30: "writer at most 8 rows ahead" laps a line
+                    # buffer whose memory holds fewer rows (e.g. 512 words for a
+                    # 64-wide image): a stalled reader then reads data from the
+                    # next lap. Bound it by the rows the memory holds.
+                    war_rows = self._war_rows_allowed(app_json, this_depends, on_this)
+                    if war_rows is not None and war_rows < scalar:
+                        # < 1: the reader's RAW is row-level (force_row_raw);
+                        # feasible iff war_rows + D >= 3
+                        if war_rows < 1 and (on_this not in force_row_raw or
+                                             war_rows + self._precursor_row_lag(app_json, on_this) < 3):
+                            raise ValueError(
+                                f"RV line buffer {this_depends} -> {on_this} does not fit the "
+                                f"memory: {self._port_capacity_elems(this_depends)} elements hold too few rows "
+                                f"of pitch {app_json['access_map'][this_depends]['address_stride'][1]} "
+                                f"for the reader's lag")
+                        scalar = war_rows
 
             else:
                 # [this_idx, on_this_idx, scalar]
@@ -1797,6 +1870,39 @@ class Spec():
                     app_json["precursor_deltas"][this_depends] = [[0, 0]]
                 prec_delts = app_json["precursor_deltas"][this_depends]
                 print("Precursor deltas...")
+
+                # 2026-09-28: the precursor ADDRESS offset. A reader whose
+                # precursor delta is D (per loop level) reads the element the
+                # writer wrote D iterations earlier, i.e. its address shifts by
+                # sum_l D[l] * address_stride[l]. The loop below only applied the
+                # first nonzero level and scaled it by the domain EXTENTs, which
+                # is wrong when the row pitch differs from the row extent (e.g.
+                # harris lxx: pitch 68, extent 66 -> reads shifted by 4) and drops
+                # any column component of a multi-level delta (e.g. camera
+                # [[1,2],[0,1]] -> reads shifted by 1). RTL-verified on
+                # build_four_port_wide_fetch_rv(4096,16,4). For single-level,
+                # pitch==extent precursors (conv_3_3, gaussian) this is the same
+                # value as before. The RAW scalar below is unchanged.
+                port_addr = ret_config[self.port_name_to_int(this_depends)]["config"]["address"]
+                precursor_addr = 0
+                for pd in prec_delts:
+                    if pd[1] != 0 and pd[0] < len(port_addr["strides"]):
+                        precursor_addr += pd[1] * port_addr["strides"][pd[0]]
+                port_addr["offset"] -= precursor_addr
+
+                # 2026-09-28: zero-lag reader (no precursor, RAW at level 0 with
+                # no scalar): `reader < writer` at the port iterator lets the
+                # reader reach an address before the writer's data leaves the
+                # wide-fetch aggregation buffer, so it reads the previous lap / X
+                # (RTL-verified: unsharp, camera). Require the reader to trail by
+                # more than the aggregation capacity + in-flight words.
+                if (comparison == LFComparisonOperator.LT.value and precursor_addr == 0 and
+                        this_depends_idx == 0 and on_this_idx == 0 and scalar_json is None):
+                    dep_port = self.get_port_from_idx(this_depends_int)
+                    fw = dep_port.get_fw() if hasattr(dep_port, "get_fw") else 1
+                    vc = getattr(dep_port, "_vec_capacity", None) or 1
+                    scalar = 2 * fw * vc + 4
+
                 for pd in prec_delts:
                     pd_idx = pd[0]
                     pd_val = pd[1]
@@ -1815,9 +1921,8 @@ class Spec():
                     if pd_idx > this_depends_idx:
                         for i in range(pd_idx - this_depends_idx):
                             scalar_adjust_addr *= app_json["domain"][this_depends]["extents"][i]
-                    # Only allow one level to have precursor...
-                    # Also offset the starting address by the scalar_adjust...
-                    ret_config[self.port_name_to_int(this_depends)]["config"]["address"]["offset"] -= scalar_adjust_addr
+                    # Only allow one level to have precursor (for the RAW scalar).
+                    # The address offset is applied above from all levels.
 
                     # Clamp scalar adjust to size of extent
                     if scalar_adjust_addr >= app_json["domain"][this_depends]["extents"][this_depends_idx]:
@@ -1828,11 +1933,110 @@ class Spec():
 
                 scalar -= scalar_adjust
 
+                # 2026-09-28 OPT-IN (LAKE_RV_ROW_RAW=1): place the RAW constraint of a
+                # reader at the ROW level (outermost precursor level, or level 1
+                # for zero-lag 2D+ domains) with scalar -delta + 1, i.e. the
+                # writer must be one full row past the reader's source row. The
+                # default encoding above compares COLUMN counters with a single
+                # row-wrap fixup, which cannot express a multi-row distance: it is
+                # correct only while the writer never falls behind (free-flow).
+                # RTL (build_four_port_wide_fetch_rv(4096,16,4)) under writer/
+                # reader stalls: default -> readers overrun a stalled writer
+                # (lagged taps) or deadlock (zero-lag); this encoding -> correct.
+                # Costs one row of reader latency. Default unchanged because the
+                # default encoding is what runs on chip today.
+                # Explicit [level, level, scalar] entries (clockwork's barrier /
+                # sweep constraints for reuse buffers) are kept as emitted.
+                if ((os.environ.get("LAKE_RV_ROW_RAW") == "1" or this_depends in force_row_raw)
+                        and comparison == LFComparisonOperator.LT.value and scalar_json is None):
+                    ndims = len(app_json["domain"][this_depends]["extents"])
+                    nz = [pd for pd in prec_delts if pd[1] != 0]
+                    if nz:
+                        row_lvl, row_delta = max(nz, key=lambda pd: pd[0])
+                    else:
+                        row_lvl, row_delta = (1 if ndims > 1 else 0), 0
+                    this_depends_idx = row_lvl
+                    on_this_idx = row_lvl
+                    scalar = -row_delta + 1
+
             ret_config["constraints"].append((this_depends_int, this_depends_idx,
                                               on_this_int, on_this_idx, comparison, scalar
                                               ))
+            # 2026-09-30: a dependence between ports on different storages (e.g.
+            # a second writer mapped onto the filter path of a 1-input spec)
+            # cannot be honoured: the data never meets.
+            st_a, st_b = self._port_storage(this_depends), self._port_storage(on_this)
+            if st_a is not None and st_b is not None and st_a is not st_b:
+                raise ValueError(
+                    f"RV program: {this_depends} and {on_this} are on different storages "
+                    f"(one is the filter path); the buffer needs more data ports than this spec has")
+            # 2026-09-30: an explicit [level, level, scalar] constraint (clockwork
+            # barrier / sweep for reuse buffers) needs the whole buffer resident;
+            # addresses past the memory would alias instead of wrapping as a
+            # line buffer does.
+            if indices is not None and len(indices) > 2 and indices[2] is not None:
+                for pn in (this_depends, on_this):
+                    self._check_resident_fits(ret_config[self.port_name_to_int(pn)], pn)
 
         return ret_config
+
+    def _port_storage(self, port_name):
+        """The Storage node behind a port (through its memory ports)."""
+        port = self.get_port_from_idx(self.port_name_to_int(port_name))
+        for mp in self.get_memory_ports(port):
+            for nb in self._hw_graph.neighbors(mp):
+                if isinstance(nb, Storage):
+                    return nb
+        return None
+
+    def _port_capacity_elems(self, port_name):
+        """Elements (external data words) of the storage behind a port."""
+        port = self.get_port_from_idx(self.port_name_to_int(port_name))
+        stg = self._port_storage(port_name)
+        if stg is None:
+            return None
+        return stg.get_capacity() // max(1, getattr(port, "_ext_data_width", 16) // 8)
+
+    def _war_rows_allowed(self, app_json, writer, reader):
+        """Rows a line-buffer writer may run ahead of `reader` (row level 1)
+        without overwriting data the reader still needs. The memory holds
+        R = capacity // pitch rows (addresses wrap); a reader in row r still
+        needs writer rows >= r - D - c (precursor lag D rows, c = 1 if it also
+        lags by columns), and writer row w overwrites row w - R, so
+        w < r + R - D - c. (The reader's prefetch and the writer's
+        write-combining only delay the overwrite.) None if not a row buffer."""
+        am = app_json.get("access_map", {}).get(writer)
+        if am is None or len(am["address_stride"]) < 2:
+            return None
+        pitch = am["address_stride"][1]
+        cap = self._port_capacity_elems(writer)
+        if not cap or pitch <= 0:
+            return None
+        lag, col = 0, 0
+        for lvl, val in (app_json.get("precursor_deltas", {}).get(reader) or []):
+            if lvl == 1:
+                lag += val
+            elif lvl == 0 and val > 0:
+                col = 1
+            elif lvl >= 2 and val != 0:
+                return None
+        return cap // pitch - (lag + col)
+
+    def _precursor_row_lag(self, app_json, reader):
+        """The reader's precursor lag in rows (level 1)."""
+        return sum(val for lvl, val in (app_json.get("precursor_deltas", {}).get(reader) or []) if lvl == 1)
+
+    def _check_resident_fits(self, port_config, port_name):
+        cfg = port_config["config"]
+        cap = self._port_capacity_elems(port_name)
+        strides = cfg["address"]["strides"]
+        if cap is None or any(st < 0 for st in strides):
+            return
+        top = cfg["address"]["offset"] + sum(st * (e - 1) for st, e in zip(strides, cfg["extents"]))
+        if top >= cap:
+            raise ValueError(
+                f"RV program: {port_name} addresses {top + 1} elements but the memory holds {cap}; "
+                f"a barrier / sweep buffer must be resident (bank it across tiles)")
 
     def get_port_from_idx(self, port_num):
         assert port_num < (self.get_num_in_ports() + self.get_num_out_ports()), f"Only have {self.get_num_in_ports() + self.get_num_out_ports()} ports"
@@ -2023,12 +2227,17 @@ class Spec():
                             },
                             'schedule': _extract_schedule(word_val),
                         },
+                        # 2026-09-30: the SIPO-out address generator addresses the
+                        # aggregation buffer's READ side (agg2sram read_data_*);
+                        # write_data_* is the SRAM address (used for 'config' above).
+                        # They only coincide for unit strides.
                         'vec_out_config': {
                             'dimensionality': dim,
                             'extents': _adjust_extents(sram_val.get("extent", [1])),
                             'address': {
-                                'strides': sram_val.get("write_data_stride", [0] * dim),
-                                'offset': _extract_offset(sram_val.get("write_data_starting_addr", [0])),
+                                'strides': sram_val.get("read_data_stride", sram_val.get("write_data_stride", [0] * dim)),
+                                'offset': _extract_offset(sram_val.get("read_data_starting_addr",
+                                                                       sram_val.get("write_data_starting_addr", [0]))),
                             },
                             'schedule': _extract_schedule(sram_val),
                         },
@@ -2079,12 +2288,16 @@ class Spec():
                             'schedule': _extract_schedule(sram_val),
                             'filter': None,
                         },
+                        # 2026-09-30: the PISO-in address generator addresses the
+                        # transpose buffer's WRITE side (sram2tb write_data_*);
+                        # read_data_* is the SRAM address (used for 'config' above).
                         'vec_in_config': {
                             'dimensionality': dim,
                             'extents': _adjust_extents(sram_val.get("extent", [1])),
                             'address': {
-                                'strides': sram_val.get("read_data_stride", [0] * dim),
-                                'offset': _extract_offset(sram_val.get("read_data_starting_addr", [0])),
+                                'strides': sram_val.get("write_data_stride", sram_val.get("read_data_stride", [0] * dim)),
+                                'offset': _extract_offset(sram_val.get("write_data_starting_addr",
+                                                                       sram_val.get("read_data_starting_addr", [0]))),
                             },
                             'schedule': _extract_schedule(sram_val),
                         },
