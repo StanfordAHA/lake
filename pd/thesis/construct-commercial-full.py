@@ -115,6 +115,58 @@ def construct(**kwargs):
   pt_power_roundtrip_synth   = Step( this_dir + '/synopsys-ptpx-synth')
   pt_power_roundtrip_synth.set_name('synopsys-ptpx-synth-roundtrip-synth')
 
+  # ---------------------------------------------------------------------
+  # Idle-power / active-power test infrastructure.
+  #
+  # power_gen builds two bitstreams + matching PARGS from the same spec
+  # kwargs the rtl step uses. Two vcs-sim-power clones (one per variant)
+  # consume them; each sim's VCD feeds its own vcd2saif → ptpx-synth pair
+  # to produce standalone idle-power and active-power reports.
+  # ---------------------------------------------------------------------
+  power_gen = Step( this_dir + '/power-test-gen')
+
+  vcs_sim_idle_power   = Step( this_dir + '/synopsys-vcs-sim-power')
+  vcs_sim_idle_power.set_name('synopsys-vcs-sim-idle-power')
+  vcs_sim_active_power = Step( this_dir + '/synopsys-vcs-sim-power')
+  vcs_sim_active_power.set_name('synopsys-vcs-sim-active-power')
+
+  gen_saif_idle_power   = Step('synopsys-vcd2saif-convert', default=True)
+  gen_saif_idle_power.set_name('synopsys-vcd2saif-convert-idle-power')
+  gen_saif_active_power = Step('synopsys-vcd2saif-convert', default=True)
+  gen_saif_active_power.set_name('synopsys-vcd2saif-convert-active-power')
+
+  pt_power_idle   = Step( this_dir + '/synopsys-ptpx-synth')
+  pt_power_idle.set_name('synopsys-ptpx-synth-idle-power')
+  pt_power_active = Step( this_dir + '/synopsys-ptpx-synth')
+  pt_power_active.set_name('synopsys-ptpx-synth-active-power')
+
+  # ---------------------------------------------------------------------
+  # Gate-level (post-PnR / signoff) idle-power / active-power.
+  #
+  # Mirror of the synth-level pt_power_idle/active chain above, but the
+  # activity comes from a GATE-LEVEL sim of the routed signoff netlist
+  # (synopsys-vcs-sim-power-gl) and power is computed by synopsys-ptpx-gl
+  # (reads netlist + SDC + SPEF parasitics from signoff), so these are
+  # real post-layout idle/active numbers rather than name-propagated
+  # synth-level estimates. The idle/active bitstreams are identical to the
+  # synth-level flow — they load through the config PORT interface, which
+  # survives PnR unchanged.
+  # ---------------------------------------------------------------------
+  vcs_sim_idle_power_gl   = Step( this_dir + '/synopsys-vcs-sim-power-gl')
+  vcs_sim_idle_power_gl.set_name('synopsys-vcs-sim-idle-power-gl')
+  vcs_sim_active_power_gl = Step( this_dir + '/synopsys-vcs-sim-power-gl')
+  vcs_sim_active_power_gl.set_name('synopsys-vcs-sim-active-power-gl')
+
+  gen_saif_idle_power_gl   = Step('synopsys-vcd2saif-convert', default=True)
+  gen_saif_idle_power_gl.set_name('synopsys-vcd2saif-convert-idle-power-gl')
+  gen_saif_active_power_gl = Step('synopsys-vcd2saif-convert', default=True)
+  gen_saif_active_power_gl.set_name('synopsys-vcd2saif-convert-active-power-gl')
+
+  pt_power_idle_gl   = Step( this_dir + '/synopsys-ptpx-gl')
+  pt_power_idle_gl.set_name('synopsys-ptpx-gl-idle-power')
+  pt_power_active_gl = Step( this_dir + '/synopsys-ptpx-gl')
+  pt_power_active_gl.set_name('synopsys-ptpx-gl-active-power')
+
   print(f"Extending LVS inputs...")
   lvs.extend_inputs(['sram.spi'])
 
@@ -170,6 +222,29 @@ def construct(**kwargs):
     _step.set_param('dual_port',        parameters.get('dual_port', False))
     _step.set_param('vec_capacity',     parameters.get('vec_capacity', 2))
     _step.set_param('physical',         parameters.get('physical', True))
+
+  # power_gen instantiates the same spec factory as the rtl step to keep the
+  # RTL/collateral and the idle/active bitstreams targeting identical hardware.
+  power_gen.set_param('storage_capacity', parameters.get('storage_capacity', 8192))
+  power_gen.set_param('data_width',       parameters.get('data_width', 16))
+  power_gen.set_param('fetch_width',      parameters.get('fetch_width', 4))
+  power_gen.set_param('dimensionality',   parameters.get('dimensionality', 6))
+  power_gen.set_param('in_ports',         parameters.get('in_ports', 2))
+  power_gen.set_param('out_ports',        parameters.get('out_ports', 2))
+  power_gen.set_param('dual_port',        parameters.get('dual_port', False))
+  power_gen.set_param('vec_capacity',     parameters.get('vec_capacity', 2))
+  power_gen.set_param('sim_cycles',       parameters.get('sim_cycles', 1000))
+  # Only in python_command for the rtl step; the power programs must see them
+  # too or they configure a different spec than the one being simulated.
+  for _key in ('max_extent', 'max_sequence_width'):
+    if parameters.get(_key) is not None:
+      power_gen.set_param(_key, parameters[_key])
+
+  vcs_sim_idle_power.set_param('variant', 'idle')
+  vcs_sim_active_power.set_param('variant', 'active')
+
+  vcs_sim_idle_power_gl.set_param('variant', 'idle')
+  vcs_sim_active_power_gl.set_param('variant', 'active')
 
   #-----------------------------------------------------------------------
   # Modify Nodes
@@ -227,6 +302,23 @@ def construct(**kwargs):
   g.add_step( pt_power_roundtrip_rtl )
   g.add_step( pt_power_roundtrip_synth )
 
+  # Idle/active power nodes.
+  g.add_step( power_gen )
+  g.add_step( vcs_sim_idle_power )
+  g.add_step( vcs_sim_active_power )
+  g.add_step( gen_saif_idle_power )
+  g.add_step( gen_saif_active_power )
+  g.add_step( pt_power_idle )
+  g.add_step( pt_power_active )
+
+  # Gate-level idle/active power nodes.
+  g.add_step( vcs_sim_idle_power_gl )
+  g.add_step( vcs_sim_active_power_gl )
+  g.add_step( gen_saif_idle_power_gl )
+  g.add_step( gen_saif_active_power_gl )
+  g.add_step( pt_power_idle_gl )
+  g.add_step( pt_power_active_gl )
+
   synth.extend_inputs( ['sram_tt.lib', 'sram.lef', 'sram_tt.db'] )
   synth.extend_inputs(custom_genus_scripts.all_outputs())
   synth.extend_outputs(["sdc"])
@@ -248,6 +340,17 @@ def construct(**kwargs):
   pt_power_roundtrip_rtl.extend_inputs(['sram_tt.db'])
   pt_power_roundtrip_synth.extend_inputs(['sram_tt.db'])
   pt_power_gl.extend_inputs(['sram_tt.db'])
+
+  pt_power_idle.extend_inputs(['sram_tt.db'])
+  pt_power_active.extend_inputs(['sram_tt.db'])
+  vcs_sim_idle_power.extend_inputs(['sram.v'])
+  vcs_sim_active_power.extend_inputs(['sram.v'])
+
+  # Gate-level power: ptpx-gl needs the SRAM .db; the GL sims need sram.v.
+  pt_power_idle_gl.extend_inputs(['sram_tt.db'])
+  pt_power_active_gl.extend_inputs(['sram_tt.db'])
+  vcs_sim_idle_power_gl.extend_inputs(['sram.v'])
+  vcs_sim_active_power_gl.extend_inputs(['sram.v'])
 
   #-----------------------------------------------------------------------
   # Graph -- Add edges
@@ -436,6 +539,76 @@ def construct(**kwargs):
   g.connect_by_name( adk,                   pt_power_roundtrip_synth )
   g.connect_by_name( synth,                 pt_power_roundtrip_synth )
   g.connect_by_name( gen_sram,              pt_power_roundtrip_synth )
+
+  # ---- Idle-power / active-power wiring ---------------------------------
+  # power_gen emits variant-suffixed files (bitstream.idle.bs, PARGS.idle.txt,
+  # etc.). Route them to each sim's generic input names (bitstream.bs, PARGS.txt).
+  g.connect( power_gen.o('bitstream.idle.bs'),    vcs_sim_idle_power.i('bitstream.bs') )
+  g.connect( power_gen.o('PARGS.idle.txt'),       vcs_sim_idle_power.i('PARGS.txt') )
+  g.connect( power_gen.o('comp_args.txt'),        vcs_sim_idle_power.i('comp_args.txt') )
+  g.connect( power_gen.o('bitstream.active.bs'),  vcs_sim_active_power.i('bitstream.bs') )
+  g.connect( power_gen.o('PARGS.active.txt'),     vcs_sim_active_power.i('PARGS.txt') )
+  g.connect( power_gen.o('comp_args.txt'),        vcs_sim_active_power.i('comp_args.txt') )
+  # Both variants run on the same random input stream.
+  for _sim in (vcs_sim_idle_power, vcs_sim_active_power,
+               vcs_sim_idle_power_gl, vcs_sim_active_power_gl):
+    g.connect( power_gen.o('input_data.hex'), _sim.i('input_data.hex') )
+
+  # RTL / SRAM / adk / testbench feed into both sim nodes.
+  for _sim in (vcs_sim_idle_power, vcs_sim_active_power):
+    g.connect_by_name( adk,      _sim )
+    g.connect_by_name( gen_sram, _sim )
+    g.connect( rtl.o('design.v'),     _sim.i('design.v') )
+    # (no testbench.sv: the power sims bring their own tb.sv)
+    g.connect( rtl.o('design.args'),  _sim.i('design.args') )
+
+  # Sim VCD → vcd2saif → ptpx-synth, one chain per variant.
+  g.connect_by_name( vcs_sim_idle_power,   gen_saif_idle_power )
+  g.connect_by_name( gen_saif_idle_power,  pt_power_idle )
+  g.connect_by_name( adk,                  pt_power_idle )
+  g.connect_by_name( synth,                pt_power_idle )
+  g.connect_by_name( gen_sram,             pt_power_idle )
+
+  g.connect_by_name( vcs_sim_active_power,   gen_saif_active_power )
+  g.connect_by_name( gen_saif_active_power,  pt_power_active )
+  g.connect_by_name( adk,                    pt_power_active )
+  g.connect_by_name( synth,                  pt_power_active )
+  g.connect_by_name( gen_sram,               pt_power_active )
+
+  # ---- Gate-level (signoff) idle-power / active-power wiring -----------
+  # Same idle/active bitstreams as the synth-level flow, but each variant
+  # is simulated on the ROUTED signoff netlist (design.vcs.v) with SDF
+  # back-annotation, then powered by ptpx-gl using signoff's SDC + SPEF.
+  g.connect( power_gen.o('bitstream.idle.bs'),   vcs_sim_idle_power_gl.i('bitstream.bs') )
+  g.connect( power_gen.o('PARGS.idle.txt'),      vcs_sim_idle_power_gl.i('PARGS.txt') )
+  g.connect( power_gen.o('comp_args.txt'),        vcs_sim_idle_power_gl.i('comp_args.txt') )
+  g.connect( power_gen.o('bitstream.active.bs'), vcs_sim_active_power_gl.i('bitstream.bs') )
+  g.connect( power_gen.o('PARGS.active.txt'),     vcs_sim_active_power_gl.i('PARGS.txt') )
+  g.connect( power_gen.o('comp_args.txt'),        vcs_sim_active_power_gl.i('comp_args.txt') )
+
+  # Each GL sim gets the routed netlist as design.v, the signoff SDF, the
+  # ADK stdcell models (via adk), sram.v, and the shared testbench/args.
+  for _sim in (vcs_sim_idle_power_gl, vcs_sim_active_power_gl):
+    g.connect_by_name( adk,      _sim )
+    g.connect_by_name( gen_sram, _sim )
+    g.connect( signoff.o('design.vcs.v'), _sim.i('design.v') )
+    g.connect( signoff.o('design.sdf'),   _sim.i('design.sdf') )
+    # (no testbench.sv: the power sims bring their own tb.sv)
+    g.connect( rtl.o('design.args'),      _sim.i('design.args') )
+
+  # GL sim VCD → vcd2saif → ptpx-gl, one chain per variant. ptpx-gl pulls
+  # the routed netlist + SDC + SPEF parasitics from signoff.
+  g.connect_by_name( vcs_sim_idle_power_gl,   gen_saif_idle_power_gl )
+  g.connect_by_name( gen_saif_idle_power_gl,  pt_power_idle_gl )
+  g.connect_by_name( adk,                     pt_power_idle_gl )
+  g.connect_by_name( signoff,                 pt_power_idle_gl )
+  g.connect_by_name( gen_sram,                pt_power_idle_gl )
+
+  g.connect_by_name( vcs_sim_active_power_gl,   gen_saif_active_power_gl )
+  g.connect_by_name( gen_saif_active_power_gl,  pt_power_active_gl )
+  g.connect_by_name( adk,                       pt_power_active_gl )
+  g.connect_by_name( signoff,                   pt_power_active_gl )
+  g.connect_by_name( gen_sram,                  pt_power_active_gl )
 
 
   #-----------------------------------------------------------------------

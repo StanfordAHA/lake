@@ -2205,7 +2205,13 @@ if __name__ == "__main__":
                     'dual_port':        dual_port,
                     'python_command':   f'"{python_command}"',
                     'test_dir':         test_dir,
+                    # Also plain kwargs: power-test-gen rebuilds the spec from them.
+                    'vec_capacity':     vec_cap,
                 }
+                if max_ext is not None:
+                    graph_dict['max_extent'] = max_ext
+                if max_seq_w is not None:
+                    graph_dict['max_sequence_width'] = max_seq_w
                 print(f"cd {pd_build_path}; mflowgen run --design {sample_folder} --graph-kwargs {graph_dict}")
                 subprocess.run(["mflowgen", "run", "--design", sample_folder, "--graph-kwargs", str(graph_dict)], cwd=pd_build_path)
 

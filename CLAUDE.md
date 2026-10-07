@@ -213,6 +213,16 @@ Milestone 1 (~1 week of work) flips 6 registry entries `bogus` →
   no gf12 ADK / macros / PnR. Fast portable "synth results → power" check;
   45nm behavioural, relative numbers only. Driver:
   `pd/thesis/generic-synth-power/generic_synth_power.sh`.
+- **Idle/active power tests** (`pd/thesis/power-test-gen` →
+  `synopsys-vcs-sim-power[-gl]` → vcd2saif → ptpx): programs and the random
+  input stream come from
+  `lake/utils/power_test_programs.py`, shared with garnet's Tile_MemCore
+  `--memtile-power` (same spec + seed → same programs and input words). Idle =
+  empty program, active = max sustainable traffic; both get the SAME random
+  stream (`input_data.hex`, a fresh word per input port per cycle). The graph
+  kwargs must carry `vec_capacity`, `max_extent`, `max_sequence_width` (not
+  only `python_command`), or power-test-gen programs a different spec than
+  the RTL. Details: `garnet/mflowgen/CLAUDE.md` "MemTile idle/active power".
 - **Extraction scripts consumed by the thesis pipeline:**
   - `ASPLOS_EXP/extract_power_area.py` — walks THESIS_BUILDS → CSV of
     area/power/timing per build (also parses critical-path endpoints).

@@ -1,0 +1,63 @@
+name: power-test-gen
+
+# Generate idle + active bitstreams, their runtime plusarg files and the
+# shared random input stream from the spec kwargs (programs + data from
+# lake.utils.power_test_programs, shared with garnet's Tile_MemCore power
+# tests). Downstream synopsys-vcs-sim-power[-gl] clones consume one variant
+# each; the resulting VCDs feed vcd2saif -> ptpx for idle-power and
+# active-power reports.
+
+parameters:
+  storage_capacity: 8192
+  data_width: 16
+  fetch_width: 4
+  dimensionality: 6
+  in_ports: 2
+  out_ports: 2
+  dual_port: False
+  vec_capacity: 2
+  # Empty = the spec builder's default. Must match the rtl step's spec (the
+  # construct forwards them from the graph kwargs).
+  max_extent: ""
+  max_sequence_width: ""
+  # Measurement window (cycles after flush release); shortened when the spec
+  # cannot keep its ports busy that long. 1000 gives ptpx a stable average.
+  sim_cycles: 1000
+  # Input data seed: the same seed gives the CGRA-tile flow the same streams.
+  seed: 1
+
+outputs:
+  - bitstream.idle.bs
+  - bitstream.active.bs
+  - PARGS.idle.txt
+  - PARGS.active.txt
+  - input_data.hex
+  - comp_args.txt
+
+commands:
+  - |
+    EXTRA=""
+    if [ "$dual_port" = "True" ]; then EXTRA="$EXTRA --dual_port"; fi
+    if [ -n "$max_extent" ]; then EXTRA="$EXTRA --max_extent $max_extent"; fi
+    if [ -n "$max_sequence_width" ]; then EXTRA="$EXTRA --max_sequence_width $max_sequence_width"; fi
+    python gen_power_bitstreams.py \
+      --storage_capacity $storage_capacity \
+      --data_width $data_width \
+      --fetch_width $fetch_width \
+      --dimensionality $dimensionality \
+      --in_ports $in_ports \
+      --out_ports $out_ports \
+      --vec_capacity $vec_capacity \
+      --sim_cycles $sim_cycles \
+      --seed $seed \
+      --physical \
+      $EXTRA \
+      --outdir outputs
+
+postconditions:
+  - assert File( 'outputs/bitstream.idle.bs' )
+  - assert File( 'outputs/bitstream.active.bs' )
+  - assert File( 'outputs/PARGS.idle.txt' )
+  - assert File( 'outputs/PARGS.active.txt' )
+  - assert File( 'outputs/input_data.hex' )
+  - assert File( 'outputs/comp_args.txt' )

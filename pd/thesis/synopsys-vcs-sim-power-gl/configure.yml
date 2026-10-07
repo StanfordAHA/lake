@@ -1,0 +1,49 @@
+name: synopsys-vcs-sim-power-gl
+
+# GATE-LEVEL (post-PnR / signoff) idle/active power sim. Same as
+# synopsys-vcs-sim-power, but simulates the routed signoff netlist instead
+# of the behavioural RTL, so the resulting SAIF drives a real post-layout
+# power number (feeds synopsys-ptpx-gl, not ptpx-synth).
+#
+# Two graph nodes are built from this template — one per variant — via
+# .set_name() in construct-commercial-full.py. The connecting edges feed:
+#   - the signoff netlist as design.v  (signoff.o('design.vcs.v'))
+#   - the signoff SDF   as design.sdf  (signoff.o('design.sdf'))
+#   - the ADK stdcell .v models via the adk input (Makefile globs adk/*.v)
+#   - the same variant bitstream + PARGS from power-test-gen (config loads
+#     through the config PORT interface, which survives PnR unchanged).
+
+inputs:
+  - adk
+  - design.v          # fed the signoff routed netlist (design.vcs.v)
+  - design.sdf        # signoff SDF for delay back-annotation
+  - design.args
+  - comp_args.txt
+  - PARGS.txt
+  - bitstream.bs
+  - input_data.hex    # random input stream (power-test-gen), read by tb.sv
+  - sram.v
+
+outputs:
+  - run.vcd
+
+parameters:
+  testbench_name: tb
+  dut_name: dut
+  waveform: True
+  # Always dump VCD — downstream vcd2saif needs it.
+  dump_vcd: 1
+  # "idle" | "active". Used only for the log tag; the actual bitstream
+  # + PARGS come from the connecting node's outputs.
+  variant: idle
+
+commands:
+  - echo "GL power sim variant=$variant"
+  # tb.sv unconditionally writes gold-comparison stubs under ./outputs at
+  # $finish. Create the dir first so the $writememh calls don't warn.
+  - mkdir -p outputs
+  - make sim DUMP_VCD=$dump_vcd
+  - if [ -f waveforms.vcd ]; then cp waveforms.vcd outputs/run.vcd; else touch outputs/run.vcd; fi
+
+postconditions:
+  - assert 'PASS' in File( 'mflowgen-run.log' )

@@ -1,0 +1,42 @@
+name: synopsys-vcs-sim-power
+
+# Runs a single power test (idle or active) against the RTL. Two graph
+# nodes are built from this template — one per variant — via .clone() in
+# construct-commercial-full.py. The variant is selected by the `variant`
+# parameter; the connecting edges wire the correct bitstream + PARGS.
+
+inputs:
+  - adk
+  - design.v
+  - design.args
+  - comp_args.txt
+  - PARGS.txt
+  - bitstream.bs
+  - input_data.hex    # random input stream (power-test-gen), read by tb.sv
+  - sram.v
+
+outputs:
+  - run.vcd
+
+parameters:
+  testbench_name: tb
+  dut_name: dut
+  waveform: True
+  # Always dump VCD — downstream vcd2saif needs it.
+  dump_vcd: 1
+  # "idle" | "active". Used only for the log tag; the actual bitstream
+  # + PARGS come from the connecting node's outputs.
+  variant: idle
+
+commands:
+  # No file renaming needed — the graph wires bitstream.bs / PARGS.txt
+  # from the correct variant of power-test-gen's outputs. Compile + run.
+  - echo "power sim variant=$variant"
+  # tb.sv unconditionally writes gold-comparison stubs under ./outputs at
+  # $finish. Create the dir first so the $writememh calls don't warn.
+  - mkdir -p outputs
+  - make sim DUMP_VCD=$dump_vcd
+  - if [ -f waveforms.vcd ]; then cp waveforms.vcd outputs/run.vcd; else touch outputs/run.vcd; fi
+
+postconditions:
+  - assert 'PASS' in File( 'mflowgen-run.log' )
