@@ -101,11 +101,23 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
 
 ## 4. Data sources currently wired
 
-- **PORT_EXP** → port_area_vs_{data_width,vc}
-- **ITERATION_DOMAIN_EXP** → iter_dom_area_vs_{dim,max_extent}
-- **AFFINE_PATTERN_GENERATOR_EXP** → affine_area_vs_{dim,max_value}
-- **MEMORY_EXP** → memory_port_area_vs_interface_width,
-  storage_area_vs_capacity
+- **garnet Tile_MemCore sweep** (not THESIS_BUILDS; ingest with
+  `python3 -m THESIS.pipeline.tile_sweep <sweep.zip>`), all in
+  `pipeline/tile_figures.py`, 16-bit-data configs only (other widths have
+  broken RTL as of 2026-10-06):
+  - the Ch. 4 component **area** figures (replaced the THESIS_BUILDS versions
+    2026-10-06, same output paths): port_area_vs_{data_width,vc},
+    iter_dom_area_vs_{dim,max_extent}, affine_area_vs_{dim,max_value},
+    memory_port_area_vs_interface_width, storage_area_vs_capacity. They plot
+    MemCore logic (Storage: MemCore incl. SRAM), since tile synthesis flattens
+    lakespec. port_area_vs_data_width stays BOGUS until non-16-bit builds work.
+  - the seven `memtile_*_area` figures (capacity, bandwidth, interconnect,
+    port buffer, control, RV overhead, synth vs PnR).
+  See CLAUDE.md §1.8.
+- **THESIS_BUILDS** (standalone lakespec) → the Ch. 4 `*_power` figures
+  (BOGUS until the power flow runs) and the `tab:memtile_model_*` /
+  `tab:ul_ppa_summary` tables. The standalone area generators remain in
+  `generators.py` but are no longer registered.
 
 Everything else in `main_thesis.tex` is either BOGUS (data pending) or
 manual (block diagram / curated table). Full breakdown: run

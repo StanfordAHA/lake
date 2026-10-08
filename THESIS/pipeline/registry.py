@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 from . import generators as g
+from . import tile_figures as tf
 
 Generator = Callable[["g.GenContext", "object"], None]
 
@@ -120,14 +121,17 @@ BACKGROUND_MANUAL = [
 ]
 
 # ---------------------------------------------------------------------------
-# Ch. 4 Lake Component characterization (real — from THESIS_BUILDS synth).
+# Ch. 4 Lake Component characterization. Area: Tile_MemCore sweep (MemCore
+# logic, 16-bit data, static; tile_figures.py). Power: THESIS_BUILDS
+# (generators.py), BOGUS until the power flow runs.
 # ---------------------------------------------------------------------------
 COMPONENT_CHARACTERIZATION = [
     # Port
     Entry("port_area_vs_data_width", "fig:port_characterization_interface_width_area",
           "figures/port_characterization/PORT_EXP__synth_total_area_um2_vs_data_width.pdf",
-          "figure", "PORT_EXP: synth area vs data_width, hue fw/vc",
-          "real", g.port_area_vs_data_width),
+          "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs data_width, line per fw",
+          "real", tf.port_area_vs_data_width,
+          notes="BOGUS while only 16-bit tile builds are usable (other widths have broken RTL)."),
     Entry("port_power_vs_data_width", "fig:port_characterization_interface_width_power",
           "figures/port_characterization/PORT_EXP__synth_power_w_vs_data_width.pdf",
           "figure", "PORT_EXP: synth power vs data_width",
@@ -135,8 +139,8 @@ COMPONENT_CHARACTERIZATION = [
           notes="TODO: needs power flow (ptpx-synth) — will fall back to BOGUS until run."),
     Entry("port_area_vs_vc", "fig:port_characterization_vectorization_area",
           "figures/port_characterization/PORT_EXP__synth_total_area_um2_vs_vc.pdf",
-          "figure", "PORT_EXP: synth area vs vc",
-          "real", g.port_area_vs_vc),
+          "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs vc, line per fw",
+          "real", tf.port_area_vs_vc),
     Entry("port_power_vs_vc", "fig:port_characterization_vectorization_power",
           "figures/port_characterization/PORT_EXP__synth_power_w_vs_vc.pdf",
           "figure", "PORT_EXP: synth power vs vc",
@@ -146,8 +150,8 @@ COMPONENT_CHARACTERIZATION = [
     # IterationDomain
     Entry("iter_dom_area_vs_dim", "fig:iteration_domain_characterization_dimensionality_area",
           "figures/iteration_domain_characterization_dimensionality_area.pdf",
-          "figure", "ITERATION_DOMAIN_EXP: synth area vs dim, hue me",
-          "real", g.iter_dom_area_vs_dim),
+          "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs dim, line per max extent",
+          "real", tf.iter_dom_area_vs_dim),
     Entry("iter_dom_power_vs_dim", "fig:iteration_domain_characterization_dimensionality_power",
           "figures/iteration_domain_characterization_dimensionality_power.pdf",
           "figure", "ITERATION_DOMAIN_EXP: synth power vs dim",
@@ -155,8 +159,8 @@ COMPONENT_CHARACTERIZATION = [
           notes="TODO: needs power flow."),
     Entry("iter_dom_area_vs_max_extent", "fig:iteration_domain_characterization_max_extent_area",
           "figures/iteration_domain_characterization_max_extent_area.pdf",
-          "figure", "ITERATION_DOMAIN_EXP: synth area vs me, hue dim",
-          "real", g.iter_dom_area_vs_max_extent),
+          "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs max extent, line per dim",
+          "real", tf.iter_dom_area_vs_max_extent),
     Entry("iter_dom_power_vs_max_extent", "fig:iteration_domain_characterization_max_extent_power",
           "figures/iteration_domain_characterization_max_extent_power.pdf",
           "figure", "ITERATION_DOMAIN_EXP: synth power vs me",
@@ -166,8 +170,8 @@ COMPONENT_CHARACTERIZATION = [
     # Affine Pattern Generator
     Entry("affine_area_vs_dim", "fig:affine_pattern_generator_characterization_dimensionality_area",
           "figures/affine_pattern_generator_characterization_dimensionality_area.pdf",
-          "figure", "AFFINE_PATTERN_GENERATOR_EXP: synth area vs dim, hue msw",
-          "real", g.affine_area_vs_dim),
+          "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs dim, line per max sequence width",
+          "real", tf.affine_area_vs_dim),
     Entry("affine_power_vs_dim", "fig:affine_pattern_generator_characterization_dimensionality_power",
           "figures/affine_pattern_generator_characterization_dimensionality_power.pdf",
           "figure", "AFFINE_PATTERN_GENERATOR_EXP: synth power vs dim",
@@ -175,8 +179,8 @@ COMPONENT_CHARACTERIZATION = [
           notes="TODO: needs power flow."),
     Entry("affine_area_vs_max_value", "fig:affine_pattern_generator_characterization_max_value_area",
           "figures/affine_pattern_generator_characterization_max_value_area.pdf",
-          "figure", "AFFINE_PATTERN_GENERATOR_EXP: synth area vs msw, hue dim",
-          "real", g.affine_area_vs_max_value),
+          "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs max sequence width, line per dim",
+          "real", tf.affine_area_vs_max_value),
     Entry("affine_power_vs_max_value", "fig:affine_pattern_generator_characterization_max_value_power",
           "figures/affine_pattern_generator_characterization_max_value_power.pdf",
           "figure", "AFFINE_PATTERN_GENERATOR_EXP: synth power vs msw",
@@ -222,8 +226,8 @@ COMPONENT_CHARACTERIZATION = [
     Entry("memory_port_area_vs_interface_width",
           "fig:memory_port_characterization_interface_width_area",
           "figures/memory_port_characterization_interface_width_area.pdf",
-          "figure", "MEMORY_EXP: synth area vs fw (interface width), hue storage_cap/data_width",
-          "real", g.memport_area_vs_fw),
+          "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs SRAM interface width, SP vs DP (median over capacities)",
+          "real", tf.memory_port_area_vs_interface_width),
     Entry("memory_port_power_vs_interface_width",
           "fig:memory_port_characterization_interface_width_power",
           "figures/memory_port_characterization_interface_width_power.pdf",
@@ -232,8 +236,8 @@ COMPONENT_CHARACTERIZATION = [
           notes="TODO: needs power flow."),
     Entry("storage_area_vs_capacity", "fig:storage_characterization_capacity_area",
           "figures/storage_characterization_capacity_area.pdf",
-          "figure", "MEMORY_EXP: synth area vs storage_cap",
-          "real", g.storage_area_vs_capacity),
+          "figure", "Tile_MemCore sweep (dw16, static): MemCore area incl. SRAM vs capacity, line per organization",
+          "real", tf.storage_area_vs_capacity),
     Entry("storage_power_vs_capacity", "fig:storage_characterization_capacity_power",
           "figures/storage_characterization_capacity_power.pdf",
           "figure", "MEMORY_EXP: synth power vs storage_cap",
@@ -391,11 +395,57 @@ TABLES = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Ch. 5 CGRA memory-tile characterization (area): garnet Tile_MemCore lake-spec
+# sweep (garnet mflowgen/sweep_specs.py --spec-set thesis), GF12, 1.333 ns,
+# Genus synthesis (+ Innovus signoff for the PnR anchors). Data:
+# `python3 -m THESIS.pipeline.tile_sweep <sweep.zip>` -> THESIS/data/tile_sweep/.
+# ---------------------------------------------------------------------------
+MEMTILE_SWEEP_SRC = "garnet Tile_MemCore lake-spec sweep (tile_sweep.load)"
+MEMTILE_CHARACTERIZATION = [
+    Entry("memtile_capacity_area", "fig:memtile_capacity_area",
+          "figures/memtile/memtile_capacity_area.pdf", "figure",
+          f"{MEMTILE_SWEEP_SRC}: MEMORY_EXP static, area vs capacity per memory organization",
+          "real", tf.memtile_capacity_area,
+          notes="Fits subsec:physical_unified_buffer_characterization (Capacity), currently "
+                "a placeholder reusing storage_characterization_capacity_area.pdf."),
+    Entry("memtile_bandwidth_area", "fig:memtile_bandwidth_area",
+          "figures/memtile/memtile_bandwidth_area.pdf", "figure",
+          f"{MEMTILE_SWEEP_SRC}: MEMORY_EXP static @ 8 KB, SRAM vs std-cell, SP vs DP per bandwidth",
+          "real", tf.memtile_bandwidth_area,
+          notes="Fits the Bandwidth paragraph (fig:pub_bandwidth_characterization placeholder)."),
+    Entry("memtile_interconnect_area", "fig:memtile_characterization",
+          "figures/memtile/memtile_interconnect_area.pdf", "figure",
+          f"{MEMTILE_SWEEP_SRC}: CB/SB/top-level area vs ports and vs port data width",
+          "real", tf.memtile_interconnect_area,
+          notes="subsec:tile_level_characterization. No track-count sweep exists (5 tracks fixed)."),
+    Entry("memtile_port_buffer_area", "fig:memtile_port_buffer_area",
+          "figures/memtile/memtile_port_buffer_area.pdf", "figure",
+          f"{MEMTILE_SWEEP_SRC}: PORT_EXP static, logic vs vectorization buffer bits",
+          "real", tf.memtile_port_buffer_area),
+    Entry("memtile_control_area", "fig:memtile_control_area",
+          "figures/memtile/memtile_control_area.pdf", "figure",
+          f"{MEMTILE_SWEEP_SRC}: ITERATION_DOMAIN/AFFINE static, logic vs dims per counter range",
+          "real", tf.memtile_control_area),
+    Entry("memtile_rv_overhead_area", "fig:memtile_rv_overhead_area",
+          "figures/memtile/memtile_rv_overhead_area.pdf", "figure",
+          f"{MEMTILE_SWEEP_SRC}: static vs RV std-cell area per config",
+          "real", tf.memtile_rv_overhead_area,
+          notes="Fits sec Logical Synchronization (Latency-Insensitive Memory Design Characterization)."),
+    Entry("memtile_synth_vs_pnr_area", "fig:memtile_synth_vs_pnr_area",
+          "figures/memtile/memtile_synth_vs_pnr_area.pdf", "figure",
+          f"{MEMTILE_SWEEP_SRC}: PnR anchors, signoff vs synthesis std-cell area",
+          "real", tf.memtile_synth_vs_pnr_area,
+          notes="Fits subsec:building_a_model (synthesis as a proxy for PnR)."),
+]
+
+
 REGISTRY: list[Entry] = (
     BACKGROUND_MANUAL
     + COMPONENT_CHARACTERIZATION
     + EXPLORATION_APPS
     + LI_CHARACTERIZATION
+    + MEMTILE_CHARACTERIZATION
     + TABLES
 )
 

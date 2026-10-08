@@ -200,6 +200,65 @@ As of 2026-09-28, Milestone 1 is wired end-to-end but has no data yet:
   PE-tile numbers.
 - Tests: `python3 -m pytest --confcutdir=tests/thesis tests/thesis/`.
 
+### 1.8 Memory-tile (Tile_MemCore) sweep figures
+
+The garnet lake-spec sweep (`garnet/mflowgen/sweep_specs.py --spec-set
+thesis --zip`) is a second data source, separate from THESIS_BUILDS: whole
+CGRA memory tiles (lakespec + MemCore wrapper + SB/CB) for every thesis spec,
+static + RV, Genus synth (+ Innovus for the PnR anchors). As of 2026-10-07 the
+figures come from `tile_memcore_thesis_r8cad-gf12_20261006-221414.zip`: all
+196 thesis configs synthesized (lakespec flattened, 1.333 ns) + the 12 `full12`
+PnR anchors through signoff.
+
+```bash
+# Ingest a sweep zip (or extracted dir) -> THESIS/data/tile_sweep/{<sweep>,latest}.csv
+python3 -m THESIS.pipeline.tile_sweep ../tile_memcore_thesis_<host>_<ts>.zip
+# Regenerate every tile-sweep figure (MEMTILE_CHARACTERIZATION + Ch. 4 component area)
+python3 THESIS/generate_thesis_artifacts.py --only memtile_capacity_area memtile_bandwidth_area \
+    memtile_interconnect_area memtile_port_buffer_area memtile_control_area \
+    memtile_rv_overhead_area memtile_synth_vs_pnr_area \
+    port_area_vs_data_width port_area_vs_vc iter_dom_area_vs_dim iter_dom_area_vs_max_extent \
+    affine_area_vs_dim affine_area_vs_max_value memory_port_area_vs_interface_width \
+    storage_area_vs_capacity
+```
+
+It also feeds the Ch. 4 component characterization **area** figures
+(`port_area_vs_vc`, `iter_dom_*`, `affine_area_vs_{dim,max_value}`,
+`memory_port_area_vs_interface_width`, `storage_area_vs_capacity`), which
+replaced the standalone THESIS_BUILDS versions on 2026-10-06 at the same
+output paths. Every tile figure keeps only `data_width == 16` configs
+(`tile_figures.DATA_WIDTH`): other widths have broken RTL, so
+`port_area_vs_data_width` is BOGUS until they're fixed. Tile synthesis
+flattens lakespec, so these plot MemCore logic, not isolated components.
+
+Loader/parsers: `THESIS/pipeline/tile_sweep.py` (maps each config to its
+experiment by spec, picks up configs still building when the zip was cut,
+finds mflowgen step dirs by name since step numbers shift between graphs).
+Plots: `THESIS/pipeline/tile_figures.py` → `THESIS/output/figures/memtile/`.
+Ready-to-paste figure environments with captions and suggested placement:
+`THESIS/output/snippets/memtile_figures.tex` (under the untracked
+`THESIS/output/`, so local to this checkout).
+
+Every ingest also overwrites `THESIS/data/tile_sweep/latest.csv`, which is what
+the figures read, so the last zip ingested is the figure source. Next dataset
+(planned 2026-10-07): garnet's dw16 sweep with `--flatten-effort 0` (garnet
+`mflowgen/CLAUDE.md` "dw16 synth sweep + held-out PnR validation") keeps the
+lakespec hierarchy. `tile_sweep._hier` only splits CB / SB / MemCore so far;
+per-component rows (port SG/AG/ID, storage, memory port, config) still need a
+parser before the component figures can show isolated components. Don't mix
+flattened and hierarchical rows in one figure: area shifts between the two.
+
+Known quirks of the current dataset (details: garnet `mflowgen/CLAUDE.md`
+"Thesis-set synth sweep" result):
+- Its tile RTL was built at two lake commits: `82a78497` (PORT, ITERATION_DOMAIN,
+  PnR anchors, most AFFINE) and `ebd0948e` (MEMORY_EXP, 12 AFFINE), plus one RV
+  re-run at `577c6beb` (`..._dim1_msw256_rv`, +4.5% std-cell area). AFFINE shows
+  no step between the first two.
+- RV ignores `max_sequence_width`: `build_spec_rv` never passes `stride_width`
+  to `ReadyValidScheduleGenerator`, so the 30 RV `_msw*` configs are 6 designs.
+  The static msw sweep sizes the ScheduleGenerator's strides, not the
+  AddressGenerator's.
+
 ---
 
 ## 2. Running the physical-design flow
