@@ -66,7 +66,10 @@ read_saif $ptpx_saif -strip_path $ptpx_strip_path
 
 # Read in the SDC and parasitics
 
-read_sdc -echo $ptpx_sdc
+# read_sdc stops at the first non-SDC line and drops the rest (see
+# read_sdc_compat.tcl): read a copy without them.
+source read_sdc_compat.tcl
+read_sdc_compat $ptpx_sdc
 
 check_constraints -verbose \
   > reports/$ptpx_design_name.checkconstraints.rpt

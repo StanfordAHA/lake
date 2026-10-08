@@ -295,6 +295,21 @@ Known quirks of the current dataset (details: garnet `mflowgen/CLAUDE.md`
   default `strip_path tb/dut` matches fine (as does `tb/dut_gen.dut`). Not run
   on gf12: the adk `*.v` set and the Genus netlist in VCS. A workspace whose
   power sims ran on the RTL needs `make clean-<sim step>` to redo them.
+- **ptpx steps read the SDC through `read_sdc_compat.tcl`** (2026-10-08):
+  PrimeTime's `read_sdc` stops at the first non-SDC line and silently drops
+  the rest. Genus writes `current_design lakespec` at line 13 of its SDC, so
+  on the build machine every `synopsys-ptpx-synth*` step (idle/active/app/
+  handcrafted/roundtrip) read 12 lines and ran with NO clock (PWR-171 "No
+  clock specified"; garnet sweep smoke run 2026-10-07). The local freepdk45
+  checks above used DC SDCs and didn't hit it. Innovus's PT SDC (ptpx-gl)
+  adds `append_to_collection` (folded the way garnet's Tile_MemCore
+  `custom-signoff/outputs/fix-pt-sdc.tcl` does). The read copy is
+  `<sdc>.compat.sdc` in the step dir; ptpx-synth/-gl now fail on "Errors
+  reading SDC" in `logs/pt.log`. Twin `read_sdc_compat.tcl` in both node
+  dirs (keep identical). Checked with PT Q-2019.12-SP2 `read_sdc` (the build
+  machine's): plain → stops at `current_design`, no clocks; compat → clock +
+  multicycle applied. Existing workspaces: redo the ptpx steps (garnet
+  `sweep_specs.py --standalone-only --fresh` rebuilds a standalone in ~16 min).
 - **App-driven standalone power** (2026-10-07, graph kwarg `app_bundle`;
   garnet `sweep_specs.py --standalone-synth --app-bundle-dir` passes it for
   static configs): `pd/thesis/app-power-gen/gen_app_stimulus.py` replays one
