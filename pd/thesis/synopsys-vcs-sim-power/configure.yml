@@ -1,6 +1,8 @@
 name: synopsys-vcs-sim-power
 
-# Runs a single power test (idle or active) against the RTL. Two graph
+# Runs a single power test (idle or active) on the SYNTHESIZED netlist
+# (construct feeds synth's design.v; adk stdcell models; zero-delay), so the
+# activity carries the netlist's own names for ptpx-synth. Two graph
 # nodes are built from this template — one per variant — via .clone() in
 # construct-commercial-full.py. The variant is selected by the `variant`
 # parameter; the connecting edges wire the correct bitstream + PARGS.

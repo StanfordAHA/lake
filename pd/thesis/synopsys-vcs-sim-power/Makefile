@@ -1,6 +1,10 @@
 #!/bin/bash
 
 # Stripped-down VCS sim Makefile for the idle-power / active-power tests.
+# Since 2026-10-07 it simulates the SYNTHESIZED netlist (the construct feeds
+# synth's design.v), not the RTL: ptpx-synth powers that netlist, and an RTL
+# sim's activity only matches its flops/ports by name (a few % of nets).
+# The same bitstream, PARGS and input stream drive it; zero-delay (no SDF).
 # Differences vs. pd/thesis/synopsys-vcs-sim-rtl/Makefile:
 #   - `sim` target does compile + run only (no test_comparison.py compare
 #     step — power tests have no gold to check).
@@ -23,6 +27,16 @@ CLK_PERIOD ?= 1ns
 DESIGN_FILES += tb.sv \
                 inputs/design.v \
                 inputs/sram.v
+
+# Standard-cell models for the netlist. The adk's power-aware *pwr* models
+# redefine the same cells with supply pins the netlist doesn't have.
+GL_LIB_FILES := $(filter-out %pwr.v,$(wildcard inputs/adk/*.v))
+DESIGN_FILES += $(GL_LIB_FILES)
+
+# Zero-delay: no SDF at synthesis, so skip specify delays and timing checks
+# (a check firing on an ideal-clock edge would X the flop).
+GL_ZERO_DELAY_VCS  = +nospecify +notimingcheck
+GL_ZERO_DELAY_XRUN = -nospecify
 
 VCS = vcs \
       -sverilog \
@@ -74,7 +88,11 @@ endif
 # before invoking make sim.
 
 .PHONY: compile
-compile: COMPILE_ARGS = $(COMPILE_RTL_ARGS)
+ifeq ($(TOOL), XCELIUM)
+compile: COMPILE_ARGS = $(COMPILE_RTL_ARGS) $(GL_ZERO_DELAY_XRUN)
+else
+compile: COMPILE_ARGS = $(COMPILE_RTL_ARGS) $(GL_ZERO_DELAY_VCS)
+endif
 compile: INPUT_ARGS = $(DESIGN_FILES) $(TB_FILES) $(IP_FILES)
 compile:
 	$(COMPILE) $(shell cat "./inputs/comp_args.txt")

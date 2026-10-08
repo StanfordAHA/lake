@@ -223,6 +223,17 @@ Milestone 1 (~1 week of work) flips 6 registry entries `bogus` →
   kwargs must carry `vec_capacity`, `max_extent`, `max_sequence_width` (not
   only `python_command`), or power-test-gen programs a different spec than
   the RTL. Details: `garnet/mflowgen/CLAUDE.md` "MemTile idle/active power".
+  **Synth level simulates the Genus netlist** (2026-10-07):
+  `synopsys-vcs-sim-{idle,active}-power` take synth's `design.v` plus the adk
+  stdcell models (minus `*pwr*`) and run zero-delay (`+nospecify
+  +notimingcheck`). Before that they simulated the RTL, and ptpx-synth matched
+  that RTL activity to only ~2–4% of the netlist's nets (no name map). The rest
+  got default toggle rates, so idle ≈ active. Checked locally (freepdk45 DC
+  netlist, fw2 SP 1×1 2 KB, the step's own Makefile): 100% annotated, and idle
+  9.39 / active 17.8 mW, the same as a hand-run gate-level sim. The ptpx
+  default `strip_path tb/dut` matches fine (as does `tb/dut_gen.dut`). Not run
+  on gf12: the adk `*.v` set and the Genus netlist in VCS. A workspace whose
+  power sims ran on the RTL needs `make clean-<sim step>` to redo them.
 - **Extraction scripts consumed by the thesis pipeline:**
   - `ASPLOS_EXP/extract_power_area.py` — walks THESIS_BUILDS → CSV of
     area/power/timing per build (also parses critical-path endpoints).

@@ -30,7 +30,9 @@ DESIGN_FILES += tb.sv \
 # Gate-level extras: pull in the ADK standard-cell models (if the adk input
 # is wired) so the synthesized/routed cells link, and back-annotate SDF when
 # the signoff step provides it.
-GL_LIB_FILES := $(wildcard inputs/adk/*.v)
+# (Not the adk's power-aware *pwr* models: they redefine the same cells with
+# supply pins that design.vcs.v doesn't have.)
+GL_LIB_FILES := $(filter-out %pwr.v,$(wildcard inputs/adk/*.v))
 DESIGN_FILES += $(GL_LIB_FILES)
 
 SDF_ARGS :=

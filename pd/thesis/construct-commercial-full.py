@@ -120,8 +120,10 @@ def construct(**kwargs):
   #
   # power_gen builds two bitstreams + matching PARGS from the same spec
   # kwargs the rtl step uses. Two vcs-sim-power clones (one per variant)
-  # consume them; each sim's VCD feeds its own vcd2saif → ptpx-synth pair
-  # to produce standalone idle-power and active-power reports.
+  # run them on the SYNTHESIZED netlist (so the activity carries the
+  # netlist's own names; an RTL sim matched only a few % of nets); each
+  # sim's VCD feeds its own vcd2saif → ptpx-synth pair to produce
+  # standalone idle-power and active-power reports.
   # ---------------------------------------------------------------------
   power_gen = Step( this_dir + '/power-test-gen')
 
@@ -554,11 +556,11 @@ def construct(**kwargs):
                vcs_sim_idle_power_gl, vcs_sim_active_power_gl):
     g.connect( power_gen.o('input_data.hex'), _sim.i('input_data.hex') )
 
-  # RTL / SRAM / adk / testbench feed into both sim nodes.
+  # Synth netlist / SRAM / adk stdcell models feed into both sim nodes.
   for _sim in (vcs_sim_idle_power, vcs_sim_active_power):
     g.connect_by_name( adk,      _sim )
     g.connect_by_name( gen_sram, _sim )
-    g.connect( rtl.o('design.v'),     _sim.i('design.v') )
+    g.connect( synth.o('design.v'),   _sim.i('design.v') )
     # (no testbench.sv: the power sims bring their own tb.sv)
     g.connect( rtl.o('design.args'),  _sim.i('design.args') )
 
