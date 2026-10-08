@@ -1,0 +1,49 @@
+name: app-power-gen
+
+# App-driven standalone power: one MEM tile of a real app, recorded on the
+# lake-spec CGRA as an app bundle (garnet mflowgen/common/application/
+# gen_app_bundle.py: core.vcd = each MEM tile's lake controller ports),
+# replayed into this lakespec -- the tile's config_memory as the bitstream and
+# its per-cycle port inputs as the stream. Feeds synopsys-vcs-sim-power[-gl]
+# (variant app) like power-test-gen feeds idle/active. Static specs only.
+
+parameters:
+  # Bundle directory (graph kwarg app_bundle); its spec must match this one.
+  app_bundle: ""
+  # MEM tile to replay (Tile_X.._Y..); empty = the programmed lakespec tile
+  # with the most output traffic.
+  app_tile: ""
+  storage_capacity: 8192
+  data_width: 16
+  fetch_width: 4
+  dimensionality: 6
+  in_ports: 2
+  out_ports: 2
+  dual_port: False
+  vec_capacity: 2
+  max_extent: ""
+  max_sequence_width: ""
+
+outputs:
+  - bitstream.app.bs
+  - PARGS.app.txt
+  - input_data.app.hex
+  - comp_args.app.txt
+  - app_stimulus.json
+
+commands:
+  - |
+    TILE=""
+    if [ -n "$app_tile" ]; then TILE="--tile $app_tile"; fi
+    python gen_app_stimulus.py --bundle "$app_bundle" $TILE --outdir outputs \
+      --storage_capacity $storage_capacity --data_width $data_width \
+      --fetch_width $fetch_width --dimensionality $dimensionality \
+      --in_ports $in_ports --out_ports $out_ports --dual_port $dual_port \
+      --vec_capacity $vec_capacity \
+      --max_extent "$max_extent" --max_sequence_width "$max_sequence_width"
+
+postconditions:
+  - assert File( 'outputs/bitstream.app.bs' )
+  - assert File( 'outputs/PARGS.app.txt' )
+  - assert File( 'outputs/input_data.app.hex' )
+  - assert File( 'outputs/comp_args.app.txt' )

@@ -295,6 +295,25 @@ Known quirks of the current dataset (details: garnet `mflowgen/CLAUDE.md`
   default `strip_path tb/dut` matches fine (as does `tb/dut_gen.dut`). Not run
   on gf12: the adk `*.v` set and the Genus netlist in VCS. A workspace whose
   power sims ran on the RTL needs `make clean-<sim step>` to redo them.
+- **App-driven standalone power** (2026-10-07, graph kwarg `app_bundle`;
+  garnet `sweep_specs.py --standalone-synth --app-bundle-dir` passes it for
+  static configs): `pd/thesis/app-power-gen/gen_app_stimulus.py` replays one
+  MEM tile of a real app into this lakespec. The bundle (garnet
+  `mflowgen/common/application/gen_app_bundle.py`) records each MEM tile's
+  `lakespec_flat` ports (`core.vcd`): the tile's parallel `config_memory` IS the
+  standalone serial bitstream (same spec → identical `gen_bitstream`, checked),
+  and the per-cycle port inputs become `input_data.app.hex`. It adds
+  `synopsys-{vcs-sim,vcd2saif-convert,ptpx-synth}-app-power` (+ `-gl`), wired
+  like idle/active. tb.sv quirk: it reads its stream index (a nonblocking
+  counter) in the step it increments it, so word k reaches the design one edge
+  late → `--input-shift 1` (default). With it, the standalone outputs equal
+  the tile's lakespec outputs in value AND cycle (conv_3_3 line buffer, 2×4096
+  taps; RTL and freepdk45 gate level); shift 0 gets 3471/4096 wrong. The step
+  fails if the bundle's spec ≠ this spec (build_spec defaults filled) or the
+  bundle is RV (no standalone RV). `MAX_DATA_SIZE` is now a tb define
+  (comp_args.app.txt sets it to the largest output count). Local result
+  (freepdk45 DC netlist, 100 MHz, fw4 SP 2×2 4 KB): idle 18.9 / conv_3_3 app
+  30.5 / active 33.4 mW, 100% annotated.
 - **Sweep + extraction scripts** (full index in
   [`ASPLOS_EXP/README.md`](ASPLOS_EXP/README.md)). Consumed by the thesis pipeline:
   - `ASPLOS_EXP/extract_power_area.py` — walks THESIS_BUILDS → CSV of

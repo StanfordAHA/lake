@@ -623,6 +623,70 @@ def construct(**kwargs):
   g.connect_by_name( gen_sram,                  pt_power_active_gl )
 
 
+  # ---- App-driven power (graph kwarg app_bundle) -----------------------
+  # One MEM tile of a real app (an app bundle from garnet's
+  # gen_app_bundle.py) replayed into this lakespec: app-power-gen turns the
+  # tile's recorded config_memory + port inputs into a bitstream + stream for
+  # the same power sims idle/active use (variant 'app'), synth and gate level.
+  if parameters.get('app_bundle'):
+    app_gen = Step( this_dir + '/app-power-gen' )
+    vcs_sim_app_power = Step( this_dir + '/synopsys-vcs-sim-power' )
+    vcs_sim_app_power.set_name('synopsys-vcs-sim-app-power')
+    gen_saif_app_power = Step('synopsys-vcd2saif-convert', default=True)
+    gen_saif_app_power.set_name('synopsys-vcd2saif-convert-app-power')
+    pt_power_app = Step( this_dir + '/synopsys-ptpx-synth' )
+    pt_power_app.set_name('synopsys-ptpx-synth-app-power')
+    vcs_sim_app_power_gl = Step( this_dir + '/synopsys-vcs-sim-power-gl' )
+    vcs_sim_app_power_gl.set_name('synopsys-vcs-sim-app-power-gl')
+    gen_saif_app_power_gl = Step('synopsys-vcd2saif-convert', default=True)
+    gen_saif_app_power_gl.set_name('synopsys-vcd2saif-convert-app-power-gl')
+    pt_power_app_gl = Step( this_dir + '/synopsys-ptpx-gl' )
+    pt_power_app_gl.set_name('synopsys-ptpx-gl-app-power')
+
+    for _key, _default in (('storage_capacity', 8192), ('data_width', 16),
+                           ('fetch_width', 4), ('dimensionality', 6),
+                           ('in_ports', 2), ('out_ports', 2),
+                           ('dual_port', False), ('vec_capacity', 2)):
+      app_gen.set_param(_key, parameters.get(_key, _default))
+    for _key in ('max_extent', 'max_sequence_width'):
+      if parameters.get(_key) is not None:
+        app_gen.set_param(_key, parameters[_key])
+    app_gen.set_param('app_bundle', parameters['app_bundle'])
+    app_gen.set_param('app_tile', parameters.get('app_tile', ''))
+    vcs_sim_app_power.set_param('variant', 'app')
+    vcs_sim_app_power_gl.set_param('variant', 'app')
+    pt_power_app.extend_inputs(['sram_tt.db'])
+    pt_power_app_gl.extend_inputs(['sram_tt.db'])
+
+    for _step in (app_gen, vcs_sim_app_power, gen_saif_app_power, pt_power_app,
+                  vcs_sim_app_power_gl, gen_saif_app_power_gl, pt_power_app_gl):
+      g.add_step( _step )
+
+    for _sim in (vcs_sim_app_power, vcs_sim_app_power_gl):
+      g.connect( app_gen.o('bitstream.app.bs'),   _sim.i('bitstream.bs') )
+      g.connect( app_gen.o('PARGS.app.txt'),      _sim.i('PARGS.txt') )
+      g.connect( app_gen.o('comp_args.app.txt'),  _sim.i('comp_args.txt') )
+      g.connect( app_gen.o('input_data.app.hex'), _sim.i('input_data.hex') )
+      g.connect_by_name( adk,      _sim )
+      g.connect_by_name( gen_sram, _sim )
+      g.connect( rtl.o('design.args'), _sim.i('design.args') )
+    # synth level runs the Genus netlist, like idle/active (6a79216c)
+    g.connect( synth.o('design.v'),       vcs_sim_app_power.i('design.v') )
+    g.connect( signoff.o('design.vcs.v'), vcs_sim_app_power_gl.i('design.v') )
+    g.connect( signoff.o('design.sdf'),   vcs_sim_app_power_gl.i('design.sdf') )
+
+    g.connect_by_name( vcs_sim_app_power,  gen_saif_app_power )
+    g.connect_by_name( gen_saif_app_power, pt_power_app )
+    g.connect_by_name( adk,                pt_power_app )
+    g.connect_by_name( synth,              pt_power_app )
+    g.connect_by_name( gen_sram,           pt_power_app )
+
+    g.connect_by_name( vcs_sim_app_power_gl,  gen_saif_app_power_gl )
+    g.connect_by_name( gen_saif_app_power_gl, pt_power_app_gl )
+    g.connect_by_name( adk,                   pt_power_app_gl )
+    g.connect_by_name( signoff,               pt_power_app_gl )
+    g.connect_by_name( gen_sram,              pt_power_app_gl )
+
   #-----------------------------------------------------------------------
   # Parameterize
   #-----------------------------------------------------------------------

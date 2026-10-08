@@ -20,7 +20,12 @@ module tb;
 `endif
 
     parameter BITSTREAM_MAX_SIZE = 4096;
+`ifdef MAX_DATA_SIZE
+    // app replays (app-power-gen) can record more outputs per port
+    parameter MAX_DATA_SIZE = `MAX_DATA_SIZE;
+`else
     parameter MAX_DATA_SIZE = 4096;
+`endif
 
     integer static_value = 1;
     logic clk;
