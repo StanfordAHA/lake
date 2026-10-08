@@ -248,26 +248,38 @@ EXPLORATION_APPS = [
     Entry("single_level_power", "fig:single_level_power",
           "figures/single_level_power.pdf", "figure",
           "per-app power across single-level design points",
-          "bogus", None,
-          notes="TODO: needs an app-mapping harness that runs each of the "
-                "10 apps in tab:exploration_applications on each single-level "
-                "design point from tab:ul_design_points and reports power."),
+          "real", g.single_level_power,
+          notes="Reads THESIS/data/apps/**/results.json. Needs "
+                "synth_power_w populated — falls back to BOGUS until "
+                "ptpx-synth per-app sweep completes."),
     Entry("single_level_performance", "fig:single_level_performance",
           "figures/single_level_performance.pdf", "figure",
-          "per-app perf across single-level design points", "bogus", None,
-          notes="TODO: needs app-mapping harness."),
+          "per-app perf (cycles-to-complete) on single-level designs",
+          "real", g.single_level_performance,
+          notes="Reads THESIS/data/apps/**/results.json. Needs total_cycles "
+                "from tb.sv util counter — falls back to BOGUS until "
+                "run_matrix has run per (design, app) cell."),
     Entry("single_level_area", "fig:single_level_area",
           "figures/single_level_area.pdf", "figure",
-          "per-app area across single-level design points", "bogus", None,
-          notes="TODO: area is per-design not per-app — clarify what chart shows."),
+          "synth area per design point (logic + SRAM stacked)",
+          "real", g.single_level_area,
+          notes="Design-level metric derived from extractor rows; averaged "
+                "across per-app cells since area doesn't vary with app. "
+                "BOGUS until at least one cell has PPA-lookup populated."),
     Entry("single_level_utilization", "fig:single_level_utilization",
           "figures/single_level_utilization.pdf", "figure",
-          "per-app utilization on single-level designs", "bogus", None,
-          notes="TODO: define utilization metric (compute cycles / total cycles?)."),
+          "per-app memtile utilization on single-level designs",
+          "real", g.single_level_utilization,
+          notes="active handshake cycles / total sim cycles per tile, "
+                "summed across tiles for each (design, app) cell. Source: "
+                "tb.sv util counter, aggregated in run_matrix."),
     Entry("single_level_energy_efficiency", "fig:single_level_energy_efficiency",
           "figures/single_level_energy_efficiency.pdf", "figure",
-          "per-app energy efficiency on single-level designs", "bogus", None,
-          notes="TODO: perf/watt — needs perf + power both landed."),
+          "per-app energy per completed run on single-level designs",
+          "real", g.single_level_energy_efficiency,
+          notes="Energy = synth_power_w * total_cycles * clock_period. "
+                "Needs both perf (util counter) and power (ptpx-synth) "
+                "landed — BOGUS until both flows have populated results.json."),
     Entry("two_level_power", "fig:two_level_power",
           "figures/two_level_power.pdf", "figure",
           "per-app power across two-level design points", "bogus", None,

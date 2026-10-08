@@ -123,6 +123,34 @@ GF12 ADK. Configs that map to other macro dimensions will fail at the gen_sram_m
 
 ---
 
+## Clockwork round-trip steps (per-app)
+
+`clockwork-roundtrip-compile` compiles a Halide app with clockwork against
+the spec's collateral. `clockwork-roundtrip-sim-rtl` / `-sim-synth` then
+simulate the result, using shared helpers in `clockwork-roundtrip-common/`.
+The app comes from construct parameters (defaults preserve the original
+smoke test):
+
+| Parameter | Default |
+| --- | --- |
+| `testname` | `conv_3_3` |
+| `app_dir` | `/aha/Halide-to-Hardware/apps/hardware_benchmarks/tests/<testname>` |
+| `clockwork_path` | `/aha/clockwork` |
+
+`ASPLOS_EXP/run_roundtrip_sweep.sh --app-dir/--testname` sets these, and so
+does the Ch. 5 app matrix (`THESIS/apps/run_matrix.py`).
+
+**Utilization counters.** `synopsys-vcs-sim-rtl/tb.sv` counts, inside the
+main sim loop, `total_cycles` and `active_cycles`. A cycle counts as active
+if any `port_{w,r}{0..3}` has valid and ready high together. A `final` block
+writes `<active> <total>` to `outputs/util.txt` on every `$finish`, failing
+runs included. `clockwork-roundtrip-common/run_roundtrip_sim.py`
+(`parse_util_txt`) copies it into `roundtrip_results.json` per tile. The
+file is advisory: if it is missing or malformed the utilization is null, and
+the tile doesn't fail.
+
+---
+
 ## Post-synth flow: RTL sim, vcd2saif, PT power
 
 The graph wires two `synopsys-vcd2saif-convert` instances:

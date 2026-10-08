@@ -1,12 +1,45 @@
 # App-mapping + PPA-collection harness (Ch. 5)
 
-Skeleton for the harness that will flip every `single_level_*` /
-`two_level_*` entry in `THESIS/pipeline/registry.py` from `bogus` →
-`real`. Scoped in the "app-mapping harness scoping" research pass;
+Harness that runs each thesis app on each memtile design point and
+collects the results behind the `single_level_*` / `two_level_*` entries in
+`THESIS/pipeline/registry.py`. Scoped in the "app-mapping harness scoping" research pass;
 see `../PIPELINE.md` for the pipeline docs it plugs into.
 
-**Status:** wiring skeleton only — no cells have been run. The plumbing
-below is what the wiring plan concluded needs to exist.
+**Status (2026-09-28):** Milestone 1 is wired end-to-end and unit-tested
+(`tests/thesis/`), but no cells have run yet. What remains is checking the
+Halide app dirs (step 1 below) and running the matrix on the cluster. Until
+`results.json` files exist, the 5 `single_level_*` figures draw BOGUS
+placeholders.
+
+## 0. Running it
+
+```bash
+# Preview: write the per-cell sweep configs without dispatching anything.
+python3 -m THESIS.apps.run_matrix --apps all --designs all --dry-run
+
+# Real run (cluster: needs /aha, clockwork, VCS, and the sweep builds).
+python3 -m THESIS.apps.run_matrix --apps matmul_agg --designs port_fw4_dw16_sc8k_sp2x2 \
+    --aha-root /aha --builds-root /sim/mstrange/THESIS_BUILDS
+
+# Then regenerate the figures.
+python3 THESIS/generate_thesis_artifacts.py --only single_level_power single_level_performance \
+    single_level_area single_level_utilization single_level_energy_efficiency
+```
+
+Other flags: `--sweep-script`, `--timeout-s` (default 1800), and
+`--skip-unverified-check`. By default, apps still marked `??` in `registry.py`
+are refused.
+
+Each cell runs as follows. `run_one_cell` writes a one-line config and calls
+`ASPLOS_EXP/run_roundtrip_sweep.sh`, which passes `app_dir`/`testname`
+through `pd/thesis/construct-commercial-full.py` into the
+`clockwork-roundtrip-compile` step. The RTL sim (`tb.sv`) writes
+`outputs/util.txt` for each tile. `run_matrix` then parses `summary.txt` and
+the util files, looks up the design's area/power/delay in the extractor data,
+and writes `THESIS/data/apps/<design_id>/<app_id>/results.json`.
+`THESIS/pipeline/apps_query.py` loads that tree for the generators. A missing
+sweep script or builds root doesn't crash the run: `results.json` is still
+written, with `sim_status=FAIL` or null PPA fields.
 
 ---
 
@@ -14,9 +47,9 @@ below is what the wiring plan concluded needs to exist.
 
 | File | Purpose | Status |
 | --- | --- | --- |
-| `registry.py`     | `AppSpec` per app × schedule variant (6 apps from `tab:exploration_applications`) | skeleton; `??` markers where Halide dirs need verifying |
-| `design_points.py`| `DesignPoint` per single-level config | empty list — populate from `THESIS_BUILDS/*/thesis_sweep_700/` |
-| `run_matrix.py`   | CLI that iterates designs × apps and dispatches the round-trip flow per cell | skeleton; `run_one_cell` raises NotImplementedError |
+| `registry.py`     | `AppSpec` per app × schedule variant (6 apps from `tab:exploration_applications`) | `??` markers where Halide dirs still need verifying |
+| `design_points.py`| `DesignPoint` per single-level config | 8 round-trip-validated configs |
+| `run_matrix.py`   | CLI that iterates designs × apps and dispatches the round-trip flow per cell | implemented (§0) |
 | `compose.py`      | Turns per-memtile PPA into per-app CGRA-level PPA (weighted by tile counts + 3:1 PE:Mem) | skeleton with placeholder PE-tile PPA |
 
 Result files land at `THESIS/data/apps/<design_id>/<app_id>/results.json`
@@ -25,7 +58,9 @@ generators in `THESIS/pipeline/generators.py` will read that tree.
 
 ---
 
-## 2. Milestone 1 (~1 week) — "6 apps × 8 validated designs, single-level static"
+## 2. Milestone 1 — "6 apps × 8 validated designs, single-level static"
+
+Steps 2–6 are done (2026-07-13). Step 1 and the actual cluster run remain.
 
 Flips 6 registry entries (`single_level_area/power/performance/utilization/energy_efficiency` + `single_level_performance_LI` if quick) from `bogus` → `real`.
 
@@ -54,9 +89,10 @@ Flips 6 registry entries (`single_level_area/power/performance/utilization/energ
    Flip the 6 `single_level_*` entries in `registry.py` from `"bogus"`
    to `"real"`.
 
-At the end of milestone 1, running
-`python3 THESIS/generate_thesis_artifacts.py` should show `real` count
-jump from 10 → 16.
+Step 6 added 5 generators (`single_level_{power,performance,area,utilization,energy_efficiency}`).
+`single_level_performance_LI` moved to Milestone 3 because `results.json`
+has no LI marker yet. After the matrix runs, those 5 figures become real. The
+power and energy figures also need `ptpx-synth` data.
 
 ---
 

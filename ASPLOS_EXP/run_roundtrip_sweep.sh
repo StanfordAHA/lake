@@ -2,11 +2,18 @@
 # Round-trip a list of thesis-sweep configs through lake → clockwork → lake.
 #
 # Usage:
-#   run_roundtrip_sweep.sh <config_file> [<output_root>]
+#   run_roundtrip_sweep.sh [--app-dir DIR] [--testname NAME] \
+#                          <config_file> [<output_root>]
+#
+# --app-dir / --testname override the default Halide app (conv_3_3). They can
+# also be overridden per-config via optional trailing fields in the config file
+# (see below).
 #
 # config_file is a text file where each line is:
-#     name|sweep-args|spec-factory-kwargs
-# Lines starting with # or blank are skipped. See the inline example below.
+#     name|sweep-args|spec-factory-kwargs[|app_dir|testname]
+# Lines starting with # or blank are skipped. The 4th/5th fields are optional
+# and, when set, override the CLI defaults for that config only — useful when
+# the (design_point x app) matrix pairs each design with a specific app.
 #
 # Speed: simv is compiled ONCE per config and reused across tiles. For
 # multi-tile configs (fw=1 DP, banked configs) this saves ~3 min per extra
@@ -17,7 +24,33 @@ source /cad/modules/tcl/init/bash >/dev/null 2>&1 || true
 module load base >/dev/null 2>&1 || true
 module load vcs/latest >/dev/null 2>&1 || true
 
-CONFIGS_FILE="${1:?usage: $0 <config_file> [<output_root>]}"
+DEFAULT_APP_ROOT="/aha/Halide-to-Hardware/apps/hardware_benchmarks/tests"
+DEFAULT_TESTNAME="conv_3_3"
+DEFAULT_APP_DIR=""  # if empty, derived as $DEFAULT_APP_ROOT/$DEFAULT_TESTNAME
+
+usage() {
+  sed -n '2,18p' "$0"
+  exit 2
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --app-dir)  DEFAULT_APP_DIR="$2";  shift 2 ;;
+    --app-dir=*) DEFAULT_APP_DIR="${1#*=}"; shift ;;
+    --testname) DEFAULT_TESTNAME="$2"; shift 2 ;;
+    --testname=*) DEFAULT_TESTNAME="${1#*=}"; shift ;;
+    -h|--help)  usage ;;
+    --)         shift; break ;;
+    -*)         echo "unknown flag: $1" >&2; usage ;;
+    *)          break ;;
+  esac
+done
+
+if [[ -z "$DEFAULT_APP_DIR" ]]; then
+  DEFAULT_APP_DIR="$DEFAULT_APP_ROOT/$DEFAULT_TESTNAME"
+fi
+
+CONFIGS_FILE="${1:?usage: $0 [--app-dir DIR] [--testname NAME] <config_file> [<output_root>]}"
 ROOT="${2:-$(pwd)/RT_run}"
 mkdir -p "$ROOT"
 
@@ -28,10 +61,13 @@ while IFS= read -r line; do
   case "$line" in
     ''|'#'*) continue ;;
   esac
-  IFS='|' read -r NAME SWEEP_ARGS SPEC_KWARGS <<< "$line"
+  # Optional 4th/5th fields override the per-run CLI defaults.
+  IFS='|' read -r NAME SWEEP_ARGS SPEC_KWARGS APP_DIR_OVERRIDE TESTNAME_OVERRIDE <<< "$line"
+  APP_DIR="${APP_DIR_OVERRIDE:-$DEFAULT_APP_DIR}"
+  TESTNAME="${TESTNAME_OVERRIDE:-$DEFAULT_TESTNAME}"
   CDIR="$ROOT/$NAME"
   echo
-  echo "=== $NAME ===" | tee -a "$SUMMARY"
+  echo "=== $NAME (app=$TESTNAME) ===" | tee -a "$SUMMARY"
   rm -rf "$CDIR"
   mkdir -p "$CDIR/TEST"
   cd "$CDIR"
@@ -45,11 +81,11 @@ while IFS= read -r line; do
     continue
   fi
 
-  echo "[2] roundtrip-compile..."
+  echo "[2] roundtrip-compile (app_dir=$APP_DIR testname=$TESTNAME)..."
   python /aha/lake/pd/thesis/clockwork-roundtrip-compile/run_clockwork.py \
       --collateral TEST/inputs/lake_collateral.json \
-      --app-dir /aha/Halide-to-Hardware/apps/hardware_benchmarks/tests/conv_3_3 \
-      --clockwork-path /aha/clockwork --testname conv_3_3 \
+      --app-dir "$APP_DIR" \
+      --clockwork-path /aha/clockwork --testname "$TESTNAME" \
       --out map_results --manifest manifest.json >compile.log 2>&1
   if [ $? -ne 0 ]; then
     echo "  FAIL: roundtrip-compile failed (see compile.log)" | tee -a "$SUMMARY"

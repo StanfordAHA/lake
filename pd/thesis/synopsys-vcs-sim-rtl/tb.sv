@@ -196,6 +196,13 @@ module tb;
 
     integer THIS_CYC_COUNT;
     integer MAX_TIME = 200;
+    // Utilization counters — sampled inside the main sim loop only (so config
+    // setup and stall-high pre-roll don't inflate the denominator). active_cycles
+    // increments on any port handshake this cycle (union across w/r ports);
+    // total_cycles is the number of loop iterations. See `final` block below —
+    // consumed by pd/thesis/clockwork-roundtrip-common/run_roundtrip_sim.py.
+    integer active_cycles = 0;
+    integer total_cycles  = 0;
     // integer BITSTREAM_CURR_SIZE;
     // integer BITSTREAM_CURR_SIZE_CNT;
 
@@ -431,6 +438,19 @@ module tb;
             // THIS_CYC_COUNT = THIS_CYC_COUNT + 1;
             THIS_CYC_COUNT <= THIS_CYC_COUNT + 1;
 
+            // Utilization: count this cycle if any port handshake fired.
+            total_cycles <= total_cycles + 1;
+            if ((port_w0_valid && port_w0_ready) ||
+                (port_w1_valid && port_w1_ready) ||
+                (port_w2_valid && port_w2_ready) ||
+                (port_w3_valid && port_w3_ready) ||
+                (port_r0_valid && port_r0_ready) ||
+                (port_r1_valid && port_r1_ready) ||
+                (port_r2_valid && port_r2_ready) ||
+                (port_r3_valid && port_r3_ready)) begin
+                active_cycles <= active_cycles + 1;
+            end
+
             // Kill the output readys once the data is done...
             // And check that we don't get any valids after!
             // Only for r/v
@@ -563,6 +583,20 @@ module tb;
 
         $display("PASS");
         #20 $finish;
+    end
+
+    // Emit utilization on every $finish (including FAIL paths). The consumer
+    // (run_roundtrip_sim.py) treats the file as advisory — missing or garbage
+    // contents just null out the utilization field, they don't fail the tile.
+    final begin
+        integer util_fh;
+        string  UTIL_LOCATION;
+        UTIL_LOCATION = $sformatf("%s/outputs/util.txt", TEST_DIRECTORY);
+        util_fh = $fopen(UTIL_LOCATION, "w");
+        if (util_fh != 0) begin
+            $fdisplay(util_fh, "%0d %0d", active_cycles, total_cycles);
+            $fclose(util_fh);
+        end
     end
 
 endmodule

@@ -87,6 +87,29 @@ def parse_pass_fail(log_path):
     return False, tail[-300:] if tail else "no output"
 
 
+def parse_util_txt(cfg_dir):
+    """Read ``cfg_dir/outputs/util.txt`` (written by tb.sv's `final` block)
+    and return ``{"active_cycles": int, "total_cycles": int, "utilization":
+    float}``. Returns ``{}`` if the file is missing or malformed — utilization
+    is advisory, not required for PASS."""
+    util_path = os.path.join(cfg_dir, "outputs", "util.txt")
+    if not os.path.isfile(util_path):
+        return {}
+    try:
+        with open(util_path) as f:
+            parts = f.read().split()
+        if len(parts) < 2:
+            return {}
+        active = int(parts[0])
+        total = int(parts[1])
+    except (OSError, ValueError):
+        return {}
+    out = {"active_cycles": active, "total_cycles": total}
+    if total > 0:
+        out["utilization"] = active / total
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--map-results', required=True,
@@ -159,17 +182,22 @@ def main():
         rc, ran = run_make_sim(cfg_dir, args.log, dump_vcd=args.dump_vcd)
         elapsed = time.time() - t0
         passed, err = parse_pass_fail(args.log)
+        util = parse_util_txt(cfg_dir)
         if not passed or rc != 0:
             with open(args.log, 'a') as f:
                 f.write(f"Test FAILED for tile_{idx}: rc={rc}, err={err}\n")
             results.append({"tile": idx, "status": "sim_failed",
-                            "rc": rc, "elapsed_s": elapsed, "error": err})
+                            "rc": rc, "elapsed_s": elapsed, "error": err,
+                            **util})
             overall_pass = False
         else:
+            util_msg = (f", util={util['utilization']:.2%}"
+                        f" ({util['active_cycles']}/{util['total_cycles']})"
+                        if 'utilization' in util else "")
             with open(args.log, 'a') as f:
-                f.write(f"[tile_{idx}] PASS (elapsed {elapsed:.1f}s)\n")
+                f.write(f"[tile_{idx}] PASS (elapsed {elapsed:.1f}s{util_msg})\n")
             results.append({"tile": idx, "status": "ok",
-                            "elapsed_s": elapsed})
+                            "elapsed_s": elapsed, **util})
 
     summary = {
         "variant": args.variant,

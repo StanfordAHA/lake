@@ -248,6 +248,16 @@ def construct(**kwargs):
   vcs_sim_idle_power_gl.set_param('variant', 'idle')
   vcs_sim_active_power_gl.set_param('variant', 'active')
 
+  # App under test for the clockwork round-trip compile. Defaults preserve the
+  # original conv_3_3 smoke test; the app-mapping harness overrides both to
+  # sweep the (design_point x app) matrix.
+  _default_app_root = '/aha/Halide-to-Hardware/apps/hardware_benchmarks/tests'
+  _testname = parameters.get('testname', 'conv_3_3')
+  _app_dir  = parameters.get('app_dir', f'{_default_app_root}/{_testname}')
+  roundtrip_compile.set_param('app_dir',        _app_dir)
+  roundtrip_compile.set_param('testname',       _testname)
+  roundtrip_compile.set_param('clockwork_path', parameters.get('clockwork_path', '/aha/clockwork'))
+
   #-----------------------------------------------------------------------
   # Modify Nodes
   #-----------------------------------------------------------------------

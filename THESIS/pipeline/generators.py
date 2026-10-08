@@ -19,7 +19,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from . import regression, tables
+from . import apps_query, regression, tables
 from .errors import MissingDataError
 from .ingest import symlink_builds
 
@@ -94,6 +94,66 @@ def _sweep_lineplot(
     outpath.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
     fig.savefig(outpath, dpi=150)
+    plt.close(fig)
+
+
+def _memport_faceted_plot(
+    edf: pd.DataFrame, y: str, title: str, ylabel: str, outpath: Path,
+) -> None:
+    """MEMORY_EXP y vs fetch_width: one panel per port count, one line per capacity.
+
+    fw and port count co-vary in this sweep, so a single axis mixes port
+    configs. Faceting on (inp, outp) holds ports fixed inside each panel;
+    capacity keeps the same color/marker across panels, and the shared
+    legend sits outside the axes so it never covers data.
+    """
+    edf = edf.dropna(subset=["fw", y])
+    if edf.empty:
+        raise MissingDataError(f"no non-null rows for {y} vs fw")
+
+    line_cols = ["storage_cap"]
+    if "data_width" in edf.columns and edf["data_width"].nunique(dropna=True) > 1:
+        line_cols.append("data_width")
+    def as_key(k):
+        return k if isinstance(k, tuple) else (k,)
+
+    line_keys = sorted(as_key(k) for k in edf.groupby(line_cols).groups.keys())
+    colors = plt.get_cmap("tab10")
+    markers = ["o", "s", "^", "D", "v", "P", "X", "*", "<", ">"]
+    style = {k: (colors(i % 10), markers[i % len(markers)]) for i, k in enumerate(line_keys)}
+
+    panels = sorted(edf.groupby(["inp", "outp"]).groups.keys())
+    fws = sorted(edf["fw"].unique())
+    fig, axes = plt.subplots(1, len(panels), figsize=(3.0 * len(panels) + 1.5, 3.4),
+                             sharex=True, sharey=True, squeeze=False)
+    handles: dict = {}
+    for ax, (inp, outp) in zip(axes[0], panels):
+        pdf = edf[(edf["inp"] == inp) & (edf["outp"] == outp)]
+        for key, gdf in pdf.groupby(line_cols, sort=True):
+            key = as_key(key)
+            color, marker = style[key]
+            gdf = gdf.sort_values("fw")
+            (line,) = ax.plot(gdf["fw"], gdf[y], color=color, marker=marker)
+            handles.setdefault(key, (line, ", ".join(
+                f"{int(v)}" if c == "storage_cap" else f"{c}={int(v)}"
+                for c, v in zip(line_cols, key))))
+        ax.set_title(f"{int(inp)} in / {int(outp)} out port{'s' if inp > 1 else ''}", fontsize=9)
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(fws)
+        ax.set_xticklabels([str(int(f)) for f in fws])
+        ax.minorticks_off()
+        ax.set_xlabel("fetch_width")
+        ax.grid(True, alpha=0.3)
+    axes[0][0].set_ylabel(ylabel)
+
+    ordered = [handles[k] for k in line_keys if k in handles]
+    fig.legend([h for h, _ in ordered], [lbl for _, lbl in ordered],
+               loc="center left", bbox_to_anchor=(1.0, 0.5), fontsize=8,
+               title="storage_cap (bytes)" if len(line_cols) == 1 else ", ".join(line_cols))
+    fig.suptitle(title)
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -230,32 +290,46 @@ def affine_power_vs_max_value(ctx: GenContext, outpath: Path) -> None:
     )
 
 
+def _memory_slice(df: pd.DataFrame, y: str) -> pd.DataFrame:
+    """MEMORY_EXP slice with port counts filled in.
+
+    MEMORY_EXP pairs some (fw, storage_cap) points with both a 1-port and a
+    multi-port build. Config names omit ``inp``/``outp`` when they're the
+    default (1), so fill that in and let callers group by port count —
+    otherwise the two builds land on one line as a vertical zig-zag.
+    """
+    edf = _slice(df, "MEMORY_EXP", y)
+    for c in ("inp", "outp"):
+        edf[c] = edf[c].fillna(1) if c in edf.columns else 1
+    return edf
+
+
 def memport_area_vs_fw(ctx: GenContext, outpath: Path) -> None:
-    """MEMORY_EXP: interface-width sweep is fetch_width (fw)."""
+    """MEMORY_EXP: interface-width sweep is fetch_width (fw), faceted by port count."""
     symlink_builds("memory_port", ctx.top_builds / "MEMORY_EXP")
-    edf = _slice(ctx.df, "MEMORY_EXP", "synth_total_area_um2")
-    _sweep_lineplot(
-        edf, x="fw", y="synth_total_area_um2", hue_cols=["storage_cap", "data_width"],
+    edf = _memory_slice(ctx.df, "synth_total_area_um2")
+    _memport_faceted_plot(
+        edf, y="synth_total_area_um2",
         title="MemoryPort area vs interface width (fw)",
-        xlabel="fetch_width", ylabel="synth area (µm²)", outpath=outpath,
+        ylabel="synth area (µm²)", outpath=outpath,
     )
 
 
 def memport_power_vs_fw(ctx: GenContext, outpath: Path) -> None:
     symlink_builds("memory_port", ctx.top_builds / "MEMORY_EXP")
-    edf = _slice(ctx.df, "MEMORY_EXP", "synth_power_w")
-    _sweep_lineplot(
-        edf, x="fw", y="synth_power_w", hue_cols=["storage_cap", "data_width"],
+    edf = _memory_slice(ctx.df, "synth_power_w")
+    _memport_faceted_plot(
+        edf, y="synth_power_w",
         title="MemoryPort power vs interface width (fw)",
-        xlabel="fetch_width", ylabel="synth power (W)", outpath=outpath,
+        ylabel="synth power (W)", outpath=outpath,
     )
 
 
 def storage_area_vs_capacity(ctx: GenContext, outpath: Path) -> None:
     symlink_builds("storage", ctx.top_builds / "MEMORY_EXP")
-    edf = _slice(ctx.df, "MEMORY_EXP", "synth_total_area_um2")
+    edf = _memory_slice(ctx.df, "synth_total_area_um2")
     _sweep_lineplot(
-        edf, x="storage_cap", y="synth_total_area_um2", hue_cols=["fw", "data_width"],
+        edf, x="storage_cap", y="synth_total_area_um2", hue_cols=["fw", "inp", "outp", "data_width"],
         title="Storage area vs capacity",
         xlabel="storage_cap (bytes)", ylabel="synth area (µm²)", outpath=outpath,
     )
@@ -263,9 +337,9 @@ def storage_area_vs_capacity(ctx: GenContext, outpath: Path) -> None:
 
 def storage_power_vs_capacity(ctx: GenContext, outpath: Path) -> None:
     symlink_builds("storage", ctx.top_builds / "MEMORY_EXP")
-    edf = _slice(ctx.df, "MEMORY_EXP", "synth_power_w")
+    edf = _memory_slice(ctx.df, "synth_power_w")
     _sweep_lineplot(
-        edf, x="storage_cap", y="synth_power_w", hue_cols=["fw", "data_width"],
+        edf, x="storage_cap", y="synth_power_w", hue_cols=["fw", "inp", "outp", "data_width"],
         title="Storage power vs capacity",
         xlabel="storage_cap (bytes)", ylabel="synth power (W)", outpath=outpath,
     )
@@ -310,3 +384,153 @@ def lake_interfaces(ctx: GenContext, outpath: Path) -> None:
 def compiler_info(ctx: GenContext, outpath: Path) -> None:
     """Compiler ↔ Component metadata skeleton (prose TODOs inline)."""
     tables.emit_compiler_info(outpath)
+
+
+# ---- Ch. 5 exploration: app x design_point figures -------------------------
+# Backed by THESIS/data/apps/<design>/<app>/results.json (produced by
+# THESIS/apps/run_matrix.py). Each generator raises MissingDataError until
+# that tree is populated, so the orchestrator swaps in a BOGUS placeholder.
+
+
+def _load_apps_or_miss(required_col: str | None = None) -> pd.DataFrame:
+    df = apps_query.load_app_results_df()
+    if df.empty:
+        raise MissingDataError(
+            "no PASS rows in THESIS/data/apps — run THESIS.apps.run_matrix "
+            "on the cluster to populate results.json per (design, app) cell"
+        )
+    if required_col is not None:
+        if required_col not in df.columns or df[required_col].dropna().empty:
+            raise MissingDataError(
+                f"{required_col!r} not populated in any results.json — "
+                "upstream flow hasn't run to completion yet"
+            )
+    return df
+
+
+def _grouped_bar(
+    df: pd.DataFrame,
+    *,
+    x: str,       # e.g. "app_id" — categorical
+    hue: str,     # e.g. "design_id" — bars grouped per x value
+    y: str,       # value column
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    outpath: Path,
+) -> None:
+    """Grouped bar chart. One bar per (hue) value, grouped along x."""
+    df = df.dropna(subset=[x, hue, y])
+    if df.empty:
+        raise MissingDataError(f"no non-null rows for {y} by ({x}, {hue})")
+
+    pivot = df.pivot_table(index=x, columns=hue, values=y, aggfunc="mean").sort_index()
+    hues = list(pivot.columns)
+    xs = list(pivot.index)
+    n_hue = max(len(hues), 1)
+    bar_w = 0.8 / n_hue
+
+    import numpy as np
+    fig, ax = plt.subplots(figsize=(max(6.0, 0.9 * len(xs) + 2.5), 4.0))
+    idx = np.arange(len(xs))
+    for i, h in enumerate(hues):
+        offsets = idx - 0.4 + bar_w * (i + 0.5)
+        ax.bar(offsets, pivot[h].to_numpy(), width=bar_w, label=str(h))
+    ax.set_xticks(idx)
+    ax.set_xticklabels(xs, rotation=30, ha="right", fontsize=8)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.legend(fontsize=7, loc="best", title=hue)
+    ax.grid(True, axis="y", alpha=0.3)
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=150)
+    plt.close(fig)
+
+
+def single_level_power(ctx: GenContext, outpath: Path) -> None:
+    """Per-app synth power on each single-level design point."""
+    df = _load_apps_or_miss(required_col="synth_power_w")
+    df = df.assign(power_mw=df["synth_power_w"] * 1000.0)
+    _grouped_bar(
+        df, x="app_id", hue="design_id", y="power_mw",
+        title="Single-level: per-app power",
+        xlabel="App", ylabel="Synth power (mW)",
+        outpath=outpath,
+    )
+
+
+def single_level_performance(ctx: GenContext, outpath: Path) -> None:
+    """Per-app cycles-to-complete on each single-level design point."""
+    df = _load_apps_or_miss(required_col="total_cycles")
+    _grouped_bar(
+        df, x="app_id", hue="design_id", y="total_cycles",
+        title="Single-level: per-app cycles to complete",
+        xlabel="App", ylabel="Total cycles",
+        outpath=outpath,
+    )
+
+
+def single_level_area(ctx: GenContext, outpath: Path) -> None:
+    """Per-design synth area (design-level, not per-app). Averaged across apps
+    to collapse the per-cell duplicates — area doesn't vary with app."""
+    df = _load_apps_or_miss(required_col="synth_total_area_um2")
+    per_design = (
+        df.groupby("design_id", as_index=False)[["synth_total_area_um2",
+                                                 "synth_logic_area_um2",
+                                                 "synth_storage_area_um2"]]
+          .mean()
+          .sort_values("synth_total_area_um2")
+    )
+    import numpy as np
+    fig, ax = plt.subplots(figsize=(max(6.0, 0.9 * len(per_design) + 2.5), 4.0))
+    idx = np.arange(len(per_design))
+    logic = per_design["synth_logic_area_um2"].fillna(0).to_numpy()
+    storage = per_design["synth_storage_area_um2"].fillna(0).to_numpy()
+    ax.bar(idx, logic, label="Logic", color="tab:blue")
+    ax.bar(idx, storage, bottom=logic, label="SRAM", color="tab:orange")
+    ax.set_xticks(idx)
+    ax.set_xticklabels(per_design["design_id"], rotation=30, ha="right", fontsize=8)
+    ax.set_xlabel("Design point")
+    ax.set_ylabel("Synth area (µm²)")
+    ax.set_title("Single-level: synth area by design point")
+    ax.legend(fontsize=8, loc="best")
+    ax.grid(True, axis="y", alpha=0.3)
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=150)
+    plt.close(fig)
+
+
+def single_level_utilization(ctx: GenContext, outpath: Path) -> None:
+    """Per-app memory-tile utilization (active handshake cycles / total)."""
+    df = _load_apps_or_miss(required_col="utilization")
+    df = df.assign(utilization_pct=df["utilization"] * 100.0)
+    _grouped_bar(
+        df, x="app_id", hue="design_id", y="utilization_pct",
+        title="Single-level: memtile utilization per app",
+        xlabel="App", ylabel="Utilization (%)",
+        outpath=outpath,
+    )
+
+
+def single_level_energy_efficiency(ctx: GenContext, outpath: Path) -> None:
+    """Per-app energy-per-op (lower is better). Requires both power and
+    total_cycles; raises MissingDataError until ptpx-synth data lands."""
+    df = _load_apps_or_miss(required_col="synth_power_w")
+    if "total_cycles" not in df.columns or df["total_cycles"].dropna().empty:
+        raise MissingDataError("total_cycles missing — sim hasn't populated util.txt yet")
+    if "clock_period_ps" not in df.columns or df["clock_period_ps"].dropna().empty:
+        raise MissingDataError("clock_period_ps missing — extractor row not resolved")
+    # Energy per app run = power * runtime = P * cycles * T_clk.
+    df = df.assign(
+        runtime_s=df["total_cycles"] * df["clock_period_ps"] * 1e-12,
+    )
+    df = df.assign(energy_uj=df["synth_power_w"] * df["runtime_s"] * 1e6)
+    _grouped_bar(
+        df, x="app_id", hue="design_id", y="energy_uj",
+        title="Single-level: energy per app run (lower is better)",
+        xlabel="App", ylabel="Energy (µJ)",
+        outpath=outpath,
+    )

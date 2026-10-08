@@ -121,7 +121,7 @@ manual (block diagram / curated table). Full breakdown: run
 | No dedicated per-stride / per-offset AFFINE sweep | `affine_{area,power}_vs_{stride,offset}` | open |
 | No dedicated ScheduleGenerator sweep | `sched_gen_{dim,max_extent}` | open |
 | No LI ScheduleGenerator sweep in THESIS_BUILDS | `li_sched_{ports,loc}_{area,power}` | open |
-| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf`, `tab:ul_ppa_summary` | **skeleton wired** — see `THESIS/apps/README.md` for milestone plan |
+| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf`, `tab:ul_ppa_summary` | **harness wired (2026-07-13), not yet run** — `single_level_*` generators are real but draw BOGUS until `THESIS/data/apps/` fills; see `THESIS/apps/README.md` |
 | No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — area + delay fits landed 2026-07-13; power drops in automatically once ptpx flow runs |
 | No pre/post SB PPA numbers | `fig:interconnect_fork_ready_valid_data` | open |
 
@@ -168,16 +168,14 @@ LaTeX comment so it's obvious in-file.
 ## 8. App-mapping harness
 
 Peer directory `THESIS/apps/` — scope + milestone plan in
-[`THESIS/apps/README.md`](apps/README.md). Currently a skeleton;
-`run_matrix.run_one_cell` raises `NotImplementedError` until the
-per-app mflowgen dispatch is parameterized.
-
-Once wired, per-cell results land at
-`THESIS/data/apps/<design_id>/<app_id>/results.json` with a stable
-schema (see `run_matrix.py` docstring). Downstream generators in
-`pipeline/generators.py` will read that tree to flip the
-`single_level_*` / `two_level_*` registry entries from `bogus` →
-`real`.
+[`THESIS/apps/README.md`](apps/README.md), which also has the run commands.
+`python3 -m THESIS.apps.run_matrix` writes one result per cell to
+`THESIS/data/apps/<design_id>/<app_id>/results.json` (schema in the
+`run_matrix.py` docstring). `pipeline/apps_query.py` loads that tree into a
+DataFrame, keeping only `sim_status == "PASS"` rows by default. The 5
+`single_level_*` generators in `pipeline/generators.py` read from it, and
+raise `MissingDataError` (drawing BOGUS) while the tree is empty.
+`two_level_*` and `*_LI` are still `bogus`.
 
 `THESIS/apps/design_points.py` is the source of truth for the
 single-level design axis; `tab:ul_ppa_summary` and `tab:ul_design_points`

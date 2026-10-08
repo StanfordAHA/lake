@@ -1,8 +1,14 @@
 name: clockwork-roundtrip-compile
 
-# Run clockwork against the spec's collateral to compile conv_3_3, then walk
+# Run clockwork against the spec's collateral to compile a Halide app, then walk
 # the resulting CoreIR JSON and emit one cleaned per-tile config JSON per
 # memory tile so the downstream round-trip sim steps can iterate over them.
+#
+# The app under test is controlled by (app_dir, testname). Defaults target
+# conv_3_3 for backwards compatibility with the initial round-trip smoke test;
+# the app-mapping matrix (THESIS/apps/) overrides both via
+# `set_param('app_dir', ...)` / `set_param('testname', ...)` from construct.py
+# so a single mflowgen graph can be re-run per app.
 
 parameters:
   app_dir:        "/aha/Halide-to-Hardware/apps/hardware_benchmarks/tests/conv_3_3"

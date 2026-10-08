@@ -176,27 +176,29 @@ Each `\input{}`-able from `main_thesis.tex`. Skeletons include a
 `% skeleton — …` comment header so it's obvious in-file that prose
 still needs authoring.
 
-### 1.7 App-mapping harness (Ch. 5, skeleton)
+### 1.7 App-mapping harness (Ch. 5)
 
 The exploration figures (`single_level_*`, `two_level_*`,
-`tab:ul_perf`, `tab:ul_ppa_summary`) will be fed by
-`THESIS/apps/` — see [`THESIS/apps/README.md`](THESIS/apps/README.md)
-for the milestone plan. Today it's **skeleton only**:
+`tab:ul_perf`, `tab:ul_ppa_summary`) are fed by `THESIS/apps/` — see
+[`THESIS/apps/README.md`](THESIS/apps/README.md) for the milestone plan.
+As of 2026-09-28, Milestone 1 is wired end-to-end but has no data yet:
 
-- `THESIS/apps/registry.py` — 6 `AppSpec` entries with `??` markers
-  where Halide app dirs need verifying against the local
-  Halide-to-Hardware checkout.
-- `THESIS/apps/design_points.py` — empty `DESIGNS_SINGLE_LEVEL` list;
-  populate from the 8 round-trip-validated configs in
-  `THESIS_ROUNDTRIP_PROGRESS.md`.
-- `THESIS/apps/run_matrix.py` — CLI shell; `run_one_cell` raises
-  `NotImplementedError` until the mflowgen dispatch is parameterized
-  per app.
+- `THESIS/apps/registry.py` — 6 `AppSpec` entries; the `??` markers
+  (Halide app dirs) still need verifying against the AHA
+  Halide-to-Hardware checkout on the cluster.
+- `THESIS/apps/design_points.py` — `DESIGNS_SINGLE_LEVEL` holds the 8
+  round-trip-validated configs from `THESIS_ROUNDTRIP_PROGRESS.md`.
+- `THESIS/apps/run_matrix.py` — runs one (design, app) cell per call via
+  `ASPLOS_EXP/run_roundtrip_sweep.sh --app-dir/--testname`, parses
+  per-tile `outputs/util.txt` (written by the `tb.sv` util counters),
+  looks up PPA, and writes `THESIS/data/apps/**/results.json`:
+  `python3 -m THESIS.apps.run_matrix --apps ... --designs ... [--dry-run]`.
+- `THESIS/pipeline/apps_query.py` loads those results for the 5
+  `single_level_*` generators (registry status `real`; BOGUS until
+  results exist). `*_LI` variants stay bogus (Milestone 3).
 - `THESIS/apps/compose.py` — CGRA-level PPA composer with placeholder
   PE-tile numbers.
-
-Milestone 1 (~1 week of work) flips 6 registry entries `bogus` →
-`real` — full plan in the README.
+- Tests: `python3 -m pytest --confcutdir=tests/thesis tests/thesis/`.
 
 ---
 
@@ -234,7 +236,8 @@ Milestone 1 (~1 week of work) flips 6 registry entries `bogus` →
   default `strip_path tb/dut` matches fine (as does `tb/dut_gen.dut`). Not run
   on gf12: the adk `*.v` set and the Genus netlist in VCS. A workspace whose
   power sims ran on the RTL needs `make clean-<sim step>` to redo them.
-- **Extraction scripts consumed by the thesis pipeline:**
+- **Sweep + extraction scripts** (full index in
+  [`ASPLOS_EXP/README.md`](ASPLOS_EXP/README.md)). Consumed by the thesis pipeline:
   - `ASPLOS_EXP/extract_power_area.py` — walks THESIS_BUILDS → CSV of
     area/power/timing per build (also parses critical-path endpoints).
   - `ASPLOS_EXP/plot_power_area.py` — standalone plotter (thesis
@@ -263,6 +266,10 @@ Milestone 1 (~1 week of work) flips 6 registry entries `bogus` →
   definition.
 - [`pd/thesis/generic-synth-power/GENERIC_SYNTH_POWER.md`](pd/thesis/generic-synth-power/GENERIC_SYNTH_POWER.md)
   — generic no-ADK synthesis→power path (indexed above in §2).
+- [`ASPLOS_EXP/README.md`](ASPLOS_EXP/README.md) — sweep drivers,
+  power/round-trip scripts, extractor; which scripts are current vs legacy.
+- [`tests/thesis/README.md`](tests/thesis/README.md) — thesis pipeline
+  test suite (run command, per-file coverage).
 - [`configure/README.md`](configure/README.md) — configuration-finder
   framework (placeholder, "under construction").
 
