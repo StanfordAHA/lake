@@ -113,6 +113,8 @@ def construct(**kwargs):
     g.connect_by_name(gen_saif, pt_power)
     g.connect_by_name(adk,      pt_power)
     g.connect(setup.o('design.v'),    pt_power.i('design.v'))
+    g.connect(setup.o('design.sdc'),  pt_power.i('design.sdc'))
+    g.connect(setup.o('design.spef'), pt_power.i('design.spef'))
     g.connect(setup.o('sram_tt.db'),  pt_power.i('sram_tt.db'))
 
     #---------------------------------------------------------------------

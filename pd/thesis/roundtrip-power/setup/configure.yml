@@ -15,7 +15,9 @@
 name: roundtrip-power-setup
 
 outputs:
-  - design.v
+  - design.v            # synthesized netlist (from garnet's synth step)
+  - design.sdc          # timing constraints (ptpx-synth)
+  - design.spef         # parasitics estimate (ptpx-synth)
   - sram.v
   - sram_tt.db
   - testbench.sv
