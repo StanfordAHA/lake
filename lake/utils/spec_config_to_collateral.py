@@ -5,16 +5,12 @@ by every context that needs the collateral for a given memory spec:
 
   * a CGRA build with a lake-spec MemCore (garnet's gen_rtl emits it alongside
     ``design.v``), and
-  * a standalone lake spec (the round-trip / thesis power flow).
+  * a standalone lake spec (the thesis flows).
 
 Because the collateral is a *pure, deterministic function of the spec params*
 (``build_spec(**cfg).save_compiler_information`` writes it with
 ``sort_keys=True``), two independent runs on the same ``spec_config.json`` are
-byte-identical. The ``verify-lake-collateral`` mflowgen node relies on that:
-it regenerates the collateral in both contexts and asserts they match, turning
-"the CGRA and standalone views of the spec agree" into an enforced invariant
-(catches lake version skew between the garnet container and the build machine,
-or a spec_config that got mis-threaded on one side).
+byte-identical, so the two contexts can be compared file for file.
 
 Usage:
     python -m lake.utils.spec_config_to_collateral \
