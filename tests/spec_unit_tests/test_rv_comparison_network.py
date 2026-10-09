@@ -173,7 +173,7 @@ def test_rvcn_rtl_random_1w3r_width11():
 def test_rvcn_rtl_random_pond_dims4_levels_below_top():
     """build_pond_rv(dims=4) geometry (1 writer + flush writer, 2 readers,
     11-bit iterators) with constraints on levels 0..2 (what the pond programs
-    use); the top level of power-of-2 dims is covered by the xfail test."""
+    use); every level incl. the top: test_rvcn_rtl_random_top_level."""
     net, inputs, expect, cfg = random_case(20, w_dims=(4, 4), r_dims=(4, 4), width=11, max_level=2)
     res = run_vectors(net, inputs, expect, config=cfg)
     assert res.passed, res
@@ -329,25 +329,20 @@ def test_rvcn_rtl_closed_loop(name):
     assert res.passed, res
 
 
-# ---------------------------------------------------------------- suspected bugs
-@pytest.mark.parametrize("dims", [1, 2, 4])
-def test_rvcn_top_level_constraint_pow2_dims_rejected(dims):
-    """The RTL computes the fixup level as sel + 1 in clog2(dims) bits: at the
-    top level of power-of-2 dims it wraps to level 0 (dims 1: the one-entry mux
-    ignores the select), so the extent is added whenever the level-0 iterators
-    differ. E.g. dims 4, RAW (r,3,w,3,LT,0), extents 8, writer top 2 / level0
-    0, reader top 2 / level0 7: function 2<2 -> 0, RTL 2<2+8 -> 1 (reader
-    steps early). gen_bitstream refuses such constraints (RTL fix kept as a
-    patch: session scratchpad patches/lake_rvcn_outer_level_rtlfix.patch)."""
-    net = make_net((dims,), (dims,), width=11)
-    top = dims - 1
-    for bad in [(1, top, 0, top, LT, 0), (0, top, 1, top, GT, 2)]:
-        with pytest.raises(ValueError):
-            net.gen_bitstream(constraints=[bad])
-    # a barrier cannot be opened by a spurious fixup: still allowed
-    net.gen_bitstream(constraints=[(1, top, 0, top, LT, 16383)])
-    if dims > 1:
-        net.gen_bitstream(constraints=[(1, top - 1, 0, top - 1, LT, 0)])
+# ---------------------------------------------------------------- regressions
+@requires_xrun
+@pytest.mark.parametrize("dims,seed", [(1, 32), (2, 31), (2, 42), (3, 35), (4, 30), (4, 40), (8, 43)])
+def test_rvcn_rtl_random_top_level(dims, seed):
+    """Constraints on every level, incl. the top one, where the wrap fixup
+    must see 'no outer level' (0). Regression (2026-10-08): the fixup level was
+    sel + 1 in clog2(dims) bits, which wraps to level 0 at the top level of
+    power-of-2 dims, so the extent was added whenever the level-0 iterators
+    differed. E.g. dims 4, RAW (r,3,w,3,LT,0), extents 8, writer top 2 /
+    level0 0, reader top 2 / level0 7: function 2<2 -> 0, old RTL 2<2+8 -> 1
+    (reader steps early). These seeds fail on the old RTL for dims 2, 4, 8."""
+    net, inputs, expect, cfg = random_case(seed, w_dims=(dims, dims), r_dims=(dims, dims), width=11)
+    res = run_vectors(net, inputs, expect, config=cfg)
+    assert res.passed, res
 
 
 def test_rvcn_reader_more_dims_than_writer_builds():

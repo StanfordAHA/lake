@@ -90,6 +90,23 @@ class RVComparisonNetwork(Component):
 
         return self.lfcs[f"{rd_to_wr}_{adj_p1_idx}_{adj_p2_idx}"]
 
+    def _outer_counter(self, name, mux_name, sel, iters, dims, width):
+        """The port's iterator one level above the selected level `sel` (for
+        the wrap fixup); 0 above the top level, where the mux select runs out
+        of range. `sel + 1` is computed in one more bit when clog2(dims) bits
+        cannot hold `dims` (power-of-2 dims >= 2): it used to wrap to level 0
+        at the top level, so the fixup fired whenever the two ports' level-0
+        iterators differed (2026-10-08). Other dims: RTL unchanged."""
+        out = self.var(name=name, width=width)
+        need = kts.clog2(dims + 1)
+        if need > sel.width:
+            sel_p1 = kts.concat(kts.const(0, need - sel.width), sel) + 1
+        else:
+            sel_p1 = sel + 1
+        inline_multiplexer(generator=self, name=mux_name, sel=sel_p1, one=out, many=iters,
+                           one_hot_sel=False)
+        return out
+
     def gen_hardware(self):
 
         # Let's assume that the ports involved here are fixed at this point...
@@ -177,17 +194,11 @@ class RVComparisonNetwork(Component):
                 # the ith writer block, compared against jth reader
                 self.wire(self._writer_comparisons[i][j], lf_comp_block_intfs['comparison'])
 
-                in_sel_p1 = in_sel + 1
-                p1_counter_w = self.var(name=f"write_{i}_to_read_{j}_ctr_in_p1", width=write_width)
                 # To handle overflow, we need to also consider the counter value above - if they are different, we need to modulate the counter
-                inline_multiplexer(generator=self, name=f"lfcompblock_w_{i}_r_{j}_input_mux_ctr_p1", sel=in_sel_p1, one=p1_counter_w, many=write_iters,
-                                   one_hot_sel=False)
-
-                out_sel_p1 = out_sel + 1
-                p1_counter_r = self.var(name=f"write_{i}_to_read_{j}_ctr_out_p1", width=read_width)
-                # To handle overflow, we need to also consider the counter value above - if they are different, we need to modulate the counter
-                inline_multiplexer(generator=self, name=f"lfcompblock_w_{i}_r_{j}_output_mux_ctr_p1", sel=out_sel_p1, one=p1_counter_r, many=read_iters,
-                                   one_hot_sel=False)
+                p1_counter_w = self._outer_counter(f"write_{i}_to_read_{j}_ctr_in_p1", f"lfcompblock_w_{i}_r_{j}_input_mux_ctr_p1",
+                                                   in_sel, write_iters, num_write_ctrs, write_width)
+                p1_counter_r = self._outer_counter(f"write_{i}_to_read_{j}_ctr_out_p1", f"lfcompblock_w_{i}_r_{j}_output_mux_ctr_p1",
+                                                   out_sel, read_iters, num_read_ctrs, read_width)
 
                 # I think the input extent and output extent have to be the same (?) but not for line buffer - I think we just want to add the write
                 # extent always since the write always goes over all data
@@ -267,17 +278,11 @@ class RVComparisonNetwork(Component):
                 self.wire(self._reader_comparisons[i][j], lf_comp_block_intfs['comparison'])
                 # Finally, we need to mux in the values based on config_regs
 
-                in_sel_p1 = in_sel + 1
-                p1_counter_r = self.var(name=f"read_{i}_to_write_{j}_ctr_in_p1", width=read_width)
                 # To handle overflow, we need to also consider the counter value above - if they are different, we need to modulate the counter
-                inline_multiplexer(generator=self, name=f"lfcompblock_r_{i}_w_{j}_input_mux_ctr_p1", sel=in_sel_p1, one=p1_counter_r, many=read_iters,
-                                   one_hot_sel=False)
-
-                out_sel_p1 = out_sel + 1
-                p1_counter_w = self.var(name=f"read_{i}_to_write_{j}_ctr_out_p1", width=write_width)
-                # To handle overflow, we need to also consider the counter value above - if they are different, we need to modulate the counter
-                inline_multiplexer(generator=self, name=f"lfcompblock_r_{i}_w_{j}_output_mux_ctr_p1", sel=out_sel_p1, one=p1_counter_w, many=write_iters,
-                                   one_hot_sel=False)
+                p1_counter_r = self._outer_counter(f"read_{i}_to_write_{j}_ctr_in_p1", f"lfcompblock_r_{i}_w_{j}_input_mux_ctr_p1",
+                                                   in_sel, read_iters, read_sg.get_dimensionality(), read_width)
+                p1_counter_w = self._outer_counter(f"read_{i}_to_write_{j}_ctr_out_p1", f"lfcompblock_r_{i}_w_{j}_output_mux_ctr_p1",
+                                                   out_sel, write_iters, write_sg.get_dimensionality(), write_width)
 
                 # I think the input extent and output extent have to be the same (?) but not for line buffer - I think we just want to add the write
                 # extent always since the write always goes over all data
@@ -315,26 +320,6 @@ class RVComparisonNetwork(Component):
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
 
-    def _check_fixup_level(self, p, level, comparator, scalar, constraint):
-        """2026-09-30: the wrap fixup reads the iterator one level above the
-        selected one through `sel + 1` in clog2(dims) bits. At the top level of
-        a power-of-2 dimensionality it wraps to level 0, and with dims 1 the
-        one-entry mux ignores the select, so the extent is added whenever the
-        two ports' level-0 iterators differ. That cannot open a barrier
-        (LT with scalar >= 16383: no in-range counter passes), but any other
-        comparison there is silently wrong, so refuse it."""
-        dims = self.get_port_from_index(p).get_dimensionality()
-        sel_bits = max(1, kts.clog2(dims))
-        wraps = dims == 1 or (level + 1 == (1 << sel_bits) and level + 1 >= dims)
-        barrier = comparator == LFComparisonOperator.LT.value and scalar >= 16383
-        if wraps and not barrier:
-            raise ValueError(
-                f"RV constraint {constraint}: level {level} is the top level of a "
-                f"{dims}-level port, where the comparison network's wrap fixup reads "
-                f"level 0 instead of 'no outer level' (only barriers are safe there). "
-                f"Use a lower level, a spec with a non-power-of-2 dimensionality, or "
-                f"the RTL fix (outer-level select widened).")
-
     def gen_bitstream(self, constraints):
         self.clear_configuration()
         # Every constraint in constraints is between a port,port,comparator,offset
@@ -343,8 +328,6 @@ class RVComparisonNetwork(Component):
         # print(constraints)
         for constraint in constraints:
             p1, p1_ctr, p2, p2_ctr, comparator, scalar = constraint
-            self._check_fixup_level(p1, p1_ctr, comparator, scalar, constraint)
-            self._check_fixup_level(p2, p2_ctr, comparator, scalar, constraint)
             p1reg, p2reg = self.get_mux_sel_reg_from_indexes(p1, p2)
             # p1 and p2 go to local, comparator and scalar go below
             self.configure(p1reg, p1_ctr)
