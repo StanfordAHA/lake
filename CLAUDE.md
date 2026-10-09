@@ -273,7 +273,11 @@ Known quirks of the current dataset (details: garnet `mflowgen/CLAUDE.md`
   — self-contained Genus/DC + generic `.lib` + PrimeTime idle/active power,
   no gf12 ADK / macros / PnR. Fast portable "synth results → power" check;
   45nm behavioural, relative numbers only. Driver:
-  `pd/thesis/generic-synth-power/generic_synth_power.sh`.
+  `pd/thesis/generic-synth-power/generic_synth_power.sh`. Since 2026-10-08 it
+  simulates the synth netlist itself (`--power-tests` = power-test-gen outputs,
+  `--cells` = the lib's Verilog models) with the power tb, so PT annotates
+  ~100% of nets. The older `--idle/--active` RTL-sim activity mode still runs,
+  with a warning: only a few % of nets get annotated, and idle comes out ≈ active.
 - **Idle/active power tests** (`pd/thesis/power-test-gen` →
   `synopsys-vcs-sim-power[-gl]` → vcd2saif → ptpx): programs and the random
   input stream come from
