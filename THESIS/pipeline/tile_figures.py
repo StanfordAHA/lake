@@ -8,10 +8,12 @@ Genus synthesis area. Two groups:
               interconnect) unless noted.
   component   the Ch. 4 Lake component characterization figures (Port,
               IterationDomain, AddressGenerator, MemoryPort, Storage), which
-              replace the standalone-lakespec (THESIS_BUILDS) versions. Tile
-              synthesis flattens lakespec, so these plot the MemCore_inst0
-              hierarchy as each sweep parameter moves, not an isolated
-              component.
+              replace the standalone-lakespec (THESIS_BUILDS) versions. From a
+              hierarchy-kept sweep (garnet --flatten-effort 0) each plots its
+              own block of the lake controller (tile_sweep BLOCKS, ``blk_*``):
+              Port = port_inst, IterationDomain = port_id, affine pattern
+              generators = port_ag + port_sg, MemoryPort = memory-port
+              muxes/arbiters/decoders, Storage = the SRAM block.
 
 Static runtime mode unless the figure compares modes, and only
 ``data_width == DATA_WIDTH`` configs (see below). Signature matches
@@ -55,7 +57,6 @@ plt.rcParams.update({
 
 K = 1000.0
 AREA_LBL = "Area (10³ µm²)"
-LOGIC_LBL = "MemCore logic (10³ µm²)"
 
 # Configs with any other data width have broken RTL (2026-10-06), so their
 # areas are meaningless; every figure drops them until that's fixed.
@@ -170,6 +171,7 @@ def memtile_bandwidth_area(ctx, outpath: Path) -> None:
     bws = sorted(df["sram_bw_bits"].unique())
     fig, ax = plt.subplots(figsize=(FULL_W * 0.62, 2.8))
     w, gap = 0.36, 0.04
+    ticks, tick_lbls = [], []
     for i, bw in enumerate(bws):
         for j, dp in enumerate((False, True)):
             r = df[(df["sram_bw_bits"] == bw) & (df["dual_port"] == dp)]
@@ -181,14 +183,18 @@ def memtile_bandwidth_area(ctx, outpath: Path) -> None:
                    label="SRAM macros" if i == 0 and j == 0 else None)
             ax.bar(x, r["syn_std"] / K, w, bottom=r["syn_sram"] / K, color=SERIES[1],
                    edgecolor="white", linewidth=1, label="Std cells" if i == 0 and j == 0 else None)
-            ax.text(x, r["syn_cell"] / K + 0.8, f"{r['syn_cell'] / K:.1f}", ha="center",
+            ax.text(x, r["syn_cell"] / K * 1.015, f"{r['syn_cell'] / K:.1f}", ha="center",
                     va="bottom", fontsize=7, color=INK2)
-            ax.text(x, -2.2, "DP" if dp else "SP", ha="center", va="top", fontsize=7.5, color=INK2)
-    ax.set_xticks(range(len(bws)))
-    ax.set_xticklabels([f"\n{int(b)} b/cycle" for b in bws])
+            ticks.append(x)
+            tick_lbls.append("DP" if dp else "SP")
+        # bandwidth group label under the SP/DP tick labels
+        ax.text(i, -0.11, f"{int(bw)} b/cycle", transform=ax.get_xaxis_transform(),
+                ha="center", va="top", fontsize=8, color=INK2)
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(tick_lbls, fontsize=7.5)
     ax.tick_params(axis="x", length=0)
     ax.set_ylabel(AREA_LBL)
-    ax.set_xlabel("SRAM bandwidth (8 KB capacity, 16-bit data)", labelpad=4)
+    ax.set_xlabel("SRAM bandwidth (8 KB capacity, 16-bit data)", labelpad=16)
     ax.set_ylim(0, df["syn_cell"].max() / K * 1.12)
     ax.legend(loc="upper left")
     _ax_style(ax)
@@ -286,7 +292,8 @@ def memtile_control_area(ctx, outpath: Path) -> None:
 
 def memtile_rv_overhead_area(ctx, outpath: Path) -> None:
     """Std-cell area change from static to ready-valid (RV), per config, by sweep."""
-    df = _load(mode=None)
+    df = _load(mode=None)[["config", "base_config", "mode", "experiments", "dual_port",
+                           "vec_width", "syn_std"]]
     st = df[df["mode"] == "static"].set_index("config")
     rv = df[df["mode"] == "rv"].set_index("base_config")
     j = st.join(rv[["syn_std"]], rsuffix="_rv", how="inner")
@@ -360,17 +367,27 @@ def memtile_synth_vs_pnr_area(ctx, outpath: Path) -> None:
 # output paths and sweep axes as the THESIS_BUILDS generators in generators.py.
 
 
+def _blocks(df: pd.DataFrame, cols: list[str], what: str) -> pd.Series:
+    """Sum of per-block area columns; needs a hierarchy-kept sweep."""
+    if any(c not in df.columns for c in cols) or df[cols].isna().all().all():
+        raise MissingDataError(f"{what}: no per-block areas ({', '.join(cols)}); ingest a "
+                               "hierarchy-kept sweep (garnet --flatten-effort 0)")
+    return df[cols].sum(axis=1, min_count=1)
+
+
 def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel: str,
-               xfmt=lambda v: f"{v:g}", log2: bool = False) -> None:
-    """MemCore logic vs ``x`` for one experiment, one line per ``hue`` value."""
-    df = _exp(_load(), exp).dropna(subset=[x, hue])
+               blocks: list[str], ylabel: str, xfmt=lambda v: f"{v:g}", log2: bool = False) -> None:
+    """Area of ``blocks`` vs ``x`` for one experiment, one line per ``hue`` value."""
+    df = _exp(_load(), exp).dropna(subset=[x, hue]).copy()
     if df[x].nunique() < 2:
         raise MissingDataError(f"{exp}: {x} takes a single value at data_width={DATA_WIDTH}")
+    df["y"] = _blocks(df, blocks, ylabel)
+    scale = K if df["y"].max() >= 2000 else 1.0
     vals = sorted(df[hue].unique())
     fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
     for v, c in zip(vals, _ramp(len(vals))):
         g = df[df[hue] == v].sort_values(x)
-        ax.plot(g[x], g["syn_memcore_std"] / K, color=c, marker="o", markersize=4,
+        ax.plot(g[x], g["y"] / scale, color=c, marker="o", markersize=4,
                 markeredgecolor="white", markeredgewidth=0.6, label=f"{v:g}")
     ticks = sorted(df[x].unique())
     if log2:
@@ -379,11 +396,11 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
         ax.set_xticks(ticks)
         ax.set_xticklabels([xfmt(t) for t in ticks])
     ax.set_xlabel(xlabel)
-    ax.set_ylabel(LOGIC_LBL)
+    ax.set_ylabel(f"{ylabel} ({'10³ µm²' if scale == K else 'µm²'})")
     # Few lines: the rising lines leave the lower right empty. Many: a 2-row
     # legend over headroom above the (flatter) lines.
     many = len(vals) > 4
-    ax.set_ylim(0, df["syn_memcore_std"].max() / K * (1.45 if many else 1.1))
+    ax.set_ylim(0, df["y"].max() / scale * (1.45 if many else 1.1))
     ax.legend(title=hue_name, title_fontsize=7, fontsize=7, loc="upper left" if many else "lower right",
               ncol=3 if many else 1, columnspacing=0.8, handlelength=1.4)
     _ax_style(ax)
@@ -399,49 +416,53 @@ def port_area_vs_data_width(ctx, outpath: Path) -> None:
             f"needs PORT_EXP tile builds at several data widths; only {DATA_WIDTH}-bit "
             "configs are used (other widths have broken RTL)")
     _sweep_fig(outpath, "PORT_EXP", "data_width", "vec_width", "fetch width",
-               "Port data width (bits)", log2=True)
+               "Port data width (bits)", ["blk_c_port"], "Port area, 4 ports", log2=True)
 
 
 def port_area_vs_vc(ctx, outpath: Path) -> None:
-    """PORT_EXP: MemCore logic vs vectorization capacity, one line per fetch width."""
+    """PORT_EXP: Port area (the 4 port_inst blocks) vs vectorization capacity,
+    one line per fetch width."""
     _sweep_fig(outpath, "PORT_EXP", "vec_capacity", "vec_width", "fetch width",
-               "Vectorization capacity (entries)", log2=True)
+               "Vectorization capacity (entries)", ["blk_c_port"], "Port area, 4 ports", log2=True)
 
 
 def iter_dom_area_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
-               "Dimensionality")
+               "Dimensionality", ["blk_c_id"], "IterationDomains, 4")
 
 
 def iter_dom_area_vs_max_extent(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
-               "Maximum extent", log2=True)
+               "Maximum extent", ["blk_c_id"], "IterationDomains, 4", log2=True)
 
 
 def affine_area_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "dims", "max_sequence_width",
-               "maximum value", "Dimensionality")
+               "maximum value", "Dimensionality", ["blk_c_ag", "blk_c_sg"], "Pattern generators, 8")
 
 
 def affine_area_vs_max_value(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "max_sequence_width", "dims",
-               "dimensionality", "Maximum value (max sequence width)", log2=True)
+               "dimensionality", "Maximum value (max sequence width)", ["blk_c_ag", "blk_c_sg"],
+               "Pattern generators, 8", log2=True)
 
 
 def memory_port_area_vs_interface_width(ctx, outpath: Path) -> None:
-    """MEMORY_EXP: MemCore logic vs SRAM interface width, single- vs dual-port.
+    """MEMORY_EXP: MemoryPort area (memory-port muxes, arbiters, interface
+    decoders) vs SRAM interface width, single- vs dual-port.
 
     Port count rises with width in this sweep (it's in the tick labels), and
-    capacity barely matters to the logic, so each point is the median over
+    capacity barely matters to this logic, so each point is the median over
     capacities with a min-max bar.
     """
-    df = _exp(_load(), "MEMORY_EXP")
+    df = _exp(_load(), "MEMORY_EXP").copy()
+    df["y"] = _blocks(df, ["blk_c_mp"], "MemoryPort area")
     fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
     ports = {}
     for dp, c, m, ls, name in ((False, SERIES[0], "o", "-", "Single-port SRAM"),
                                (True, SERIES[1], "s", "--", "Dual-port SRAM")):
         g = df[df["dual_port"] == dp]
-        st = g.groupby("sram_bw_bits")["syn_memcore_std"].agg(["median", "min", "max"]) / K
+        st = g.groupby("sram_bw_bits")["y"].agg(["median", "min", "max"])
         ports.update(g.groupby("sram_bw_bits")["in_ports"].first().to_dict())
         ax.errorbar(st.index, st["median"], yerr=[st["median"] - st["min"], st["max"] - st["median"]],
                     color=c, marker=m, linestyle=ls, markersize=4.5, markeredgecolor="white",
@@ -449,7 +470,7 @@ def memory_port_area_vs_interface_width(ctx, outpath: Path) -> None:
     bws = sorted(ports)
     _log2_axis(ax, bws, lambda b: f"{int(b)}\n{ports[b]}×{ports[b]} ports")
     ax.set_xlabel("SRAM interface width (bits/cycle)")
-    ax.set_ylabel(LOGIC_LBL)
+    ax.set_ylabel("MemoryPort area (µm²)")
     ax.set_ylim(bottom=0)
     ax.legend(loc="upper left")
     _ax_style(ax)
@@ -458,24 +479,28 @@ def memory_port_area_vs_interface_width(ctx, outpath: Path) -> None:
 
 
 def storage_area_vs_capacity(ctx, outpath: Path) -> None:
-    """MEMORY_EXP: MemCore area including the SRAM macros vs capacity, per organization."""
+    """MEMORY_EXP: Storage area (the SRAM block: macros + their wrapper) vs
+    capacity, single- vs dual-port.
+
+    Organizations that share a macro area coincide (DP fw1 and fw2 everywhere,
+    SP fw2/fw4 from 4 KB up), so instead of one line each, each point is the
+    median over fetch widths with a min-max bar.
+    """
     df = _exp(_load(), "MEMORY_EXP").copy()
+    df["y"] = _blocks(df, ["blk_sram"], "Storage area") / K
     df["kb"] = df["storage_capacity"] / 1024
     fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
-    groups = sorted(df.groupby(["dual_port", "sram_bw_bits", "vec_width", "in_ports", "out_ports"]),
-                    key=lambda kv: kv[0][:2])
-    for _, g in groups:
-        g = g.sort_values("kb")
-        r = g.iloc[0]
-        ax.plot(g["kb"], g["syn_memcore"] / K, markersize=4,
-                label=f"{'DP' if r['dual_port'] else 'SP'} fw{int(r['vec_width'])}, "
-                      f"{int(r['in_ports'])}×{int(r['out_ports'])}",
-                **_topo_style(r))
+    for dp, c, m, ls, name in ((False, SERIES[0], "o", "-", "Single-port SRAM"),
+                               (True, SERIES[1], "s", "--", "Dual-port SRAM")):
+        st = df[df["dual_port"] == dp].groupby("kb")["y"].agg(["median", "min", "max"])
+        ax.errorbar(st.index, st["median"], yerr=[st["median"] - st["min"], st["max"] - st["median"]],
+                    color=c, marker=m, linestyle=ls, markersize=4.5, markeredgecolor="white",
+                    markeredgewidth=0.6, capsize=2, elinewidth=0.8, label=name)
     _log2_axis(ax, sorted(df["kb"].unique()))
     ax.set_xlabel("Capacity (KB)")
-    ax.set_ylabel("MemCore area (10³ µm²)")
-    ax.set_ylim(0, df["syn_memcore"].max() / K * 1.4)
-    ax.legend(loc="upper left", fontsize=6.5, ncol=2, handlelength=2.2, columnspacing=1.0)
+    ax.set_ylabel("Storage area (10³ µm²)")
+    ax.set_ylim(bottom=0)
+    ax.legend(loc="upper left")
     _ax_style(ax)
     fig.tight_layout()
     _save(fig, outpath)

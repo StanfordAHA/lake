@@ -108,9 +108,10 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
   - the Ch. 4 component **area** figures (replaced the THESIS_BUILDS versions
     2026-10-06, same output paths): port_area_vs_{data_width,vc},
     iter_dom_area_vs_{dim,max_extent}, affine_area_vs_{dim,max_value},
-    memory_port_area_vs_interface_width, storage_area_vs_capacity. They plot
-    MemCore logic (Storage: MemCore incl. SRAM), since tile synthesis flattens
-    lakespec. port_area_vs_data_width stays BOGUS until non-16-bit builds work.
+    memory_port_area_vs_interface_width, storage_area_vs_capacity. From the
+    hierarchy-kept dw16 sweep (2026-10-09) each plots its own lake-controller
+    block (`blk_*` columns; CLAUDE.md §1.8). port_area_vs_data_width stays
+    BOGUS until non-16-bit builds work.
   - the seven `memtile_*_area` figures (capacity, bandwidth, interconnect,
     port buffer, control, RV overhead, synth vs PnR).
   See CLAUDE.md §1.8.

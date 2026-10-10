@@ -205,14 +205,18 @@ As of 2026-09-28, Milestone 1 is wired end-to-end but has no data yet:
 The garnet lake-spec sweep (`garnet/mflowgen/sweep_specs.py --spec-set
 thesis --zip`) is a second data source, separate from THESIS_BUILDS: whole
 CGRA memory tiles (lakespec + MemCore wrapper + SB/CB) for every thesis spec,
-static + RV, Genus synth (+ Innovus for the PnR anchors). As of 2026-10-07 the
-figures come from `tile_memcore_thesis_r8cad-gf12_20261006-221414.zip`: all
-196 thesis configs synthesized (lakespec flattened, 1.333 ns) + the 12 `full12`
-PnR anchors through signoff.
+static + RV, Genus synth (+ Innovus/PT for the PnR configs), idle/active power.
+As of 2026-10-09 the figures come from the **dw16 hierarchy-kept sweep**
+`NEW_SWEEP_r8cad-gf12_20261009-213941_slim.zip` (garnet `mflowgen/CLAUDE.md`
+"dw16 synth sweep + held-out PnR validation"): 172 configs (89 static + 83 RV),
+`--flatten-effort 0`, 1.333 ns, 12 through PnR (8 fit + 4 held out), power at
+synth level for all and PnR level for the 12. Its build-side handoff and the
+analysis (model checks, per-block breakdown, RV overhead) sit next to the
+extracted zip in the user's workspace: `HANDOFF.md`, `<sweep>/analysis/ANALYSIS.md`.
 
 ```bash
 # Ingest a sweep zip (or extracted dir) -> THESIS/data/tile_sweep/{<sweep>,latest}.csv
-python3 -m THESIS.pipeline.tile_sweep ../tile_memcore_thesis_<host>_<ts>.zip
+python3 -m THESIS.pipeline.tile_sweep ../NEW_SWEEP_<host>_<ts>_slim.zip
 # Regenerate every tile-sweep figure (MEMTILE_CHARACTERIZATION + Ch. 4 component area)
 python3 THESIS/generate_thesis_artifacts.py --only memtile_capacity_area memtile_bandwidth_area \
     memtile_interconnect_area memtile_port_buffer_area memtile_control_area \
@@ -222,14 +226,31 @@ python3 THESIS/generate_thesis_artifacts.py --only memtile_capacity_area memtile
     storage_area_vs_capacity
 ```
 
-It also feeds the Ch. 4 component characterization **area** figures
-(`port_area_vs_vc`, `iter_dom_*`, `affine_area_vs_{dim,max_value}`,
-`memory_port_area_vs_interface_width`, `storage_area_vs_capacity`), which
-replaced the standalone THESIS_BUILDS versions on 2026-10-06 at the same
-output paths. Every tile figure keeps only `data_width == 16` configs
-(`tile_figures.DATA_WIDTH`): other widths have broken RTL, so
-`port_area_vs_data_width` is BOGUS until they're fixed. Tile synthesis
-flattens lakespec, so these plot MemCore logic, not isolated components.
+Every ingest overwrites `THESIS/data/tile_sweep/latest.csv` (what the figures
+read), so the last sweep ingested is the figure source; each sweep also keeps
+its own `<sweep>.csv`. The older flattened 196-config sweep
+(`tile_memcore_thesis_r8cad-gf12_20261006-221414.csv`) is superseded: it used
+older RTL with lakespec flattened (its RV overheads were roughly half the
+current ones), so don't quote or mix it.
+
+**Per-block columns** (hierarchy-kept sweeps only; `tile_sweep._LEVELS`): each
+level's blocks sum exactly to the level — tile = `sb + cb + memcore +
+tile_glue`; memcore = `cfg_regs + mc_mux + inner + mc_glue`; inner = `sram +
+ctrl + stencil + rom + fifos + inner_glue`; ctrl (the lake controller,
+`lakespec_inst` static / `lakespec_mem_inst` RV) = `c_port + c_id + c_sg + c_ag
++ c_rvnet + c_storage + c_rdbuf + c_mp + c_other` (`c_rvnet/c_storage/c_rdbuf`
+RV only). Prefixes: `blk_` Genus cell area, `pblk_` Innovus signoff area,
+`pw_{synth,pnr}_{idle,active}_` PT power (W; PT prints 3 significant digits,
+so power remainders can come out slightly negative — plot named blocks only).
+The sweep's own `correlation.csv` / `memtile_power.csv` columns (PnR role,
+synth→PnR projections, PT WNS, power totals) are merged in by config.
+
+The Ch. 4 component characterization **area** figures (replaced the THESIS_BUILDS
+versions 2026-10-06, same output paths) plot their own blocks: Port =
+`c_port` (4 `port_inst`), IterationDomain = `c_id`, affine pattern generators =
+`c_ag + c_sg`, MemoryPort = `c_mp`, Storage = `sram`. Every tile figure keeps
+only `data_width == 16` (`tile_figures.DATA_WIDTH`), so `port_area_vs_data_width`
+is BOGUS. The Ch. 4 `*_power` figures are still wired to THESIS_BUILDS (BOGUS).
 
 Loader/parsers: `THESIS/pipeline/tile_sweep.py` (maps each config to its
 experiment by spec, picks up configs still building when the zip was cut,
@@ -239,25 +260,19 @@ Ready-to-paste figure environments with captions and suggested placement:
 `THESIS/output/snippets/memtile_figures.tex` (under the untracked
 `THESIS/output/`, so local to this checkout).
 
-Every ingest also overwrites `THESIS/data/tile_sweep/latest.csv`, which is what
-the figures read, so the last zip ingested is the figure source. Next dataset
-(planned 2026-10-07): garnet's dw16 sweep with `--flatten-effort 0` (garnet
-`mflowgen/CLAUDE.md` "dw16 synth sweep + held-out PnR validation") keeps the
-lakespec hierarchy. `tile_sweep._hier` only splits CB / SB / MemCore so far;
-per-component rows (port SG/AG/ID, storage, memory port, config) still need a
-parser before the component figures can show isolated components. Don't mix
-flattened and hierarchical rows in one figure: area shifts between the two.
-
-Known quirks of the current dataset (details: garnet `mflowgen/CLAUDE.md`
-"Thesis-set synth sweep" result):
-- Its tile RTL was built at two lake commits: `82a78497` (PORT, ITERATION_DOMAIN,
-  PnR anchors, most AFFINE) and `ebd0948e` (MEMORY_EXP, 12 AFFINE), plus one RV
-  re-run at `577c6beb` (`..._dim1_msw256_rv`, +4.5% std-cell area). AFFINE shows
-  no step between the first two.
+Known quirks of the dw16 dataset:
+- Tile RTL was generated at 8 lake commits (gen_rtl takes `origin/THESIS` at
+  RTL time; the sweep ran over 2 days). Only `8748240d` (RV comparison-network
+  wrap fix, dims 2/4/8 only) changes RTL: all 9 dims-2 RV configs and 5 of 9
+  dims-4 RV configs are pre-fix — +6% comparison network, +0.84% tile area on
+  the measured dims-4 pair, power identical. Static and dims-3/5/6 RV are
+  unaffected. Each rtl log prints the lake commit after `Mek Mek Mek`.
 - RV ignores `max_sequence_width`: `build_spec_rv` never passes `stride_width`
-  to `ReadyValidScheduleGenerator`, so the 30 RV `_msw*` configs are 6 designs.
-  The static msw sweep sizes the ScheduleGenerator's strides, not the
-  AddressGenerator's.
+  to `ReadyValidScheduleGenerator`, so the 30 RV `_msw*` configs are 6 designs
+  (plus the dims-4 fix step above). The static msw sweep sizes the
+  ScheduleGenerators' strides, not the AddressGenerators'.
+- 101 configs were synthesized with 3 identical timing modes, 71 with 1 (garnet
+  update mid-run); +0.18% logic area on one config built both ways.
 
 ---
 
