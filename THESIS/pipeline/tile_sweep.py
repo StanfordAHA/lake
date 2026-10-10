@@ -209,6 +209,101 @@ def _pnr_timing(text: str) -> dict:
     return out
 
 
+# ---- per-block breakdown (hierarchy-kept builds, garnet --flatten-effort 0) ------
+#
+# Each level's children are binned by instance name; children that match no
+# pattern go to that level's remainder (_REST), so a level's blocks always add
+# up to the level itself:
+#   tile    = sb + cb + memcore + tile_glue
+#   memcore = cfg_regs + mc_mux + inner + mc_glue
+#   inner   = sram + ctrl + stencil + rom + fifos + inner_glue
+#   ctrl    = c_port + c_id + c_sg + c_ag + c_rvnet + c_storage + c_rdbuf + c_mp + c_other
+# ctrl is the lake spec controller (lakespec_inst static, lakespec_mem_inst RV);
+# c_rvnet/c_storage/c_rdbuf exist only in RV builds.
+_LEVELS = {
+    "tile": [("sb", r"SB_ID\d+_\d+TRACKS_B\d+_MemCore"), ("cb", r"CB_.*"),
+             ("memcore", r"MemCore_inst0")],
+    "memcore": [("cfg_regs", r"config_reg_\d+"), ("mc_mux", r"mux_aoi_.*"),
+                ("inner", r"MemCore_inner_W_inst0")],
+    "inner": [("sram", r"memory_\d+"), ("ctrl", r"mem_ctrl_lakespec\w*_flat"),
+              ("stencil", r"mem_ctrl_stencil_valid\w*"), ("rom", r"mem_ctrl_strg_ram\w*"),
+              ("fifos", r"(input|output)_width_\d+_num_\d+_(input|output)_fifo")],
+    "ctrl": [("c_port", r"port_inst_\d+"), ("c_id", r"port_id_\d+"), ("c_sg", r"port_sg_\d+"),
+             ("c_ag", r"port_ag_\d+"), ("c_rvnet", r"rv_comp_network\w*"), ("c_storage", r"storage"),
+             ("c_rdbuf", r"port_\d+_rd_buf"), ("c_mp", r"(MemoryPort_|memoryport_|memintfdec_).*")],
+}
+_REST = {"tile": "tile_glue", "memcore": "mc_glue", "inner": "inner_glue", "ctrl": "c_other"}
+BLOCKS = [b for lvl in _LEVELS for b in [n for n, _ in _LEVELS[lvl]] + [_REST[lvl]]]
+
+
+def _indent_tree(text: str, row_re: str, value_group: int) -> dict[str, float]:
+    """Path ('' = top, else 'a/b/c' below it) -> value, for reports that show
+    the hierarchy by two-space indentation (Genus final_area.rpt, PT power.hier)."""
+    vals, stack = {}, []
+    for line in text.splitlines():
+        m = re.match(row_re, line)
+        if not m:
+            continue
+        depth = len(m.group(1)) // 2
+        stack = stack[:depth] + [m.group(2)]
+        vals["/".join(stack[1:])] = float(m.group(value_group))
+    return vals
+
+
+def _genus_tree(text: str) -> dict[str, float]:
+    """Genus final_area.rpt -> cell area (µm², incl. macros) per instance."""
+    return _indent_tree(text, r"^( *)(\S+)\s+\S+\s+\d+\s+([\d.]+)\s+[\d.]+\s+[\d.]+\s*$", 3)
+
+
+def _power_tree(text: str) -> dict[str, float]:
+    """PT `report_power -hierarchy` (power.hier) -> total power (W) per instance."""
+    num = r"(?:[\d.]+(?:e[-+]?\d+)?)"
+    return _indent_tree(
+        text, rf"^( *)(\S+)(?: \(\S+\))?\s+{num}\s+{num}\s+{num}\s+({num})\s+[\d.]+\s*$", 3)
+
+
+def _innovus_tree(text: str) -> dict[str, float]:
+    """Innovus signoff.area.rpt (full hinst paths) -> total area (µm², incl.
+    macros) per instance."""
+    vals = {}
+    for line in text.splitlines():
+        f = line.split()
+        if len(f) == 11 and f[0] == "Tile_MemCore":
+            vals[""] = float(f[2])
+        elif len(f) == 12 and re.fullmatch(r"[\d.]+", f[3]):
+            vals[f[0]] = float(f[3])
+    return vals
+
+
+def _tree_blocks(vals: dict[str, float]) -> dict[str, float]:
+    """Bin a hierarchy into BLOCKS (see _LEVELS). Empty if the tree is flat
+    (no lake controller instance), as in --flatten-effort 3 builds."""
+    kids: dict[str, list[str]] = {}
+    for p in vals:
+        if p:
+            kids.setdefault(p.rpartition("/")[0], []).append(p)
+    inner = "MemCore_inst0/MemCore_inner_W_inst0/MemCore_inner"
+    flat = next((c for c in kids.get(inner, []) if re.fullmatch(_LEVELS["inner"][1][1], c.rpartition("/")[2])), None)
+    inst = next(iter(kids.get(flat, [])), None) if flat else None
+    if "" not in vals or "MemCore_inst0" not in vals or inner not in vals or inst is None:
+        return {}
+    out = {}
+    for level, node, total in (("tile", "", vals[""]), ("memcore", "MemCore_inst0", vals["MemCore_inst0"]),
+                               ("inner", inner, vals[inner]), ("ctrl", inst, vals[flat])):
+        used = 0.0
+        for name, _ in _LEVELS[level]:
+            out[name] = 0.0
+        for c in kids.get(node, []):
+            leaf = c.rpartition("/")[2]
+            for name, pat in _LEVELS[level]:
+                if re.fullmatch(pat, leaf):
+                    out[name] += vals[c]
+                    used += vals[c]
+                    break
+        out[_REST[level]] = total - used
+    return out
+
+
 def _pnr_core(text: str) -> dict:
     m = re.search(r"Total area of Core:\s+([\d.]+)", text)
     return {"pnr_core_area": float(m.group(1))} if m else {}
@@ -306,6 +401,7 @@ def ingest(src_path: Path) -> pd.DataFrame:
             area = src.read(f"{syn}/final_area.rpt")
             if area:
                 row.update(_hier(area))
+                row.update({f"blk_{k}": v for k, v in _tree_blocks(_genus_tree(area)).items()})
                 row["syn_top"] = row["syn_cell"] - row["syn_cb"] - row["syn_sb"] - row["syn_memcore"]
                 row["syn_memcore_std"] = row["syn_memcore"] - row["syn_sram"]
             for rel, fn in (("final.rpt", _qos), ("final_qor.rpt", _clock)):
@@ -318,12 +414,34 @@ def ingest(src_path: Path) -> pd.DataFrame:
             t = src.read(f"{so}/{rel}")
             if t:
                 row.update(fn(t))
+                if rel == "signoff.area.rpt":
+                    row.update({f"pblk_{k}": v for k, v in _tree_blocks(_innovus_tree(t)).items()})
+        # garnet --memtile-power: PT power.hier per level (synth netlist / signoff
+        # netlist) and program (idle / active), W
+        for level in ("synth", "pnr"):
+            for variant in ("idle", "active"):
+                t = src.read(f"{src.step(name, f'memtile-power-{level}-{variant}')}/outputs/power.hier")
+                if t:
+                    tree = _power_tree(t)
+                    pre = f"pw_{level}_{variant}_"
+                    row[pre + "total"] = tree.get("")
+                    row.update({pre + k: v for k, v in _tree_blocks(tree).items()})
         if "pnr_cell" in row:
             row["pnr_std"] = row["pnr_cell"] - row["pnr_macro"]
             row["pnr_flop_only"] = row["pnr_flop"] - row["pnr_cg"]  # Innovus counts ICGs as Flop
         rows.append(row)
 
     df = pd.DataFrame(rows)
+    # The sweep's own model outputs (PnR role, synth->PnR projections, PT WNS,
+    # power totals), merged as written by garnet sweep_specs.py.
+    for csv_name in ("correlation.csv", "memtile_power.csv"):
+        t = src.read(csv_name)
+        if not t:
+            continue
+        sw = pd.read_csv(io.StringIO(t)).dropna(axis=1, how="all")
+        sw = sw.drop(columns=[c for c in ("runtime_mode", "targets") if c in sw.columns])
+        sw = sw.drop(columns=[c for c in sw.columns if c != "config_name" and c in df.columns])
+        df = df.merge(sw.rename(columns={"config_name": "config"}), on="config", how="left")
     df["sweep"] = src.sweep_name
     df["ports"] = df["in_ports"] + df["out_ports"]
     df["mem_width_bits"] = df["vec_width"] * df["data_width"]
