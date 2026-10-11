@@ -497,6 +497,219 @@ must retry too or a transient crash reads as a config failure.
 
 ---
 
+## 6. Ready-valid (RV) bitstreams from clockwork (2026-09-28/29)
+
+Path: clockwork `DENSE_READY_VALID=1` tile config (static keys + RV program:
+`port_mappings`, `access_map`, `domain`, `dep_values`, `precursor_deltas`)
+→ `SpecMemoryController.get_bitstream` → `Spec.gen_bitstream` →
+`rewrite_app_json` + `convert_app_json_to_config` (`lake/spec/spec.py`).
+garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
+(`opt_rv=True`: ports IGNORE vec configs; wide-fetch packing inferred in HW).
+
+- **Routing (committed `140eced8`)**: THESIS-only `_is_clockwork_format` sent
+  RV tiles down the static converter; now RV path iff `any_rv_sg and
+  "dep_values" in cfg`.
+- **Converter fixes (committed `6f73bc91`; RTL-verified; the 11 tiles that were already
+  correct are bit-identical, incl. chip-validated conv_3_3/gaussian)**:
+  (a) precursor ADDRESS offset = Σ_levels delta × address_stride (was: first
+  nonzero level only, × domain EXTENT → wrong when pitch≠extent, e.g. harris
+  lxx 68 vs 66, and for multi-level [row,col] deltas); (b) zero-lag reader
+  (no precursor, dep `[0,0]`): RAW scalar 0 → `2*fw*vec_capacity+4` (reader
+  raced the wide-fetch commit → read previous lap / X).
+- **Opt-in `LAKE_RV_ROW_RAW=1`** (committed `6f73bc91`; default unchanged = what runs on
+  chip): reader RAW at the ROW level (outermost precursor level, or level 1 for
+  zero-lag) with scalar `-delta+1`. The default compares COLUMN counters with a
+  single-row wrap fixup, so under writer/reader stalls lagged taps overrun a
+  stalled writer and zero-lag readers deadlock (0/30 tiles under stress).
+  Row-level RAW costs one row of latency.
+- **RTL harness** (session scratchpad `rv_tiles_{gen.py,run.sh,check.py}`, gold
+  = reader iteration i ← writer iteration i − precursor delta, independent of
+  lake addressing; tb = copy of `tests/test_spec_hw/tb.sv` + a 6-port
+  `lakespec_mem` case with external SRAM (`remote_storage`), MAX_DATA_SIZE 64K;
+  stress = random handshakes + writer stall 500–1499 + r0 stall 2000–5999).
+  Image apps on garnet default, 30 tiles: default encoding before fixes 11/30
+  free-flow; after (a)+(b) 25/30 free-flow; with `LAKE_RV_ROW_RAW=1` 25/30
+  free-flow AND 23/30 stress (all fw-aligned tiles).
+- **FIXED (RTL, `lake/spec/port.py`, committed `6f73bc91`) — opt_rv write-combining
+  buffer (WCB) hazard** (harris 66-wide, camera 125-wide rows): the opt_rv IN
+  port's 2-entry WCB checked the pending-commit sticky of the *current* entry
+  W, but on a new-address cycle the data lands in entry W+1 (`addr_into_wcb`),
+  which still holds the word from two addresses back. A short row tail (1–2
+  elements) gives the last full word only 1–2 cycles to commit, so the next
+  row's first element overwrote its lane 0 whenever the SRAM port was busy with
+  reads. Fix: `wcb_target_entry` = `already_written & new_address ? W+1 : W`
+  and gate `write_wcb` on that entry's sticky. Applies to every `opt_rv` wide
+  IN port (garnet default AND `build_spec_rv` thesis points; not fw1). Result:
+  30/30 image tiles correct free-flow (default encoding) and 30/30 under stress
+  (`LAKE_RV_ROW_RAW=1`). Lake's own `four_port_single_mp_wide_fetch_rv.py
+  --opt_rv --test linear` and `dual_port_wide_fetch_quad_rv.py --opt_rv
+  --fetch_width 2` PASS; `--fetch_width 4` FAILS identically before/after
+  (outputs byte-identical; gold has 1024 entries vs 4096 dumped — test-harness
+  issue, pre-existing). NOTE: silicon has the original logic, so on-chip RV
+  apps with row extent % fw ≠ 0 can hit this under read contention.
+- **FIXED (RTL, `lake/spec/port.py`, committed `6f73bc91`) — opt_rv READ port deadlocks
+  under reader backpressure** (found with reuse buffers: a word re-read many
+  times, readers that may prefetch). The read port keeps words in a 2-entry
+  buffer (tag CAM) and an 8-deep address queue whose entries carry a
+  `pop_wcb` flag ("first access of a new word: evict the oldest word").
+  (1) `read_memory_out` for a new word was not gated by queue space, but the
+  entry push is → with a full queue the SRAM read goes out, the entry is pushed
+  later as a same-word access WITHOUT the flag, the old word is never evicted,
+  and the next new word can never be written → hang (resnet kernel banks at the
+  word-2 switch). Fix: `& ~reg_fifo.full` on `read_memory_out`. (2) The very
+  FIRST read also carried the flag; if a second word is prefetched before that
+  entry pops (reader starts under backpressure, e.g. after a barrier), the pop
+  evicts word 0 while its accesses are still queued → hang after 1 output. Fix:
+  `pop_wcb_in` also requires `already_read`. Both are no-ops for the image apps
+  (30/30 tiles still pass free-flow + stress) and lake's own
+  `four_port_single_mp_wide_fetch_rv.py --opt_rv --test linear` /
+  `dual_port_wide_fetch_quad_rv.py --opt_rv --fetch_width 2` still PASS (fw4
+  fails identically before/after). Silicon has the original logic.
+- **Reuse buffers (clockwork side, see `clockwork/CLAUDE.md` "RV reuse
+  buffers")**: clockwork now emits `filter` for broadcast-banked writers,
+  linearized address maps for non-SR banks, and explicit `[level, level,
+  scalar]` deps (barrier scalar 16383; read-modify-write sweep `-d` on a
+  coalesced level); `LAKE_RV_ROW_RAW` no longer rewrites explicit scalars
+  (`spec.py`). resnet 19/19, resnet_block (scratch `resnet_block_rvtry`, output
+  un-chained) 27/27, matmul MEM 2/2 tiles pass free-flow + stress.
+- **Accumulation ponds**: clockwork now emits lake's `get_vec_accum_pond`
+  program for accumulation ponds (clockwork notes "Accumulation ponds"); for
+  matmul n=16 the `build_pond_rv` bitstream is bit-identical to
+  `get_vec_accum_pond(16, 256)`.
+- **FIXED 2026-09-29 (`lake/modules/arbiter.py`, user-approved, committed `6f73bc91`) —
+  1-input arbiter grant ignored the request.** `modules/arbiter.py`, `ins == 1`:
+  `grant_out = resource_ready` (commit 64a71ead/6293055a, paired with
+  `step = mid_grant & quali_step` in `spec.py`). The merge 35523f0e ("update
+  some files with main") took master's `spec.py` (`step = mid_grant`) but kept
+  THESIS's arbiter, so every fw=1 port whose memory port has ONE requester
+  steps its iteration domain / address generator EVERY cycle, access or not,
+  and an IN port's `ready` = 1 even while its constraints block it (data
+  dropped). Hits every `build_pond_rv` port and garnet default's filter ports
+  (ports 2/5, `MemoryPort_28/29`); multi-requester memory ports (all MEM data
+  ports of the RV specs) are unaffected. RTL symptom on the pond: update reads
+  race the writes, only 1 clear, final read never fires. Fix = master's line
+  `grant_out[0] = resource_ready & request_in[0]` (no comb loop: pond/filter
+  ports are pass-throughs, valid is external). All pond programs PASS free +
+  stress; garnet-default MEM tiles unchanged (image 30/30 free, 30/30 stress
+  with `LAKE_RV_ROW_RAW=1`, 0/30 stress default encoding = the known baseline;
+  reuse 48/48 free + stress). Pond sims also PASS with garnet's
+  `build_pond_rv(dims=4)`. The unqualified grant is THESIS-only (lake master
+  has the qualified one); which version any silicon used is not verified.
+  The pond's init is its dangling `flush_port` (own ID/AG/RV SG, valid tied 1,
+  data 0) on a `flush_mem=True` write memory port: each step clears the WHOLE
+  storage (`storage.py` materialize_w_clear; in the CGRA,
+  `top/memory_interface.py` ORs the clear port's `clear` into the storage
+  flush), sequenced only by the RV constraints.
+- **FIXED 2026-09-30 (`lake/spec/spec.py`, committed `6f73bc91`) — narrow RV read ports
+  on a delay-1 memory port dropped/duplicated data under backpressure.** For a
+  ready-valid OUT port that is not a wide-fetch opt_rv port (fw=1 data ports of
+  `build_spec_rv(vec_width=1)`, and the FILTER output port of every RV spec),
+  the read was issued on the schedule step alone, the ID/AG stepped on the
+  downstream ready of the ISSUE cycle, and the data returned one cycle later
+  for one cycle only: whenever ready changed between issue and return an item
+  was duplicated or lost (found by `test_spec_rv_programs` on
+  fw1 dp 1x1 under stress: reader outputs 0,0,1,2,…). Fix: a 2-entry
+  `RegFIFO` (`port_<i>_rd_buf`) between the memory interface decoder and the
+  Port; a read (and the ID/AG step) is issued only if
+  items + arriving − popping < 2; valid comes from the FIFO. Full throughput.
+  Delay-0 memory ports (the pond) keep the old wiring. RTL changes for every
+  RV spec (filter out port) and fw1 RV specs; wide-fetch data ports unchanged.
+- **FIXED 2026-09-30 (`lake/spec/iteration_domain.py`, committed `6f73bc91`)**:
+  `gen_bitstream` accepted extent 2**extent_width + 1, whose last index wraps
+  to 0 on the extent_width-bit `iterators` port (read by the RV comparison
+  network, the Port filter, non-recurrent AG/SG). Now extent ∈ [2, 2**ew].
+- **`lake/modules/rv_comparison_network.py`**: (a) reader→writer `sel_in` sized
+  from the reader's own dimensionality (was the last writer's; RTL identical when
+  all ports have equal dims, as in every builder) — committed `6f73bc91`.
+  (b) **FIXED 2026-10-08, THESIS `8748240d` (aha mek `516647b`):** the wrap fixup
+  reads each port's iterator one level up via `sel + 1`. In clog2(dims) bits that
+  wrapped to level 0 at the TOP level of power-of-2 dims (2, 4, 8), so the extent
+  was added whenever the two ports' level-0 iterators differed (a gated port could
+  step early). Out-of-range selects give 0 = "no outer level", so the fix widens
+  the select one bit only for those dims (`_outer_counter`). RTL changes only for
+  power-of-2-dim ports: of the shipped builders, only the default RV pond (4-D);
+  the default MEM tile, thesis `build_spec_rv` points and 6-D ponds are
+  byte-identical (1-D was already correct: `sel + 1` = 1 is out of range). The
+  6f73bc91 bitstream guard (`_check_fixup_level`) is removed. Verified:
+  `test_rvcn_rtl_random_top_level` (old RTL fails the dims 2/4/8 seeds), 12
+  clockwork accumulation-pond programs on a 4-D pond free + stress 24/24 with
+  identical cycle counts. Silicon built from earlier lake still has the bug; no
+  current clockwork program puts a non-barrier constraint at those levels.
+  Related limit: the fixup adds `counter + extent` in iterator width, so a
+  level whose fixup can fire must have extent ≤ 2**(ew−1) (1024 for 11-bit IDs).
+- **FIXED 2026-09-30 (`lake/spec/spec.py` converter, committed `6f73bc91`) — capacity.**
+  (a) clockwork emits `null` WAR for line buffers and the converter used
+  "writer ≤ 8 rows ahead"; on a small memory (512 words = 8 rows of 64) a
+  stalled reader was lapped (RTL, fw1 dp 1 KB, stress: reads = expected + 512).
+  Now `min(8, R − D − c)` rows, R = capacity // row pitch (addresses wrap),
+  D = reader precursor row lag, c = 1 if it also lags by columns; `ValueError`
+  if < 1 (row-granular constraints cannot hold it; static timing can).
+  (b) explicit `[level, level, scalar]` (barrier / sweep) programs need the
+  buffer resident: `ValueError` if addresses exceed the memory (resnet's
+  900-element input / 784-element conv banks on 512-word specs; clockwork's
+  lake_dp path does not bank for capacity). (c) a dependence between ports on
+  DIFFERENT storages raises: on `build_spec_rv(in_ports=1)` the second input /
+  output is the filter path (own 8-entry storage) and clockwork's collateral
+  counts it as a port, so an accumulator's second writer (resnet conv banks:
+  init + update) lands there. Bitstreams unchanged wherever 8 rows fit
+  (garnet default: all 107 tiles byte-identical). Test:
+  `test_convert_rv_capacity.py`.
+  (d) 2026-09-30: (a) raised whenever R − D − c < 1, but that is only
+  infeasible for the DEFAULT RAW encoding (the reader may lead the writer
+  within one row, the writer may not enter the reader's row → deadlock). With
+  a ROW-level RAW (writer row ≥ reader row − D + 2) and WAR scalar R − D − c
+  (≤ 0: the writer trails the reader's row counter, whose data is D rows old)
+  the window is non-empty iff R − c ≥ 3. `convert_app_json_to_config` now
+  gives such readers the row-level RAW automatically (2-level domains only;
+  a level above the rows would need the wrap fixup the other way round) and
+  raises only if R − c < 3. Case: unsharp gray bank 5 (lag 6 rows + 1 col,
+  pitch 68) on fw1 dp 1 KB → RTL PASS free + stress (all 10 unsharp tiles).
+  No other tile changes (they either had R − D − c ≥ 1 or raised).
+- **Static route (`_convert_clockwork_to_port_config`, 2026-09-30, committed `6f73bc91`)**:
+  the SIPO / PISO address of a wide IN port is the agg2sram READ address
+  (`read_data_*`; was the write side), of a wide OUT port the sram2tb WRITE
+  address (`write_data_*`); falls back to the other side when missing. And
+  `AddressGenerator.gen_bitstream` reduces offset and strides modulo
+  2**addr_width (addresses wrap in the counter anyway; values that fit are
+  unchanged) — clockwork's static circular line buffers emit strides like 16
+  for a 4-bit SIPO address.
+- **Unit tests (2026-09-30, `tests/spec_unit_tests/`, committed `6f73bc91`)**: xrun-based
+  functional tests per unit with Python reference models, run with
+  `cd tests/spec_unit_tests && python -m pytest -q . -p no:cacheprovider`
+  (~4.5 min; skipped without xrun). `rtl_harness.py` = cycle-vector harness
+  (kratos → SV tb → xrun); `spec_rtl.py` = whole-spec harness (generated tb,
+  remote storage model, loopback PE, stress stalls). Files: arbiter, LF comp
+  block, RV comparison network, memory interface decoder, spec RegFIFO,
+  storage, iteration domain, address generator, schedule generators (static +
+  RV), controller integration, pond RV accumulation (bit-identity with
+  `get_vec_accum_pond` + RTL), spec RV programs (stream / row-lag / barrier /
+  sweep on fw1 dp, fw2 sp, fw2 dp, fw4 sp, garnet default; free + stress).
+  As of 2026-10-08 (lake `8748240d`): 296 pass + 5 xfail; the 13 failures in
+  `test_extract_compiler_information.py` are pre-existing (same on clean HEAD;
+  OPEN_ISSUES `lake/extract-collateral-tests`). Remaining xfails = latent bugs on paths no builder uses:
+  MemoryInterfaceDecoder with >1 memory port cannot be built (and its enable
+  concat order looks reversed); SingleBankStorage with two write ports cannot
+  be emitted (non-remote pond); LFCompBlock 17-bit sum overflow for counters
+  > 32768; LFCompBlock hardened-op constructor AttributeError. To test a
+  private copy of the `lake/` package: `PYTHONPATH=<copy>` overrides the
+  editable install, also under pytest (verified 2026-10-08); check with
+  `python -c 'import lake; print(lake.__file__)'`, and don't run a script that
+  sits next to another `lake/` directory (sys.path[0] wins). Pre-existing, unrelated: `test_extract_compiler_information.py`
+  13 failures (same on clean HEAD); `tests/test_spec/dual_port_rv.py` legacy
+  flow fails "Not enough data on port r0" (same before today's fixes).
+- **OPEN** (OPEN_ISSUES `lake/spec-memcore-chaining-rom`; not rechecked since 2026-09-30): MEM-tile output CHAINING (`chain_en`) has no lake-spec equivalent.
+  The spec MemCore also cannot be loaded with ROM contents (`init`): apps
+  whose clockwork mapping uses ROM "port_controller_Counter" tiles (matmul's
+  `kernel = 2x + y`) cannot run on lake-spec MemCores (static or RV).
+- **RESOLVED (2026-10-01) — harris_color end to end** (the STRM_G2F hang above):
+  not the MEM tiles. Causes were clockwork stream framing (`rv_reframe_line_buffers`),
+  canal register pre-fill landing on the wrong-width register, and the PE-FIFO
+  precursor walk double-counting what this converter now applies (all fixed:
+  clockwork 440488d4, canal c3894d2, garnet 3c70c41f). harris/unsharp/camera RV
+  pass bit-accurate; details in clockwork/CLAUDE.md "RV stream framing bug".
+
+---
+
 ## 7. Lake-spec ponds (static `build_pond` + `build_pond_rv`) (2026-09-30)
 
 The PE-tile pond is a lake spec in both modes (user direction: the legacy
