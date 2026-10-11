@@ -12,11 +12,12 @@ APPS_NEEDING_HACKS = [
 ]
 
 
-def hack_rv_config(test_name):
+def hack_rv_config(test_name, node_name=None):
     '''
     Main function to hack app. It has to hack config for all MEM/Pond in the apps.
     This function should only return the config for a single MEM/Pond.
     TODO: If Ponds/MEMs use different configs, then we have to feed tile information.
+    node_name: the tile's node name; Spec.gen_bitstream passes it (unused by these configs).
     '''
     print(f"\033[94mApplying hack_rv_config for a MEM/Pond in test_name: {test_name}\033[0m")
     rv_config = {}
