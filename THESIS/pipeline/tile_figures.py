@@ -230,7 +230,8 @@ def memtile_interconnect_area(ctx, outpath: Path) -> None:
                     yerr=[(med - lo).loc[ports, col] / K, (hi - med).loc[ports, col] / K],
                     fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
     ax.set_xticks(range(len(ports)))
-    ax.set_xticklabels([f"{p}×{p}" for p in ports])
+    n = df.groupby("in_ports").size()
+    ax.set_xticklabels([f"{p}×{p}\n(n={n[p]})" for p in ports])
     ax.set_xlabel(f"Lake ports (in × out), {DATA_WIDTH}-bit data")
     ax.set_ylabel(AREA_LBL)
     ax.set_ylim(0, hi.values.max() / K * 1.08)
@@ -343,10 +344,15 @@ def memtile_rv_overhead_area(ctx, outpath: Path) -> None:
 
 
 def memtile_interconnect_power(ctx, outpath: Path) -> None:
-    """CB / SB / tile-glue synth-level power vs Lake port count: bars = active
-    (max-traffic) power, median with min-max over configs; ticks = idle."""
+    """CB / SB synth-level power vs Lake port count: bars = active (max-traffic)
+    power, median with min-max over configs; ticks = idle.
+
+    No "other top level" bar: tile_glue power is the tile total minus its
+    children, and PT prints each to 3 significant digits, so that remainder is
+    rounding noise (it comes out negative on most configs).
+    """
     df = _load()
-    parts = [("cb", "Connection boxes"), ("sb", "Switch box"), ("tile_glue", "Other top level")]
+    parts = [("cb", "Connection boxes"), ("sb", "Switch box")]
     act = [f"pw_synth_active_{b}" for b, _ in parts]
     idle = [f"pw_synth_idle_{b}" for b, _ in parts]
     _blocks(df, act + idle, "interconnect power")
@@ -354,9 +360,9 @@ def memtile_interconnect_power(ctx, outpath: Path) -> None:
     g = df.groupby("in_ports")
     med, lo, hi, imed = g[act].median(), g[act].min(), g[act].max(), g[idle].median()
     fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
-    w = 0.26
-    for k, ((b, lab), colr) in enumerate(zip(parts, SERIES[:3])):
-        xs = np.arange(len(ports)) + (k - 1) * w
+    w = 0.32
+    for k, ((b, lab), colr) in enumerate(zip(parts, SERIES[:2])):
+        xs = np.arange(len(ports)) + (k - 0.5) * w
         a = f"pw_synth_active_{b}"
         ax.bar(xs, med.loc[ports, a] / UW, w * 0.92, color=colr, label=lab)
         ax.errorbar(xs, med.loc[ports, a] / UW,
@@ -365,7 +371,7 @@ def memtile_interconnect_power(ctx, outpath: Path) -> None:
         ax.scatter(xs, imed.loc[ports, f"pw_synth_idle_{b}"] / UW, marker="_", s=90, color=INK,
                    linewidth=1.4, zorder=4, label="Idle" if k == 0 else None)
     ax.set_xticks(range(len(ports)))
-    ax.set_xticklabels([f"{p}×{p}" for p in ports])
+    ax.set_xticklabels([f"{p}×{p}\n(n={g.size()[p]})" for p in ports])
     ax.set_xlabel(f"Lake ports (in × out), {DATA_WIDTH}-bit data")
     ax.set_ylabel("Active power (µW)")
     ax.set_ylim(0, hi.values.max() / UW * 1.08)
