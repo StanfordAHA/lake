@@ -7,7 +7,7 @@ from lake.passes.passes import lift_config_reg
 from lake.utils.util import sticky_flag, trim_config_list, add_counter
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
-from lake.top.memory_controller import MemoryController
+from lake.top.memory_controller import MemoryController, const_concat
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
@@ -237,7 +237,7 @@ class Intersect(MemoryController):
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output ref signal
-            self._done_signal = sticky_flag(self, (self._coord_out == MemoryController.DONE_PROXY) & self._coord_out[MemoryController.EOS_BIT] & self._coord_out_valid_out,
+            self._done_signal = sticky_flag(self, (self._coord_out == self.token_proxy(self.data_width, MemoryController.DONE_CODE)) & self._coord_out[self.data_width] & self._coord_out_valid_out,
                                             name='done_indicator')
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
         """
@@ -273,14 +273,15 @@ class Intersect(MemoryController):
         self.wire(self._all_have_eos, eos_concat.r_and())
 
         self._maybe = self.var("maybe", self.data_width)
-        self._maybeconstant = kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))
+        tok_base = self.token_opcode_base(self.data_width)
+        self._maybeconstant = const_concat((0, self.data_width - tok_base - 2), (2, 2), (0, tok_base))
         self.wire(self._maybe, kts.ternary(self._vector_reduce_mode, kts.const(0, self.data_width), self._maybeconstant))
 
         self._semi_done_token = self.var("semi_done_token", self.data_width + 1)
-        self.wire(self._semi_done_token, kts.concat(kts.const(1, 1), kts.const(0, 11), kts.const(1, 1), kts.const(0, 4)))
+        self.wire(self._semi_done_token, const_concat((1, 1), (0, self.data_width - 5), (1, 1), (0, 4)))
 
         self._done_token = self.var("done_token", self.data_width + 1)
-        self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
+        self.wire(self._done_token, const_concat((1, 1), (0, self.data_width - tok_base - 1), (1, 1), (0, tok_base)))
 
         """
         # MO: This isn't used!
@@ -301,8 +302,8 @@ class Intersect(MemoryController):
         self._fifo_full = self.var("fifo_full", 3)
 
         # Swap ins for FIFO
-        self._coord_to_fifo = self.var("coord_to_fifo", 16)
-        self._pos_to_fifo = self.var("pos_to_fifo", 16, size=self.num_streams, explicit_array=True, packed=True)
+        self._coord_to_fifo = self.var("coord_to_fifo", self.data_width)
+        self._pos_to_fifo = self.var("pos_to_fifo", self.data_width, size=self.num_streams, explicit_array=True, packed=True)
 
         self._coord_to_fifo_eos = self.var("coord_to_fifo_eos", 1)
         self._pos_to_fifo_eos = self.var("pos_to_fifo_eos", self.num_streams)
@@ -408,9 +409,9 @@ class Intersect(MemoryController):
         IDLE.output(self._fifo_push, 0)
         IDLE.output(self._clr_eos_sticky[0], 0)
         IDLE.output(self._clr_eos_sticky[1], 0)
-        IDLE.output(self._coord_to_fifo, kts.const(0, 16))
-        IDLE.output(self._pos_to_fifo[0], kts.const(0, 16))
-        IDLE.output(self._pos_to_fifo[1], kts.const(0, 16))
+        IDLE.output(self._coord_to_fifo, kts.const(0, self.data_width))
+        IDLE.output(self._pos_to_fifo[0], kts.const(0, self.data_width))
+        IDLE.output(self._pos_to_fifo[1], kts.const(0, self.data_width))
         IDLE.output(self._coord_to_fifo_eos, 0)
         IDLE.output(self._pos_to_fifo_eos[0], 0)
         IDLE.output(self._pos_to_fifo_eos[1], 0)
@@ -432,9 +433,9 @@ class Intersect(MemoryController):
         ITER.output(self._fifo_push, self._all_are_valid & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_has_eos) | (self._all_have_eos)) & ~self._fifo_full.r_or())
         ITER.output(self._clr_eos_sticky[0], (self._all_have_eos & ~self._fifo_full.r_or()))
         ITER.output(self._clr_eos_sticky[1], (self._all_have_eos & ~self._fifo_full.r_or()))
-        ITER.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
-        ITER.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
-        ITER.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
+        ITER.output(self._coord_to_fifo, self._coord_in_fifo_in[0][self.data_width - 1, 0])
+        ITER.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][self.data_width - 1, 0])
+        ITER.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][self.data_width - 1, 0])
         ITER.output(self._coord_to_fifo_eos, self._all_have_eos)
         ITER.output(self._pos_to_fifo_eos[0], self._all_have_eos)
         ITER.output(self._pos_to_fifo_eos[1], self._all_have_eos)
@@ -449,9 +450,9 @@ class Intersect(MemoryController):
         ALIGN.output(self._fifo_push, (self._all_have_eos & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_eos_sticky[0], (self._all_have_eos & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_eos_sticky[1], (self._all_have_eos & ~self._fifo_full.r_or()))
-        ALIGN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
-        ALIGN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
-        ALIGN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
+        ALIGN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][self.data_width - 1, 0])
+        ALIGN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][self.data_width - 1, 0])
+        ALIGN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][self.data_width - 1, 0])
         ALIGN.output(self._coord_to_fifo_eos, 1)
         ALIGN.output(self._pos_to_fifo_eos[0], 1)
         ALIGN.output(self._pos_to_fifo_eos[1], 1)
@@ -471,15 +472,15 @@ class Intersect(MemoryController):
         UNION.output(self._clr_eos_sticky[0], 0)
         UNION.output(self._clr_eos_sticky[1], 0)
         # Need to pick which FIFO to pass through
-        # UNION.output(self._coord_to_fifo, kts.ternary(self._pop_fifo[0], self._coord_in_fifo_in[0][15, 0], self._coord_in_fifo_in[1][15, 0]))
-        # UNION.output(self._pos_to_fifo[0], kts.ternary(self._pop_fifo[0], self._pos_in_fifo_in[0][15, 0], self._maybe))
-        # UNION.output(self._pos_to_fifo[1], kts.ternary(self._pop_fifo[1], self._pos_in_fifo_in[1][15, 0], self._maybe))
-        UNION.output(self._coord_to_fifo, kts.ternary(self._all_have_eos, self._coord_in_fifo_in[0][15, 0],
-                                                    kts.ternary(self._pop_fifo[0], self._coord_in_fifo_in[0][15, 0], self._coord_in_fifo_in[1][15, 0])))
-        UNION.output(self._pos_to_fifo[0], kts.ternary(self._all_have_eos, self._pos_in_fifo_in[0][15, 0],
-                                                    kts.ternary(self._pop_fifo[0], self._pos_in_fifo_in[0][15, 0], self._maybe)))
-        UNION.output(self._pos_to_fifo[1], kts.ternary(self._all_have_eos, self._pos_in_fifo_in[0][15, 0],  # In Theory, the stop token value should be aligned
-                                                    kts.ternary(self._pop_fifo[1], self._pos_in_fifo_in[1][15, 0], self._maybe)))
+        # UNION.output(self._coord_to_fifo, kts.ternary(self._pop_fifo[0], self._coord_in_fifo_in[0][self.data_width - 1, 0], self._coord_in_fifo_in[1][self.data_width - 1, 0]))
+        # UNION.output(self._pos_to_fifo[0], kts.ternary(self._pop_fifo[0], self._pos_in_fifo_in[0][self.data_width - 1, 0], self._maybe))
+        # UNION.output(self._pos_to_fifo[1], kts.ternary(self._pop_fifo[1], self._pos_in_fifo_in[1][self.data_width - 1, 0], self._maybe))
+        UNION.output(self._coord_to_fifo, kts.ternary(self._all_have_eos, self._coord_in_fifo_in[0][self.data_width - 1, 0],
+                                                    kts.ternary(self._pop_fifo[0], self._coord_in_fifo_in[0][self.data_width - 1, 0], self._coord_in_fifo_in[1][self.data_width - 1, 0])))
+        UNION.output(self._pos_to_fifo[0], kts.ternary(self._all_have_eos, self._pos_in_fifo_in[0][self.data_width - 1, 0],
+                                                    kts.ternary(self._pop_fifo[0], self._pos_in_fifo_in[0][self.data_width - 1, 0], self._maybe)))
+        UNION.output(self._pos_to_fifo[1], kts.ternary(self._all_have_eos, self._pos_in_fifo_in[0][self.data_width - 1, 0],  # In Theory, the stop token value should be aligned
+                                                    kts.ternary(self._pop_fifo[1], self._pos_in_fifo_in[1][self.data_width - 1, 0], self._maybe)))
         # UNION.output(self._coord_to_fifo_eos, 0)
         # UNION.output(self._pos_to_fifo_eos[0], ~self._vector_reduce_mode & ~self._pop_fifo[0])  # MO: Will maybe token having EOS cause issues?
         # UNION.output(self._pos_to_fifo_eos[1], ~self._vector_reduce_mode & ~self._pop_fifo[1])  # MO: Will maybe token having EOS cause issues?
@@ -499,9 +500,9 @@ class Intersect(MemoryController):
         DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._all_have_eos)
         DRAIN.output(self._clr_eos_sticky[0], 0)
         DRAIN.output(self._clr_eos_sticky[1], 0)
-        DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
-        DRAIN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
-        DRAIN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[0][15, 0])
+        DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][self.data_width - 1, 0])
+        DRAIN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][self.data_width - 1, 0])
+        DRAIN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[0][self.data_width - 1, 0])
         DRAIN.output(self._coord_to_fifo_eos, self._any_has_eos)
         DRAIN.output(self._pos_to_fifo_eos[0], self._any_has_eos)
         DRAIN.output(self._pos_to_fifo_eos[1], self._any_has_eos)
@@ -520,9 +521,9 @@ class Intersect(MemoryController):
         PASS_DONE.output(self._clr_eos_sticky[0], 0)
         PASS_DONE.output(self._clr_eos_sticky[1], 0)
         # If incoming stream has done token (meaning we're REALLY done), send done, else send semi-done.
-        PASS_DONE.output(self._coord_to_fifo, kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15, 0], self._semi_done_token[15, 0]))
-        PASS_DONE.output(self._pos_to_fifo[0], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15, 0], self._semi_done_token[15, 0]))
-        PASS_DONE.output(self._pos_to_fifo[1], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15, 0], self._semi_done_token[15, 0]))
+        PASS_DONE.output(self._coord_to_fifo, kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[self.data_width - 1, 0], self._semi_done_token[self.data_width - 1, 0]))
+        PASS_DONE.output(self._pos_to_fifo[0], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[self.data_width - 1, 0], self._semi_done_token[self.data_width - 1, 0]))
+        PASS_DONE.output(self._pos_to_fifo[1], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[self.data_width - 1, 0], self._semi_done_token[self.data_width - 1, 0]))
         PASS_DONE.output(self._coord_to_fifo_eos, kts.const(1, 1))
         PASS_DONE.output(self._pos_to_fifo_eos[0], kts.const(1, 1))
         PASS_DONE.output(self._pos_to_fifo_eos[1], kts.const(1, 1))
@@ -550,9 +551,9 @@ class Intersect(MemoryController):
         DONE.output(self._fifo_push, 0)
         DONE.output(self._clr_eos_sticky[0], 1)
         DONE.output(self._clr_eos_sticky[1], 1)
-        DONE.output(self._coord_to_fifo, kts.const(0, 16))
-        DONE.output(self._pos_to_fifo[0], kts.const(0, 16))
-        DONE.output(self._pos_to_fifo[1], kts.const(0, 16))
+        DONE.output(self._coord_to_fifo, kts.const(0, self.data_width))
+        DONE.output(self._pos_to_fifo[0], kts.const(0, self.data_width))
+        DONE.output(self._pos_to_fifo[1], kts.const(0, self.data_width))
         DONE.output(self._coord_to_fifo_eos, 0)
         DONE.output(self._pos_to_fifo_eos[0], 0)
         DONE.output(self._pos_to_fifo_eos[1], 0)

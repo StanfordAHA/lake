@@ -240,8 +240,8 @@ class Reg(MemoryController):
         # If we see EOS, we know we can consume the stop token
         # If we don't see EOS, we can start accumulating
         START.next(ACCUM, self._infifo_out_valid & ~self._infifo_out_eos)
-        START.next(DONE, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(1, 2)))
-        START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(0, 2)))
+        START.next(DONE, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2)))
+        START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(0, 2)))
         START.next(START, None)
         # START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
 
@@ -261,7 +261,7 @@ class Reg(MemoryController):
         # STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data >= self._stop_lvl))))
 
         # STOP PASS is basically going to crush stop levels until we see new data or the DONE token
-        # STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(1, 2)))))
+        # STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2)))))
         # Just crush a single stop
         STOP_PASS.next(START, ~self._outfifo_full)
         STOP_PASS.next(STOP_PASS, None)
@@ -277,7 +277,7 @@ class Reg(MemoryController):
         # START.output(self._infifo_pop, self._infifo_out_eos & self._infifo_out_valid)
         START.output(self._infifo_pop, 0)
         START.output(self._outfifo_push, 0)
-        START.output(self._data_to_fifo, kts.const(0, 16))
+        START.output(self._data_to_fifo, kts.const(0, self.data_width))
         START.output(self._outfifo_in_eos, 0)
         START.output(self._reg_clr, 0)
         START.output(self._update_accum_reg, 0)
@@ -289,7 +289,7 @@ class Reg(MemoryController):
         # The data pushed in previously is coming back, ready to push another one
         ACCUM.output(self._infifo_pop, self._infifo_out_valid & ~self._infifo_out_eos)
         ACCUM.output(self._outfifo_push, 0)
-        ACCUM.output(self._data_to_fifo, kts.const(0, 16))
+        ACCUM.output(self._data_to_fifo, kts.const(0, self.data_width))
         ACCUM.output(self._outfifo_in_eos, 0)
         ACCUM.output(self._reg_clr, 0)
         ACCUM.output(self._update_accum_reg, self._infifo_out_valid & ~self._infifo_out_eos)
@@ -313,11 +313,11 @@ class Reg(MemoryController):
         # Only rip the stop off if its below the stop level
         # STOP_PASS.output(self._infifo_pop, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data < self._stop_lvl))
         # Only pop off stop tokens
-        STOP_PASS.output(self._infifo_pop, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(0, 2)))
+        STOP_PASS.output(self._infifo_pop, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(0, 2)))
         # STOP_PASS.output(self._outfifo_push, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data < self._stop_lvl))
         # Only push stop tokens that aren't being completely squashed
         STOP_PASS.output(self._outfifo_push, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos &
-                         (self._infifo_out_data[9, 8] == 0) & (self._infifo_out_data[7, 0] > 0))
+                         (self._infifo_out_data[self.token_opcode_bt(self.data_width)] == 0) & (self._infifo_out_data[self.token_stop_bt(self.data_width)] > 0))
         STOP_PASS.output(self._reg_clr, 1)
         # Reduce the stop level by 1 - if it's 0, the stop token gets squashed
         STOP_PASS.output(self._data_to_fifo, self._infifo_out_data - 1)
@@ -368,7 +368,7 @@ class Reg(MemoryController):
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output coord
-            self._done_signal = sticky_flag(self, (self._data_out == MemoryController.DONE_PROXY) & self._valid_out,
+            self._done_signal = sticky_flag(self, (self._data_out == self.token_proxy(self.data_width, MemoryController.DONE_CODE)) & self._valid_out,
                                             name='done_indicator')
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
 

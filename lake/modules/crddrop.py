@@ -179,7 +179,7 @@ class CrdDrop(MemoryController):
                        data_out=self._inner_infifo_data_packed)
 
         # Unpacked data and indicator signals from the fifo for ease of use
-        self._inner_infifo_data = self.var("inner_infifo_data", 16)
+        self._inner_infifo_data = self.var("inner_infifo_data", self.data_width)
         self._inner_infifo_is_eos = self.var("inner_infifo_is_eos", 1)
         self._inner_infifo_data_valid = self.var("inner_infifo_data_valid", 1)
 
@@ -210,7 +210,7 @@ class CrdDrop(MemoryController):
                        data_out=self._outer_infifo_data_packed)
 
         # Unpacked data and indicator signals from the fifo for ease of use
-        self._outer_infifo_data = self.var("outer_infifo_data", 16)
+        self._outer_infifo_data = self.var("outer_infifo_data", self.data_width)
         self._outer_infifo_is_eos = self.var("outer_infifo_is_eos", 1)
         self._outer_infifo_data_valid = self.var("outer_infifo_data_valid", 1)
 
@@ -301,15 +301,15 @@ class CrdDrop(MemoryController):
 
         # indicators that is set to one if the current coordinate is eos
         self._inner_is_eos = self.var("inner_is_eos", 1)
-        self.wire(self._inner_is_eos, self._inner_infifo_data_valid & self._inner_infifo_is_eos & (self._inner_infifo_data[9, 8] == kts.const(0, 2)))
+        self.wire(self._inner_is_eos, self._inner_infifo_data_valid & self._inner_infifo_is_eos & (self._inner_infifo_data[self.token_opcode_bt(self.data_width)] == kts.const(0, 2)))
         self._outer_is_eos = self.var("outer_is_eos", 1)
-        self.wire(self._outer_is_eos, self._outer_infifo_data_valid & self._outer_infifo_is_eos & (self._outer_infifo_data[9, 8] == kts.const(0, 2)))
+        self.wire(self._outer_is_eos, self._outer_infifo_data_valid & self._outer_infifo_is_eos & (self._outer_infifo_data[self.token_opcode_bt(self.data_width)] == kts.const(0, 2)))
 
         # indicators that is set to one if the current coordinate is done
         self._inner_is_done = self.var("inner_is_done", 1)
-        self.wire(self._inner_is_done, self._inner_infifo_data_valid & self._inner_infifo_is_eos & (self._inner_infifo_data[9, 8] == kts.const(1, 2)))
+        self.wire(self._inner_is_done, self._inner_infifo_data_valid & self._inner_infifo_is_eos & (self._inner_infifo_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2)))
         self._outer_is_done = self.var("outer_is_done", 1)
-        self.wire(self._outer_is_done, self._outer_infifo_data_valid & self._outer_infifo_is_eos & (self._outer_infifo_data[9, 8] == kts.const(1, 2)))
+        self.wire(self._outer_is_done, self._outer_infifo_data_valid & self._outer_infifo_is_eos & (self._outer_infifo_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2)))
 
         # sticky flag that indicate that the current inner fiber is not empty
         self._clr_inner_fiber_not_empty = self.var("clr_inner_fiber_not_empty", 1)
@@ -549,9 +549,9 @@ class CrdDrop(MemoryController):
         self._empty_fiber_drop_buffer_is_data = self.var("empty_fiber_drop_buffer_is_data", 1)
         self.wire(self._empty_fiber_drop_buffer_is_data, self._empty_fiber_drop_buffer_valid & ~self._empty_fiber_drop_eos_buffer)
         self._empty_fiber_drop_buffer_is_eos = self.var("empty_fiber_drop_buffer_is_eos", 1)
-        self.wire(self._empty_fiber_drop_buffer_is_eos, self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer & (self._empty_fiber_drop_data_buffer[9, 8] == kts.const(0, 2)))
+        self.wire(self._empty_fiber_drop_buffer_is_eos, self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer & (self._empty_fiber_drop_data_buffer[self.token_opcode_bt(self.data_width)] == kts.const(0, 2)))
         self._empty_fiber_drop_buffer_is_done = self.var("empty_fiber_drop_buffer_is_done", 1)
-        self.wire(self._empty_fiber_drop_buffer_is_done, self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer & (self._empty_fiber_drop_data_buffer[9, 8] == kts.const(1, 2)))
+        self.wire(self._empty_fiber_drop_buffer_is_done, self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer & (self._empty_fiber_drop_data_buffer[self.token_opcode_bt(self.data_width)] == kts.const(1, 2)))
 
         @always_comb
         def empty_fiber_drop_buffer_logic(self):

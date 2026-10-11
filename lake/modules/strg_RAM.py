@@ -40,6 +40,9 @@ class StrgRAM(MemoryController):
         self.word_width = max(1, clog2(self.fw_int))
         self.mem_addr_width = clog2(self.num_tiles * self.memory_depth)
         self.b_a_off = clog2(self.fw_int) + clog2(self.num_tiles * self.memory_depth)
+        # The address arrives in the low data_width bits of a data track. A track
+        # narrower than the word address is zero-extended (reaches the low words only).
+        self.int_addr_width = max(self.addr_width, self.mem_addr_width + self.word_width)
 
         self.comply_with_17 = comply_with_17
 
@@ -61,18 +64,23 @@ class StrgRAM(MemoryController):
         self._wr_addr_in = self.input("wr_addr_in", self.addr_width + self.add_bits, packed=True)
         self._rd_addr_in = self.input("rd_addr_in", self.addr_width + self.add_bits, packed=True)
 
-        self._wr_addr = self.var("wr_addr", self.addr_width)
-        self._rd_addr = self.var("rd_addr", self.addr_width)
+        self._wr_addr = self.var("wr_addr", self.int_addr_width)
+        self._rd_addr = self.var("rd_addr", self.int_addr_width)
 
         # Separate addressing...
         self.bit_range = (self.data_width - 1, 0)
+        wr_addr_src = self._wr_addr_in[self.bit_range]
+        rd_addr_src = self._rd_addr_in[self.bit_range] if self.rw_same_cycle else wr_addr_src
+        if self.int_addr_width > self.data_width:
+            wr_addr_src = wr_addr_src.extend(self.int_addr_width)
+            rd_addr_src = rd_addr_src.extend(self.int_addr_width)
         if self.rw_same_cycle:
-            self.wire(self._wr_addr, self._wr_addr_in[self.bit_range])
-            self.wire(self._rd_addr, self._rd_addr_in[self.bit_range])
+            self.wire(self._wr_addr, wr_addr_src)
+            self.wire(self._rd_addr, rd_addr_src)
         # Use the wr addr for both in this case...
         else:
-            self.wire(self._wr_addr, self._wr_addr_in[self.bit_range])
-            self.wire(self._rd_addr, self._wr_addr_in[self.bit_range])
+            self.wire(self._wr_addr, wr_addr_src)
+            self.wire(self._rd_addr, rd_addr_src)
 
         self._data_out = self.output("data_out", self.data_width + self.add_bits, packed=True)
 
@@ -85,12 +93,12 @@ class StrgRAM(MemoryController):
                                           explicit_array=True,
                                           packed=True)
 
-        self._wen_addr = self.var("wen_addr", self.addr_width,
+        self._wen_addr = self.var("wen_addr", self.int_addr_width,
                                   size=self.banks,
                                   explicit_array=True,
                                   packed=True)
 
-        self._ren_addr = self.var("ren_addr", self.addr_width,
+        self._ren_addr = self.var("ren_addr", self.int_addr_width,
                                   size=self.banks,
                                   explicit_array=True,
                                   packed=True)
@@ -143,7 +151,7 @@ class StrgRAM(MemoryController):
         elif self.read_delay == 1:
 
             self._data_to_write = self.var("data_to_write", self.data_width)
-            self._addr_to_write = self.var("addr_to_write", self.addr_width)
+            self._addr_to_write = self.var("addr_to_write", self.int_addr_width)
             self.add_code(self.set_dat_to_write)
             self.add_code(self.set_addr_to_write)
 

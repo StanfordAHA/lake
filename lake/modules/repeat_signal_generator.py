@@ -108,7 +108,7 @@ class RepeatSignalGenerator(MemoryController):
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output coord
-            self._done_signal = sticky_flag(self, ((self._repsig_data_out == MemoryController.DONE_PROXY) &
+            self._done_signal = sticky_flag(self, ((self._repsig_data_out == self.token_proxy(self.data_width, MemoryController.DONE_CODE)) &
                                                    self._repsig_valid_out),
                                             name='done_indicator')
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
@@ -196,7 +196,7 @@ class RepeatSignalGenerator(MemoryController):
 # =============================
 # Various Logic
 # =============================
-        self._seen_root_eos = sticky_flag(self, (self._base_fifo_out_data[9, 8] == kts.const(1, 2)) & self._base_fifo_out_eos & self._base_fifo_valid, name="seen_root_eos")
+        self._seen_root_eos = sticky_flag(self, (self._base_fifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2)) & self._base_fifo_out_eos & self._base_fifo_valid, name="seen_root_eos")
 
         # Passthru is trivial, just push it when the other one is being pushed
         if self.passthru:
@@ -238,7 +238,7 @@ class RepeatSignalGenerator(MemoryController):
         #####################
         # PASS_STOP.next(DONE, self._seen_root_eos & ~self._repsig_fifo_full)
         # Can be done once we are pushing DONE
-        PASS_STOP.next(DONE, (self._base_fifo_valid & self._base_fifo_out_eos & (self._base_fifo_out_data[9, 8] == kts.const(1, 2))) & ~self._repsig_fifo_full)
+        PASS_STOP.next(DONE, (self._base_fifo_valid & self._base_fifo_out_eos & (self._base_fifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2))) & ~self._repsig_fifo_full)
         # If we hit more data, we have to go back to passing repeats
         PASS_STOP.next(PASS_REPEAT, self._base_fifo_valid & ~self._base_fifo_out_eos)
         PASS_STOP.next(PASS_STOP, None)
@@ -276,7 +276,7 @@ class RepeatSignalGenerator(MemoryController):
         #####################
         # PASS_REPEAT
         #####################
-        PASS_REPEAT.output(self._repsig_fifo_in_data, kts.const(1, 16))
+        PASS_REPEAT.output(self._repsig_fifo_in_data, kts.const(1, self.data_width))
         PASS_REPEAT.output(self._repsig_fifo_in_eos, 0)
         # Push the data on if it is data
         PASS_REPEAT.output(self._repsig_fifo_push, ~self._base_fifo_out_eos & self._base_fifo_valid)
@@ -292,7 +292,7 @@ class RepeatSignalGenerator(MemoryController):
         # PASS_STOP
         #####################
         # We are passing along 0 unless it is a done token, in which case we pass it along
-        PASS_STOP.output(self._repsig_fifo_in_data, kts.ternary(self._base_fifo_out_data[9, 8] == kts.const(1, 2),
+        PASS_STOP.output(self._repsig_fifo_in_data, kts.ternary(self._base_fifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2),
                                                                 # self._base_fifo_out_data, kts.const(0, self.data_width)))
                                                                 self._base_fifo_out_data, self._base_fifo_out_data))
         PASS_STOP.output(self._repsig_fifo_in_eos, 1)

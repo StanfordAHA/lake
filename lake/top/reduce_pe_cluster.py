@@ -79,7 +79,7 @@ class ReducePECluster(MemoryController):
         self._pe_data_to_reduce = self.var("pe_data_to_reduce", self.data_width + 1, packed=True)
 
         # Instantiate the reduce module here
-        self.reduce = Reg(data_width=16,
+        self.reduce = Reg(data_width=self.data_width,
                           fifo_depth=self.fifo_depth,
                           defer_fifos=self.defer_fifo,
                           perf_debug=perf_debug)
@@ -162,7 +162,7 @@ class ReducePECluster(MemoryController):
         self._pe_ready_in_p.add_attribute(ControlSignalAttr(is_control=True))
 
         # Instantiate the PE here
-        self.onyxpe = OnyxPE(data_width=16,
+        self.onyxpe = OnyxPE(data_width=self.data_width,
                              fifo_depth=self.fifo_depth,
                              defer_fifos=self.defer_fifo,
                              ext_pe_prefix=self.pe_prefix,

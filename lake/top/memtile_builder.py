@@ -32,9 +32,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     def __init__(self, name, debug, memory_interface: MemoryInterface = None,
                  memory_banks=1, controllers=None,
                  ready_valid=True, fifo_depth=8,
-                 io_prefix=None):
+                 io_prefix=None, data_width=16):
 
         super().__init__(name, debug)
+
+        # Tile data width: ports of width data_width (+1 on a ready-valid fabric) are
+        # lifted whole; any other width is split into 1-bit ports.
+        self.data_width = data_width
+        self.legal_widths = [data_width + 1, data_width, 1]
 
         self.is_PE = 'PE' in name
         self.is_MEM = 'MemCore' in name
@@ -58,7 +63,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.ready_valid = ready_valid
         for mem_ctrl in self.controllers:
             self.controllers_dict[mem_ctrl.name] = mem_ctrl
-            flat_wrap = MemoryControllerFlatWrapper(mem_ctrl=mem_ctrl, legal_list=MemoryTileBuilder.legal_widths)
+            flat_wrap = MemoryControllerFlatWrapper(mem_ctrl=mem_ctrl, legal_list=self.legal_widths)
             self.controllers_flat_dict[flat_wrap.name] = flat_wrap
             self.controllers_flat.append(flat_wrap)
             self.c_to_flat[mem_ctrl.name] = flat_wrap.name
@@ -435,7 +440,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         if not self.controllers_finalized:
             self.controllers.append(mem_ctrl)
             self.controllers_dict[mem_ctrl.name] = mem_ctrl
-            flat_wrap = MemoryControllerFlatWrapper(mem_ctrl=mem_ctrl, legal_list=MemoryTileBuilder.legal_widths)
+            flat_wrap = MemoryControllerFlatWrapper(mem_ctrl=mem_ctrl, legal_list=self.legal_widths)
             self.controllers_flat_dict[flat_wrap.name] = flat_wrap
             self.controllers_flat.append(flat_wrap)
             self.c_to_flat[mem_ctrl.name] = flat_wrap.name
@@ -627,14 +632,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         This is actually really nasty in general because it needs to comply with CGRA
         '''
 
-        # Need to parameterize this
-        self.data_width = 16
+        # Config-bus word into the SRAM: the tile data width, capped at the config bus
+        cfg_word_width = min(self.data_width, self.config_data_width)
 
         # Ascertain all the information used in creating the config bus
         mem_width = self.memory_interface.get_mem_width()
         mem_depth = self.memory_interface.get_mem_depth()
         address_width = kts.clog2(mem_depth)
-        fw_int = int(mem_width / self.data_width)
+        fw_int = int(mem_width / cfg_word_width)
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((fw_int * mem_depth) / self.data_words_per_set)
         self.sets_per_macro = max(1, int(mem_depth / self.data_words_per_set))
@@ -643,7 +648,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self._config_addr_in = self.input("config_addr_in", self.config_addr_width)
         self._config_addr_in.add_attribute(ControlSignalAttr(False))
 
-        self._config_data_out_shrt = self.var("config_data_out_shrt", self.data_width, size=self.total_sets,
+        self._config_data_out_shrt = self.var("config_data_out_shrt", cfg_word_width, size=self.total_sets,
                                               explicit_array=True,
                                               packed=True)
 
@@ -655,8 +660,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self._config_data_in = self.input("config_data_in", self.config_data_width)
         self._config_data_in.add_attribute(ControlSignalAttr(False))
 
-        self._config_data_in_shrt = self.var("config_data_in_shrt", self.data_width)
-        self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
+        self._config_data_in_shrt = self.var("config_data_in_shrt", cfg_word_width)
+        self.wire(self._config_data_in_shrt, self._config_data_in[cfg_word_width - 1, 0])
 
         # Extend config_data_out, which is created for each set as a new feature in the CGRA
         for i in range(self.total_sets):
@@ -670,7 +675,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self._config_en = self.input("config_en", self.total_sets)
         self._config_en.add_attribute(ControlSignalAttr(False))
 
-        stg_cfg_seq = StorageConfigSeq(data_width=self.data_width,
+        stg_cfg_seq = StorageConfigSeq(data_width=cfg_word_width,
                                        config_addr_width=self.config_addr_width,
                                        addr_width=address_width,
                                        fetch_width=mem_width,

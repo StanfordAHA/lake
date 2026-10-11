@@ -113,7 +113,7 @@ class Repeat(MemoryController):
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output coord
-            self._done_signal = sticky_flag(self, ((self._ref_data_out == MemoryController.DONE_PROXY) &
+            self._done_signal = sticky_flag(self, ((self._ref_data_out == self.token_proxy(self.data_width, MemoryController.DONE_CODE)) &
                                                    self._ref_valid_out),
                                             name='done_indicator')
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
@@ -158,7 +158,7 @@ class Repeat(MemoryController):
 
         # Need a path to inject into the input fifo for root mode
         self._proc_fifo_inject_push = self.var("proc_fifo_inject_push", 1)
-        self._proc_fifo_inject_data = self.var("proc_fifo_inject_data", 16)
+        self._proc_fifo_inject_data = self.var("proc_fifo_inject_data", self.data_width)
         self._proc_fifo_inject_eos = self.var("proc_fifo_inject_eos", 1)
 
         self.wire(self._proc_fifo_push, kts.ternary(self._root, self._proc_fifo_inject_push, self._proc_valid_in))
@@ -220,19 +220,19 @@ class Repeat(MemoryController):
         self._seen_root_eos = sticky_flag(self, (self._proc_fifo_out_data == 0) & self._proc_fifo_out_eos & self._proc_fifo_valid, name="seen_root_eos")
 
         self._ref_maybe = self.var("ref_maybe", 1)
-        self.wire(self._ref_maybe, self._proc_fifo_valid & self._proc_fifo_out_eos & (self._proc_fifo_out_data[9, 8] == kts.const(2, 2)))
+        self.wire(self._ref_maybe, self._proc_fifo_valid & self._proc_fifo_out_eos & (self._proc_fifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(2, 2)))
         self._proc_data_seen = self.var("proc_data", 1)
         self.wire(self._proc_data_seen, (~self._proc_fifo_out_eos | self._ref_maybe) & self._proc_fifo_valid)
         self._proc_stop = self.var("proc_stop", 1)
-        self.wire(self._proc_stop, (self._proc_fifo_out_data[9, 8] == kts.const(0, 2)) & self._proc_fifo_out_eos & self._proc_fifo_valid)
+        self.wire(self._proc_stop, (self._proc_fifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(0, 2)) & self._proc_fifo_out_eos & self._proc_fifo_valid)
         self._proc_done = self.var("proc_done", 1)
-        self.wire(self._proc_done, (self._proc_fifo_out_data[9, 8] == kts.const(1, 2)) & self._proc_fifo_out_eos & self._proc_fifo_valid)
+        self.wire(self._proc_done, (self._proc_fifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2)) & self._proc_fifo_out_eos & self._proc_fifo_valid)
         self._repsig_stop = self.var("repsig_stop", 1)
-        self.wire(self._repsig_stop, (self._repsig_fifo_out_data[9, 8] == kts.const(0, 2)) & self._repsig_fifo_out_eos & self._repsig_fifo_valid)
+        self.wire(self._repsig_stop, (self._repsig_fifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(0, 2)) & self._repsig_fifo_out_eos & self._repsig_fifo_valid)
         self._repsig_sig = self.var("repsig_sig", 1)
         self.wire(self._repsig_sig, ~self._repsig_fifo_out_eos & self._repsig_fifo_valid)
         self._repsig_done = self.var("repsig_done", 1)
-        self.wire(self._repsig_done, (self._repsig_fifo_out_data[9, 8] == kts.const(1, 2)) & self._repsig_fifo_out_eos & self._repsig_fifo_valid)
+        self.wire(self._repsig_done, (self._repsig_fifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2)) & self._repsig_fifo_out_eos & self._repsig_fifo_valid)
 
         # The following two signals are used to indicate repeat over an empty fiber (R in repsig and SX in proc)
         # We use these signals to indicate staying in the PASS_REPEAT state as to not lose a cycle for a state transition
@@ -283,7 +283,7 @@ class Repeat(MemoryController):
         # We go to pass stop when we have a stop token on the repsig line - either to pass through or coalesce with proc stop
         PASS_REPEAT.next(START, self._proc_done & self._repsig_done & ~self._ref_fifo_full)
         # PASS_REPEAT.next(PASS_STOP, self._proc_fifo_valid & self._repsig_fifo_out_eos & self._repsig_fifo_valid &
-        #                             (self._repsig_fifo_out_data[9, 8] == kts.const(0, 2)) & ~self._blank_repeat & ~self._blank_repeat_stop)
+        #                             (self._repsig_fifo_out_data[self.token_opcode_bt(self.data_width)] == kts.const(0, 2)) & ~self._blank_repeat & ~self._blank_repeat_stop)
         PASS_REPEAT.next(PASS_REPEAT, None)
 
 # =============================
@@ -342,7 +342,7 @@ class Repeat(MemoryController):
         INJECT1.output(self._proc_fifo_pop, 0)
         INJECT1.output(self._repsig_fifo_pop, 0)
         INJECT1.output(self._proc_fifo_inject_push, 1)
-        INJECT1.output(self._proc_fifo_inject_data, kts.const(2**8, 16))
+        INJECT1.output(self._proc_fifo_inject_data, kts.const(MemoryController.DONE_CODE << self.token_opcode_base(self.data_width), self.data_width))
         INJECT1.output(self._proc_fifo_inject_eos, 1)
         INJECT1.output(self._set_last_pushed_data, 0)
         INJECT1.output(self._clr_last_pushed_data, 0)

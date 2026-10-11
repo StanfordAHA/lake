@@ -161,7 +161,7 @@ class OnyxPE(MemoryController):
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output coord
-            self._done_signal = sticky_flag(self, (self._data_out == MemoryController.DONE_PROXY) &
+            self._done_signal = sticky_flag(self, (self._data_out == self.token_proxy(self.data_width, MemoryController.DONE_CODE)) &
                                                     self._valid_out,
                                                     name='done_indicator')
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
@@ -362,7 +362,7 @@ class OnyxPE(MemoryController):
 
         self._infifo_out_maybe = [self.var(f"infifo_out_maybe_{idx}", 1) for idx in range(3)]
         [self.wire(self._infifo_out_maybe[idx], self._infifo_out_eos[idx] & self._infifo_out_valid[idx] &
-            (self._infifo_out_data[idx][self.OPCODE_BT] == self.MAYBE_CODE)) for idx in range(3)]
+            (self._infifo_out_data[idx][self.token_opcode_bt(self.data_width)] == self.MAYBE_CODE)) for idx in range(3)]
 
         # Need active high reset for PE
         self._active_high_reset = kts.util.async_reset(~self._rst_n)

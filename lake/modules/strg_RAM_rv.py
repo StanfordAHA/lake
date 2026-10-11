@@ -45,6 +45,9 @@ class StrgRAMRV(MemoryController):
         self.bank_width = clog2(self.banks)
         self.word_width = max(1, clog2(self.fw_int))
         self.mem_addr_width = clog2(self.num_tiles * self.memory_depth)
+        # The address arrives in the low data_width bits of a data track. A track
+        # narrower than the word address is zero-extended (reaches the low words only).
+        self.int_addr_width = max(self.addr_width, self.mem_addr_width + self.word_width)
         self.b_a_off = clog2(self.fw_int) + clog2(self.num_tiles * self.memory_depth)
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
@@ -186,7 +189,7 @@ class StrgRAMRV(MemoryController):
         #                                   explicit_array=True,
         #                                   packed=True)
 
-        self._ren_addr = self.var("ren_addr", self.addr_width,
+        self._ren_addr = self.var("ren_addr", self.int_addr_width,
                                   explicit_array=True,
                                   packed=True)
         # self._ren_addr = self.var("ren_addr", self.addr_width,
@@ -205,7 +208,7 @@ class StrgRAMRV(MemoryController):
         #                              packed=True,
         #                              explicit_array=True)
 
-        self._rd_addr = self.var("rd_addr", self.addr_width)
+        self._rd_addr = self.var("rd_addr", self.int_addr_width)
 
         # ===============================
         # Rename stuff for ease of use...
@@ -224,7 +227,12 @@ class StrgRAMRV(MemoryController):
 
         # Separate addressing...
         self.bit_range = (self.data_width - 1, 0)
-        self.wire(self._rd_addr, rd_addr_in[self.bit_range])
+        if self.int_addr_width > self.data_width:
+            rd_addr_in = self.var("rd_addr_in_ext", self.int_addr_width, packed=True)
+            self.wire(rd_addr_in, self._addr_infifo_addr_in[self.bit_range].extend(self.int_addr_width))
+            self.wire(self._rd_addr, rd_addr_in)
+        else:
+            self.wire(self._rd_addr, rd_addr_in[self.bit_range])
 
         # self._rd_bank = self.var("rd_bank", max(1, clog2(self.banks)))
         # self.set_read_bank()

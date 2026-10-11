@@ -1179,9 +1179,12 @@ class Spec():
                 named "regfile" as clockwork's regfile level expects, the
                 interconnect counts are the CONCURRENT accesses per cycle (W / R memory
                 ports, clear-only ports excluded) since clockwork's scheduler uses them
-                as a per-buffer resource count, and two extra keys are emitted:
+                as a per-buffer resource count, and one extra key is emitted:
                 sched_counter_ub (schedule-cycle counter bound, distinct from the
-                iteration-extent counter_ub) and data_width.
+                iteration-extent counter_ub).
+                Every level carries data_width: the spec's external data width, which is
+                the CGRA data width (garnet builds the fabric from the same spec), so the
+                compiler takes the word width from here.
 
         Returns:
             dict with keys matching LakeCollateral fields.
@@ -1265,8 +1268,10 @@ class Spec():
                           if not isinstance(sg, ReadyValidScheduleGenerator)]
             if static_sgs:
                 collateral['sched_counter_ub'] = max((2 ** sg.stride_width) - 1 for sg in static_sgs)
-            data_ports = [p for p in self.get_in_ports() + self.get_out_ports()]
-            collateral['data_width'] = data_ports[0]._ext_data_width if data_ports else 16
+
+        # Data word width in bits (the ports' external width), at every level.
+        data_ports = self.get_in_ports() + self.get_out_ports()
+        collateral['data_width'] = data_ports[0]._ext_data_width if data_ports else 16
 
         # Convert capacity from bytes to number of addresses.
         # Each address holds word_width[ctrl] words, each word is

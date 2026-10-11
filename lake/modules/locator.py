@@ -54,7 +54,7 @@ class Locator(MemoryController):
 
         # config regs
         # this sepcifies what fiber level is the locator performaning on
-        self._locate_lvl = self.input("locate_lvl", 16)
+        self._locate_lvl = self.input("locate_lvl", self.data_width)
         self._locate_lvl.add_attribute(ConfigRegAttr("Locator level"))
         # the stride of the locator
         self._locate_dim_size = self.input("locate_dim_size", 6)
@@ -107,7 +107,7 @@ class Locator(MemoryController):
                        data_out=self._inner_infifo_data_packed)
 
         # Unpacked data and indicator signals from the fifo for ease of use
-        self._inner_infifo_data = self.var("inner_infifo_data", 16)
+        self._inner_infifo_data = self.var("inner_infifo_data", self.data_width)
         self._inner_infifo_is_eos = self.var("inner_infifo_is_eos", 1)
         self._inner_infifo_data_valid = self.var("inner_infifo_data_valid", 1)
 
@@ -152,7 +152,7 @@ class Locator(MemoryController):
         self._inner_is_eos = self.var("inner_is_eos", 1)
         self.wire(self._inner_is_eos, self._inner_infifo_is_eos & self._inner_infifo_data_valid)
         self._inner_is_done = self.var("inner_is_done", 1)
-        self.wire(self._inner_is_done, self._inner_infifo_is_eos & (self._inner_infifo_data[9, 8] == kts.const(1, 2)) * self._inner_infifo_data_valid)
+        self.wire(self._inner_is_done, self._inner_infifo_is_eos & (self._inner_infifo_data[self.token_opcode_bt(self.data_width)] == kts.const(1, 2)) * self._inner_infifo_data_valid)
         self._addr_outfifo_is_eos = self.var("addr_outfifo_is_eos", 1)
         self._addr_outfifo_data = self.var("addr_outfifo_data", self.data_width)
         self.wire(self._addr_outfifo_data_packed[self.data_width - 1, 0], self._addr_outfifo_data)

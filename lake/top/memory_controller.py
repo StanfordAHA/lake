@@ -7,6 +7,11 @@ import _kratos
 import math
 
 
+def const_concat(*fields):
+    """kts.concat of (value, width) constants, dropping zero-width fields."""
+    return kts.concat(*[kts.const(v, w) for (v, w) in fields if w > 0])
+
+
 class MemoryController(kts.Generator):
     '''
     Provides the utilities to interface a memory controller with a memory interface
@@ -28,6 +33,37 @@ class MemoryController(kts.Generator):
                              kts.const(0, EOS_BIT - (OPCODE_WIDTH + OPCODE_BASE)),
                              kts.const(STOP_CODE, OPCODE_WIDTH),
                              kts.const(0, OPCODE_BASE))
+
+    # Sparse token layout of a `data_width`-bit primitive (port = data_width + 1 bits):
+    # EOS flag at bit data_width, opcode above the stop level. At 16 bits these are the
+    # class constants above (EOS_BIT 16, opcode [9:8], stop level [7:0]). Narrower words
+    # keep the 2-bit opcode on top of the data bits (8 bits: opcode [7:6], stop [5:0]).
+    @staticmethod
+    def token_opcode_base(data_width):
+        return min(MemoryController.OPCODE_BASE, data_width - MemoryController.OPCODE_WIDTH)
+
+    @staticmethod
+    def token_opcode_bt(data_width):
+        base = MemoryController.token_opcode_base(data_width)
+        return (base + MemoryController.OPCODE_WIDTH - 1, base)
+
+    @staticmethod
+    def token_stop_bt(data_width):
+        return (MemoryController.token_opcode_base(data_width) - 1, 0)
+
+    @staticmethod
+    def token_proxy(data_width, code):
+        """EOS token (data_width + 1 bits) carrying opcode `code` and stop level 0."""
+        if data_width == MemoryController.EOS_BIT:
+            return {MemoryController.DONE_CODE: MemoryController.DONE_PROXY,
+                    MemoryController.STOP_CODE: MemoryController.STOP0_PROXY}[code]
+        base = MemoryController.token_opcode_base(data_width)
+        pad = data_width - (MemoryController.OPCODE_WIDTH + base)
+        parts = [kts.const(1, 1)]
+        if pad > 0:
+            parts.append(kts.const(0, pad))
+        parts += [kts.const(code, MemoryController.OPCODE_WIDTH), kts.const(0, base)]
+        return kts.concat(*parts)
 
     def __init__(self, name: str,
                  debug: bool = False,

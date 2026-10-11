@@ -6,6 +6,7 @@ import math
 from peak.assembler import Assembler
 from hwtypes.modifiers import strip_modifiers
 from lassen.sim import PE_fc as lassen_fc
+from lassen.isa import gen_Inst_fc
 import lassen.asm as asm
 from lassen.asm import Mode_t
 
@@ -37,8 +38,8 @@ class OnyxPEInterface(MemoryController):
         self._rst_n = self.reset("ASYNCRESET")
         self._clk_en = self.clock_en("clk_en", 1)
 
-        # Instruction
-        self._inst = self.input("inst", 84)
+        # Instruction: lassen's Inst for this data width (84 bits at 16)
+        self._inst = self.input("inst", Assembler(gen_Inst_fc(self.data_width).Py).width)
         self._inst.add_attribute(ConfigRegAttr("PE Instruction"))
 
         self._data0 = self.input("data0", self.data_width)

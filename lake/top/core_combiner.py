@@ -82,7 +82,8 @@ class CoreCombiner(Generator):
         self.controllers = controllers
 
         # Create a MemoryTileBuilder
-        MTB = MemoryTileBuilder(name, True, io_prefix=self.io_prefix, fifo_depth=self.fifo_depth, ready_valid=self.ready_valid)
+        MTB = MemoryTileBuilder(name, True, io_prefix=self.io_prefix, fifo_depth=self.fifo_depth, ready_valid=self.ready_valid,
+                                data_width=self.data_width)
 
         # For our current implementation, we are just using 1 bank of SRAM
         MTB.set_banks(self.banks)
