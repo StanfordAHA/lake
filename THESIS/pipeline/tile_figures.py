@@ -1,24 +1,31 @@
-"""Area figures from the garnet Tile_MemCore lake-spec sweep.
+"""Figures from the garnet Tile_MemCore lake-spec sweep.
 
 Every generator reads the cached sweep table (``tile_sweep.load()``; ingest
-first with ``python3 -m THESIS.pipeline.tile_sweep <sweep.zip>``) and plots
-Genus synthesis area. Two groups:
+first with ``python3 -m THESIS.pipeline.tile_sweep <sweep.zip>``). Area is
+Genus synthesis cell area; power is PrimeTime power of the synthesis netlist
+(``pw_synth_*``), active = max sustainable traffic, idle = empty program, both
+on the same random input stream (garnet --memtile-power). Groups:
 
+  component   the Lake component characterization figures (Port,
+              IterationDomain, AddressGenerator, MemoryPort, Storage), area and
+              power, which replace the standalone-lakespec (THESIS_BUILDS)
+              versions. From a hierarchy-kept sweep (garnet --flatten-effort 0)
+              each plots its own block of the lake controller (tile_sweep
+              BLOCKS, ``blk_*`` / ``pw_*``): Port = port_inst, IterationDomain =
+              port_id, affine pattern generators = port_ag + port_sg,
+              MemoryPort = memory-port muxes/arbiters/decoders, Storage = the
+              SRAM block.
+  pub_*       the Physical Unified Buffer = lake controller + SRAM block.
   memtile_*   the whole CGRA memory tile (lakespec + MemCore wrapper + SB/CB
-              interconnect) unless noted.
-  component   the Ch. 4 Lake component characterization figures (Port,
-              IterationDomain, AddressGenerator, MemoryPort, Storage), which
-              replace the standalone-lakespec (THESIS_BUILDS) versions. From a
-              hierarchy-kept sweep (garnet --flatten-effort 0) each plots its
-              own block of the lake controller (tile_sweep BLOCKS, ``blk_*``):
-              Port = port_inst, IterationDomain = port_id, affine pattern
-              generators = port_ag + port_sg, MemoryPort = memory-port
-              muxes/arbiters/decoders, Storage = the SRAM block.
+              interconnect) unless noted, including the synthesis -> PnR model
+              (fit builds vs held-out builds).
+  li_sched_*  the latency-insensitive ScheduleGenerator (RV builds).
 
-Static runtime mode unless the figure compares modes, and only
-``data_width == DATA_WIDTH`` configs (see below). Signature matches
-``generators.py``: ``(ctx, outpath)``; ``ctx`` is unused because the tile
-sweep is not a THESIS_BUILDS experiment.
+Static runtime mode unless the figure compares modes or is RV-only, and only
+``data_width == DATA_WIDTH`` configs (see below). Values that include the SRAM
+macros are relative to a reference when ``SRAM_NDA`` is set. Signature matches
+``generators.py``: ``(ctx, outpath)``; ``ctx`` is unused because the tile sweep
+is not a THESIS_BUILDS experiment.
 
 Terms used in labels:
   std-cell area  cell area minus the SRAM macros (Genus .lib macro area)
@@ -36,6 +43,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from matplotlib.lines import Line2D  # noqa: E402
 
 from . import tile_sweep  # noqa: E402
 from .errors import MissingDataError  # noqa: E402
@@ -56,6 +64,7 @@ plt.rcParams.update({
 })
 
 K = 1000.0
+UW = 1e-6  # W per µW
 AREA_LBL = "Area (10³ µm²)"
 
 # Configs with any other data width have broken RTL (2026-10-06), so their
@@ -212,7 +221,7 @@ def memtile_interconnect_area(ctx, outpath: Path) -> None:
     med = df.groupby("in_ports")[cols].median()
     lo = df.groupby("in_ports")[cols].min()
     hi = df.groupby("in_ports")[cols].max()
-    fig, ax = plt.subplots(figsize=(FULL_W * 0.6, 2.6))
+    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
     w = 0.26
     for k, ((col, lab), colr) in enumerate(zip(parts, SERIES[:3])):
         xs = np.arange(len(ports)) + (k - 1) * w
@@ -222,10 +231,10 @@ def memtile_interconnect_area(ctx, outpath: Path) -> None:
                     fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
     ax.set_xticks(range(len(ports)))
     ax.set_xticklabels([f"{p}×{p}" for p in ports])
-    ax.set_xlabel("Lake ports (in × out), 16-bit data")
+    ax.set_xlabel(f"Lake ports (in × out), {DATA_WIDTH}-bit data")
     ax.set_ylabel(AREA_LBL)
-    ax.set_ylim(0, hi.values.max() / K * 1.3)
-    ax.legend(loc="upper left", ncol=3, fontsize=7, columnspacing=1.0, handlelength=1.2)
+    ax.set_ylim(0, hi.values.max() / K * 1.08)
+    _legend_above(ax, ncol=2)
     _ax_style(ax)
     fig.tight_layout()
     _save(fig, outpath)
@@ -333,62 +342,298 @@ def memtile_rv_overhead_area(ctx, outpath: Path) -> None:
     _save(fig, outpath)
 
 
-def memtile_synth_vs_pnr_area(ctx, outpath: Path) -> None:
-    """PnR anchors: Innovus signoff std-cell area vs Genus synthesis std-cell area."""
-    df = _load(mode=None)
-    p = df.dropna(subset=["pnr_std"])
-    if len(p) < 3:
-        raise MissingDataError("fewer than 3 tile configs reached PnR signoff")
-    fig, ax = plt.subplots(figsize=(FULL_W * 0.55, 2.9))
-    for mode, c, m in (("static", SERIES[0], "o"), ("rv", SERIES[1], "s")):
-        g = p[p["mode"] == mode]
-        ax.scatter(g["syn_std"] / K, g["pnr_std"] / K, s=30, color=c, marker=m,
-                   edgecolor="white", linewidth=0.7, zorder=3,
-                   label=f"{'Static' if mode == 'static' else 'RV'} (n={len(g)})")
-    lim = np.array([0, max(p["syn_std"].max(), p["pnr_std"].max()) / K * 1.08])
-    ax.plot(lim, lim, color=AXIS, linewidth=1, zorder=1)
-    a, b = np.polyfit(p["syn_std"], p["pnr_std"], 1)
-    ax.plot(lim, (a * lim * K + b) / K, color=MUTED, linewidth=1, linestyle="--", zorder=2)
-    ratio = p["pnr_std"] / p["syn_std"]
-    ax.text(0.04, 0.96, f"PnR ≈ {a:.3f} × synth {b:+.0f} µm²\nPnR / synth = {ratio.min():.2f}–{ratio.max():.2f}",
-            transform=ax.transAxes, va="top", fontsize=7.5, color=INK2)
-    ax.set_xlim(lim)
-    ax.set_ylim(lim)
-    ax.set_xlabel("Synthesis std-cell area (10³ µm²)")
-    ax.set_ylabel("PnR signoff std-cell area (10³ µm²)")
-    ax.legend(loc="lower right")
-    _ax_style(ax, xgrid=True)
+def memtile_interconnect_power(ctx, outpath: Path) -> None:
+    """CB / SB / tile-glue synth-level power vs Lake port count: bars = active
+    (max-traffic) power, median with min-max over configs; ticks = idle."""
+    df = _load()
+    parts = [("cb", "Connection boxes"), ("sb", "Switch box"), ("tile_glue", "Other top level")]
+    act = [f"pw_synth_active_{b}" for b, _ in parts]
+    idle = [f"pw_synth_idle_{b}" for b, _ in parts]
+    _blocks(df, act + idle, "interconnect power")
+    ports = sorted(df["in_ports"].unique())
+    g = df.groupby("in_ports")
+    med, lo, hi, imed = g[act].median(), g[act].min(), g[act].max(), g[idle].median()
+    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    w = 0.26
+    for k, ((b, lab), colr) in enumerate(zip(parts, SERIES[:3])):
+        xs = np.arange(len(ports)) + (k - 1) * w
+        a = f"pw_synth_active_{b}"
+        ax.bar(xs, med.loc[ports, a] / UW, w * 0.92, color=colr, label=lab)
+        ax.errorbar(xs, med.loc[ports, a] / UW,
+                    yerr=[(med - lo).loc[ports, a] / UW, (hi - med).loc[ports, a] / UW],
+                    fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
+        ax.scatter(xs, imed.loc[ports, f"pw_synth_idle_{b}"] / UW, marker="_", s=90, color=INK,
+                   linewidth=1.4, zorder=4, label="Idle" if k == 0 else None)
+    ax.set_xticks(range(len(ports)))
+    ax.set_xticklabels([f"{p}×{p}" for p in ports])
+    ax.set_xlabel(f"Lake ports (in × out), {DATA_WIDTH}-bit data")
+    ax.set_ylabel("Active power (µW)")
+    ax.set_ylim(0, hi.values.max() / UW * 1.08)
+    _legend_above(ax, ncol=2)
+    _ax_style(ax)
     fig.tight_layout()
+    _save(fig, outpath)
+
+
+# Tile blocks grouped for the breakdown figure (tile_sweep BLOCKS).
+_BREAKDOWN = [
+    ("SRAM", ["sram"]),
+    ("Lake controller", ["ctrl"]),
+    ("Config registers", ["cfg_regs"]),
+    ("FIFOs, StencilValid, ROM", ["fifos", "stencil", "rom"]),
+    ("MemCore muxes + glue", ["mc_mux", "mc_glue", "inner_glue"]),
+    ("Switch box", ["sb"]),
+    ("Connection boxes", ["cb"]),
+    ("Tile glue", ["tile_glue"]),
+]
+# Three of the PnR fit geometries, small to large; each is built static and RV.
+_BREAKDOWN_CONFIGS = [
+    ("fw1_dw16_sc4096_sp_in1_out1", "fw1, 4 KB, 1×1"),
+    ("fw4_dw16_sc8192_sp_in2_out2_vc2", "fw4, 8 KB, 2×2"),
+    ("fw8_dw16_sc32768_sp_in4_out4_vc2", "fw8, 32 KB, 4×4"),
+]
+
+
+def memtile_block_breakdown(ctx, outpath: Path) -> None:
+    """Share of tile area, idle power and active power per block (synthesis),
+    static vs RV, for three tile sizes."""
+    df = _load(mode=None).set_index("config")
+    rows = [(f"{lab}, {'RV' if rv else 'static'}", name + ("_rv" if rv else ""))
+            for name, lab in _BREAKDOWN_CONFIGS for rv in (False, True)]
+    missing = [c for _, c in rows if c not in df.index]
+    if missing:
+        raise MissingDataError(f"breakdown configs not in the tile sweep: {', '.join(missing)}")
+    panels = (("blk_", "(a) Cell area"), ("pw_synth_idle_", "(b) Idle power"),
+              ("pw_synth_active_", "(c) Active power"))
+    fig, axes = plt.subplots(1, 3, figsize=(FULL_W, 2.9), sharey=True)
+    for ax, (pre, title) in zip(axes, panels):
+        cols = [f"{pre}{b}" for _, bs in _BREAKDOWN for b in bs]
+        _blocks(df.reset_index(), cols, title)
+        for i, (_, c) in enumerate(rows):
+            # PT prints 3 significant digits, so a tiny block can come out < 0
+            v = np.array([max(sum(df.at[c, f"{pre}{b}"] for b in bs), 0.0) for _, bs in _BREAKDOWN])
+            v = v / v.sum() * 100
+            left = 0.0
+            for j, ((lab, _), x) in enumerate(zip(_BREAKDOWN, v)):
+                ax.barh(i, x, left=left, color=SERIES[j], edgecolor="white", linewidth=0.6,
+                        height=0.72, label=lab if i == 0 else None)
+                if x >= 9:
+                    ax.text(left + x / 2, i, f"{x:.0f}", ha="center", va="center", fontsize=6.5,
+                            color="white")
+                left += x
+        ax.set_xlim(0, 100)
+        ax.set_xticks([0, 25, 50, 75, 100])
+        ax.set_xlabel("Share of tile (%)")
+        ax.set_title(title, loc="left", fontsize=8.5, color=INK2)
+        _ax_style(ax, ygrid=False)
+    axes[0].set_yticks(range(len(rows)))
+    axes[0].set_yticklabels([r for r, _ in rows], fontsize=7.5)
+    axes[0].invert_yaxis()
+    h, l = axes[0].get_legend_handles_labels()
+    fig.legend(h, l, loc="upper center", ncol=4, bbox_to_anchor=(0.5, 0.0), fontsize=7)
+    fig.tight_layout()
+    _save(fig, outpath)
+
+
+# ---- synthesis -> PnR model: fit set vs held-out set ---------------------------
+# The sweep's 12 PnR builds: 8 fit (4 geometries x static/RV, pnr_role "fit")
+# and 4 held out (pnr_role "validate"), chosen by structure before any data
+# existed. Each runtime mode gets its own linear fit pnr = a * synth + b, as in
+# garnet sweep_specs.py (correlation_fit.csv / memtile_power_fit.csv).
+
+_MODE_STYLE = {"static": (SERIES[0], "Static"), "rv": (SERIES[1], "RV")}
+
+
+def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, unit: str):
+    """Scatter (fit = dots, held out = stars) with each mode's fit line on
+    ``ax``; prediction error per build on ``rax``. Returns the held-out errors."""
+    lo, hi = p[xcol].min() / norm, p[xcol].max() / norm
+    pad = (hi - lo) * 0.06
+    errs = []
+    for mode, (c, name) in _MODE_STYLE.items():
+        g = p[p["mode"] == mode]
+        f, v = g[g["pnr_role"] == "fit"], g[g["pnr_role"] == "validate"]
+        if len(f) < 3:
+            raise MissingDataError(f"fewer than 3 {mode} fit builds reached PnR")
+        a, b = np.polyfit(f[xcol] / norm, f[ycol] / norm, 1)
+        r2 = np.corrcoef(f[xcol], f[ycol])[0, 1] ** 2
+        # solid over the fit range, dotted where held-out builds extrapolate
+        fx = np.array([f[xcol].min(), f[xcol].max()]) / norm
+        ax.plot(fx, a * fx + b, color=c, linewidth=1.1, zorder=2,
+                label=f"{name} fit: $y = {a:.3f}x {'+' if b >= 0 else '-'} {abs(b):.{_dec(b)}f}$, "
+                      f"$R^2 = {r2:.5f}$")
+        ex = np.array([min(lo - pad, fx[0]), max(hi + pad, fx[1])])
+        ax.plot(ex, a * ex + b, color=c, linewidth=0.9, linestyle=":", zorder=1)
+        for sub, m, s, lab in ((f, "o", 26, f"{name}, fit set (n={len(f)})"),
+                               (v, "*", 110, f"{name}, held out (n={len(v)})")):
+            x, y = sub[xcol] / norm, sub[ycol] / norm
+            e = (a * x + b - y) / y * 100
+            ax.scatter(x, y, marker=m, s=s, color=c, edgecolor="white", linewidth=0.6, zorder=3,
+                       label=lab)
+            rax.scatter(x, e, marker=m, s=s * 0.8, color=c, edgecolor="white", linewidth=0.6,
+                        zorder=3)
+            if m == "*":
+                errs.extend(e.abs().tolist())
+    ax.set_xlim(lo - pad, hi + pad)
+    rax.set_xlim(lo - pad, hi + pad)
+    rax.axhline(0, color=AXIS, linewidth=0.9, zorder=1)
+    lim = max(1.0, np.ceil(max(abs(v) for v in rax.get_ylim())))
+    rax.set_ylim(-lim, lim)
+    rax.set_ylabel("Error (%)")
+    _ax_style(ax, xgrid=True)
+    _ax_style(rax, xgrid=True)
+    ax.tick_params(labelbottom=False)
+    return errs
+
+
+def _dec(v: float) -> int:
+    """Decimals for an intercept: about 3 significant digits."""
+    v = abs(v)
+    return 0 if v >= 100 else 1 if v >= 10 else 2 if v >= 1 else 3
+
+
+def _model_norm(p: pd.DataFrame, col: str) -> tuple[float, str]:
+    """Axis scale: the smallest fit build's synthesis value when SRAM_NDA (the
+    totals include the SRAM macros), else plain 10³ µm² / mW."""
+    if SRAM_NDA:
+        return p.loc[p["pnr_role"] == "fit", col].min(), "× smallest fit tile"
+    return (K, "10³ µm²") if "area" in col else (1e-3, "mW")
+
+
+def _pnr_builds() -> pd.DataFrame:
+    df = _load(mode=None)
+    if "pnr_role" not in df.columns:
+        raise MissingDataError("tile sweep has no pnr_role column (no PnR builds)")
+    p = df[df["pnr_role"].isin(["fit", "validate"])]
+    if p["pnr_role"].eq("validate").sum() == 0:
+        raise MissingDataError("tile sweep has no held-out PnR builds")
+    return p
+
+
+def memtile_synth_vs_pnr_area(ctx, outpath: Path) -> None:
+    """Synthesis -> PnR area model: PnR total area vs Genus cell area for the 8
+    fit builds (dots) and the 4 held-out builds (stars), one fit per runtime
+    mode; lower panel = each build's prediction error."""
+    p = _pnr_builds().dropna(subset=["tile_synth_cell_area", "tile_pnr_total_area"])
+    norm, unit = _model_norm(p, "tile_synth_cell_area")
+    fig, (ax, rax) = plt.subplots(2, 1, figsize=(FULL_W * 0.62, 3.9), sharex=True,
+                                  gridspec_kw={"height_ratios": [3, 1.15], "hspace": 0.08})
+    errs = _model_panel(ax, rax, p, "tile_synth_cell_area", "tile_pnr_total_area", norm, unit)
+    ax.set_ylabel(f"PnR total area ({unit})")
+    rax.set_xlabel(f"Synthesis cell area ({unit})")
+    ax.legend(loc="upper left", fontsize=6.8, handletextpad=0.4)
+    ax.text(0.98, 0.04, f"Held-out |error|: mean {np.mean(errs):.2f}%, max {max(errs):.2f}%",
+            transform=ax.transAxes, ha="right", va="bottom", fontsize=7.5, color=INK2)
+    fig.align_ylabels([ax, rax])
+    _save(fig, outpath)
+
+
+def memtile_synth_vs_pnr_power(ctx, outpath: Path) -> None:
+    """Synthesis -> PnR power model, idle and active, same layout as the area
+    figure (fit builds = dots, held-out builds = stars)."""
+    p = _pnr_builds()
+    fig, axes = plt.subplots(2, 2, figsize=(FULL_W, 3.9), sharex="col",
+                             gridspec_kw={"height_ratios": [3, 1.15], "hspace": 0.08,
+                                          "wspace": 0.3})
+    for k, (var, title) in enumerate((("idle", "(a) Idle"), ("active", "(b) Active"))):
+        x, y = f"synth_{var}_total_power", f"pnr_{var}_total_power"
+        q = p.dropna(subset=[x, y])
+        norm, unit = _model_norm(q, x)
+        ax, rax = axes[0, k], axes[1, k]
+        errs = _model_panel(ax, rax, q, x, y, norm, unit)
+        ax.set_title(title, loc="left", fontsize=8.5, color=INK2)
+        ax.set_ylabel(f"PnR power ({unit})")
+        rax.set_xlabel(f"Synthesis power ({unit})")
+        ax.legend(loc="upper left", fontsize=6, handletextpad=0.3)
+        ax.text(0.98, 0.04, f"Held-out |error|: mean {np.mean(errs):.1f}%, max {max(errs):.1f}%",
+                transform=ax.transAxes, ha="right", va="bottom", fontsize=7, color=INK2)
+    fig.align_ylabels(axes[:, 0])
     _save(fig, outpath)
 
 
 # ---- Ch. 4 component characterization (replaces the standalone versions) ------
 # Half-width figures for the 0.48\textwidth subfigures in main_thesis.tex. Same
 # output paths and sweep axes as the THESIS_BUILDS generators in generators.py.
+# Area = Genus cell area of the component's blocks; power = PT synth-level
+# power of the same blocks, active (max sustainable traffic) solid and idle
+# (empty program, same input stream) dashed.
 
 
 def _blocks(df: pd.DataFrame, cols: list[str], what: str) -> pd.Series:
-    """Sum of per-block area columns; needs a hierarchy-kept sweep."""
+    """Sum of per-block columns; needs a hierarchy-kept sweep."""
     if any(c not in df.columns for c in cols) or df[cols].isna().all().all():
-        raise MissingDataError(f"{what}: no per-block areas ({', '.join(cols)}); ingest a "
+        raise MissingDataError(f"{what}: no per-block values ({', '.join(cols)}); ingest a "
                                "hierarchy-kept sweep (garnet --flatten-effort 0)")
     return df[cols].sum(axis=1, min_count=1)
 
 
+def _metric(df: pd.DataFrame, blocks: list[str], metric: str, what: str) -> pd.DataFrame:
+    """Adds ``y`` (area, or active power) and for power ``y2`` (idle power)."""
+    df = df.copy()
+    if metric == "area":
+        df["y"] = _blocks(df, [f"blk_{b}" for b in blocks], what)
+    else:
+        df["y"] = _blocks(df, [f"pw_synth_active_{b}" for b in blocks], what)
+        df["y2"] = _blocks(df, [f"pw_synth_idle_{b}" for b in blocks], what)
+    return df
+
+
+def _units(df: pd.DataFrame, metric: str) -> tuple[float, str]:
+    if metric == "area":
+        return (K, "10³ µm²") if df["y"].max() >= 2000 else (1.0, "µm²")
+    return (1e-3, "mW") if df["y"].max() >= 2e-3 else (1e-6, "µW")
+
+
+def _style_handles(metric: str, prefix: bool = False) -> list:
+    hs = []
+    if metric == "power":
+        hs += [Line2D([], [], color=MUTED, linestyle="-", label="active"),
+               Line2D([], [], color=MUTED, linestyle="--", linewidth=1.1, label="idle")]
+    if prefix:
+        hs.append(Line2D([], [], color=MUTED, marker="o", markersize=4, linestyle="none",
+                         markerfacecolor="white", label="pre-fix RTL"))
+    return hs
+
+
+def _legend_above(ax, handles=None, labels=None, title=None, ncol=None):
+    if handles is None:
+        handles, labels = ax.get_legend_handles_labels()
+    elif labels is None:
+        labels = [h.get_label() for h in handles]
+    order = sorted(range(len(labels)), key=lambda i: labels[i].lower().startswith("idle"))
+    handles, labels = [handles[i] for i in order], [labels[i] for i in order]
+    n = len(handles)
+    ncol = ncol or (n if n <= 4 else -(-n // 2))
+    ax.legend(handles, labels, title=title, title_fontsize=7, fontsize=7, loc="lower left",
+              bbox_to_anchor=(0.0, 1.0), ncol=ncol, columnspacing=0.9, handlelength=1.5,
+              borderaxespad=0.3, alignment="left")
+
+
 def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel: str,
-               blocks: list[str], ylabel: str, xfmt=lambda v: f"{v:g}", log2: bool = False) -> None:
-    """Area of ``blocks`` vs ``x`` for one experiment, one line per ``hue`` value."""
-    df = _exp(_load(), exp).dropna(subset=[x, hue]).copy()
+               blocks: list[str], ylabel: str, xfmt=lambda v: f"{v:g}", log2: bool = False,
+               metric: str = "area", mode: str = "static") -> None:
+    """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``."""
+    df = _exp(_load(mode), exp).dropna(subset=[x, hue])
     if df[x].nunique() < 2:
         raise MissingDataError(f"{exp}: {x} takes a single value at data_width={DATA_WIDTH}")
-    df["y"] = _blocks(df, blocks, ylabel)
-    scale = K if df["y"].max() >= 2000 else 1.0
+    df = _metric(df, blocks, metric, ylabel)
+    df["prefix"] = _rvnet_prefix(df) if mode == "rv" else False
+    scale, unit = _units(df, metric)
     vals = sorted(df[hue].unique())
     fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    handles = []
     for v, c in zip(vals, _ramp(len(vals))):
         g = df[df[hue] == v].sort_values(x)
-        ax.plot(g[x], g["y"] / scale, color=c, marker="o", markersize=4,
-                markeredgecolor="white", markeredgewidth=0.6, label=f"{v:g}")
+        h, = ax.plot(g[x], g["y"] / scale, color=c, marker="o", markersize=4,
+                     markeredgecolor="white", markeredgewidth=0.6, label=f"{v:g}")
+        handles.append(h)
+        if metric == "power":
+            ax.plot(g[x], g["y2"] / scale, color=c, linestyle="--", linewidth=1.1, marker="o",
+                    markersize=2.6, markeredgewidth=0)
+        pre = g[g["prefix"]]
+        for col in ["y"] + (["y2"] if metric == "power" else []):
+            ax.scatter(pre[x], pre[col] / scale, s=18 if col == "y" else 9, facecolor="white",
+                       edgecolor=c, linewidth=0.9, zorder=4)
     ticks = sorted(df[x].unique())
     if log2:
         _log2_axis(ax, ticks, xfmt)
@@ -396,111 +641,370 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
         ax.set_xticks(ticks)
         ax.set_xticklabels([xfmt(t) for t in ticks])
     ax.set_xlabel(xlabel)
-    ax.set_ylabel(f"{ylabel} ({'10³ µm²' if scale == K else 'µm²'})")
-    # Few lines: the rising lines leave the lower right empty. Many: a 2-row
-    # legend over headroom above the (flatter) lines.
-    many = len(vals) > 4
-    ax.set_ylim(0, df["y"].max() / scale * (1.45 if many else 1.1))
-    ax.legend(title=hue_name, title_fontsize=7, fontsize=7, loc="upper left" if many else "lower right",
-              ncol=3 if many else 1, columnspacing=0.8, handlelength=1.4)
+    ax.set_ylabel(f"{'Area' if metric == 'area' else 'Power'}, {ylabel} ({unit})")
+    ax.set_ylim(0, df["y"].max() / scale * 1.08)
+    _legend_above(ax, handles + _style_handles(metric, df["prefix"].any()), title=hue_name)
     _ax_style(ax)
     fig.tight_layout()
     _save(fig, outpath)
 
 
-def port_area_vs_data_width(ctx, outpath: Path) -> None:
-    """PORT_EXP: MemCore logic vs port data width, one line per fetch width (vc=2)."""
+def _port_data_width(ctx, outpath: Path, metric: str) -> None:
     df = _exp(_load(), "PORT_EXP")
     if df["data_width"].nunique() < 2:
         raise MissingDataError(
             f"needs PORT_EXP tile builds at several data widths; only {DATA_WIDTH}-bit "
             "configs are used (other widths have broken RTL)")
     _sweep_fig(outpath, "PORT_EXP", "data_width", "vec_width", "fetch width",
-               "Port data width (bits)", ["blk_c_port"], "Port area, 4 ports", log2=True)
+               "Port data width (bits)", ["c_port"], "4 Ports",
+               log2=True, metric=metric)
+
+
+def port_area_vs_data_width(ctx, outpath: Path) -> None:
+    """PORT_EXP: Port area vs port data width, one line per fetch width (vc=2)."""
+    _port_data_width(ctx, outpath, "area")
+
+
+def port_power_vs_data_width(ctx, outpath: Path) -> None:
+    _port_data_width(ctx, outpath, "power")
 
 
 def port_area_vs_vc(ctx, outpath: Path) -> None:
     """PORT_EXP: Port area (the 4 port_inst blocks) vs vectorization capacity,
     one line per fetch width."""
     _sweep_fig(outpath, "PORT_EXP", "vec_capacity", "vec_width", "fetch width",
-               "Vectorization capacity (entries)", ["blk_c_port"], "Port area, 4 ports", log2=True)
+               "Vectorization capacity (entries)", ["c_port"], "4 Ports", log2=True)
+
+
+def port_power_vs_vc(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "PORT_EXP", "vec_capacity", "vec_width", "fetch width",
+               "Vectorization capacity (entries)", ["c_port"], "4 Ports", log2=True,
+               metric="power")
 
 
 def iter_dom_area_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
-               "Dimensionality", ["blk_c_id"], "IterationDomains, 4")
+               "Dimensionality", ["c_id"], "4 IterationDomains")
+
+
+def iter_dom_power_vs_dim(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
+               "Dimensionality", ["c_id"], "4 IterationDomains", metric="power")
 
 
 def iter_dom_area_vs_max_extent(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
-               "Maximum extent", ["blk_c_id"], "IterationDomains, 4", log2=True)
+               "Maximum extent", ["c_id"], "4 IterationDomains", log2=True)
+
+
+def iter_dom_power_vs_max_extent(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
+               "Maximum extent", ["c_id"], "4 IterationDomains", log2=True, metric="power")
 
 
 def affine_area_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "dims", "max_sequence_width",
-               "maximum value", "Dimensionality", ["blk_c_ag", "blk_c_sg"], "Pattern generators, 8")
+               "maximum value", "Dimensionality", ["c_ag", "c_sg"], "4 AGs + 4 SGs")
+
+
+def affine_power_vs_dim(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "dims", "max_sequence_width",
+               "maximum value", "Dimensionality", ["c_ag", "c_sg"], "4 AGs + 4 SGs",
+               metric="power")
 
 
 def affine_area_vs_max_value(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "max_sequence_width", "dims",
-               "dimensionality", "Maximum value (max sequence width)", ["blk_c_ag", "blk_c_sg"],
-               "Pattern generators, 8", log2=True)
+               "dimensionality", "Maximum value (max sequence width)", ["c_ag", "c_sg"],
+               "4 AGs + 4 SGs", log2=True)
 
 
-def memory_port_area_vs_interface_width(ctx, outpath: Path) -> None:
-    """MEMORY_EXP: MemoryPort area (memory-port muxes, arbiters, interface
-    decoders) vs SRAM interface width, single- vs dual-port.
+def affine_power_vs_max_value(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "max_sequence_width", "dims",
+               "dimensionality", "Maximum value (max sequence width)", ["c_ag", "c_sg"],
+               "4 AGs + 4 SGs", log2=True, metric="power")
+
+
+def _sp_dp_fig(outpath: Path, df: pd.DataFrame, x: str, metric: str, ylabel: str,
+               xlabel: str, ticks, xfmt, scale: float, unit: str) -> None:
+    """Single- vs dual-port lines of ``y`` (and power ``y2``) vs ``x``: median
+    over the other parameters with a min-max bar."""
+    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    for dp, c, m, name in ((False, SERIES[0], "o", "Single-port SRAM"),
+                           (True, SERIES[1], "s", "Dual-port SRAM")):
+        g = df[df["dual_port"] == dp]
+        for col, ls, lw, ms, lab in (("y", "-", 1.6, 4.5, name), ("y2", "--", 1.1, 3, None)):
+            if col not in g.columns:
+                continue
+            st = g.groupby(x)[col].agg(["median", "min", "max"]) / scale
+            ax.errorbar(st.index, st["median"], yerr=[st["median"] - st["min"], st["max"] - st["median"]],
+                        color=c, marker=m, linestyle=ls, linewidth=lw, markersize=ms,
+                        markeredgecolor="white", markeredgewidth=0.6, capsize=2, elinewidth=0.8,
+                        label=lab)
+    _log2_axis(ax, ticks, xfmt)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(f"{ylabel} ({unit})")
+    ax.set_ylim(bottom=0)
+    h, l = ax.get_legend_handles_labels()
+    _legend_above(ax, h + _style_handles(metric), l + [s.get_label() for s in _style_handles(metric)],
+                  ncol=2)
+    _ax_style(ax)
+    fig.tight_layout()
+    _save(fig, outpath)
+
+
+def _memory_port(outpath: Path, metric: str) -> None:
+    """MEMORY_EXP: MemoryPort (memory-port muxes, arbiters, interface decoders)
+    vs SRAM interface width, single- vs dual-port.
 
     Port count rises with width in this sweep (it's in the tick labels), and
     capacity barely matters to this logic, so each point is the median over
     capacities with a min-max bar.
     """
-    df = _exp(_load(), "MEMORY_EXP").copy()
-    df["y"] = _blocks(df, ["blk_c_mp"], "MemoryPort area")
-    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
-    ports = {}
-    for dp, c, m, ls, name in ((False, SERIES[0], "o", "-", "Single-port SRAM"),
-                               (True, SERIES[1], "s", "--", "Dual-port SRAM")):
-        g = df[df["dual_port"] == dp]
-        st = g.groupby("sram_bw_bits")["y"].agg(["median", "min", "max"])
-        ports.update(g.groupby("sram_bw_bits")["in_ports"].first().to_dict())
-        ax.errorbar(st.index, st["median"], yerr=[st["median"] - st["min"], st["max"] - st["median"]],
-                    color=c, marker=m, linestyle=ls, markersize=4.5, markeredgecolor="white",
-                    markeredgewidth=0.6, capsize=2, elinewidth=0.8, label=name)
-    bws = sorted(ports)
-    _log2_axis(ax, bws, lambda b: f"{int(b)}\n{ports[b]}×{ports[b]} ports")
-    ax.set_xlabel("SRAM interface width (bits/cycle)")
-    ax.set_ylabel("MemoryPort area (µm²)")
-    ax.set_ylim(bottom=0)
-    ax.legend(loc="upper left")
-    _ax_style(ax)
-    fig.tight_layout()
-    _save(fig, outpath)
+    df = _metric(_exp(_load(), "MEMORY_EXP"), ["c_mp"], metric, "MemoryPort " + metric)
+    scale, unit = _units(df, metric)
+    ports = df.groupby("sram_bw_bits")["in_ports"].first().to_dict()
+    _sp_dp_fig(outpath, df, "sram_bw_bits", metric, f"MemoryPort {metric}",
+               "SRAM interface width (bits/cycle)", sorted(ports),
+               lambda b: f"{int(b)}\n{ports[b]}×{ports[b]} ports", scale, unit)
 
 
-def storage_area_vs_capacity(ctx, outpath: Path) -> None:
-    """MEMORY_EXP: Storage area (the SRAM block: macros + their wrapper) vs
-    capacity, single- vs dual-port.
+def memory_port_area_vs_interface_width(ctx, outpath: Path) -> None:
+    _memory_port(outpath, "area")
+
+
+def memory_port_power_vs_interface_width(ctx, outpath: Path) -> None:
+    _memory_port(outpath, "power")
+
+
+# GF12 SRAM macro numbers are under NDA (main_thesis.tex, Storage: "we cannot
+# publish specific numbers"). With SRAM_NDA set, every figure whose values
+# include the macros (Storage, PUB, the synth->PnR model) plots them relative
+# to a reference instead of in µm² / mW. Set False for absolute units.
+SRAM_NDA = True
+NDA_REF = "fw1_dw16_sc1024_dp_in1_out1"  # the smallest tile: 1 KB dual-port, fw1, 1×1
+NDA_REF_LBL = "× 1 KB DP"
+
+
+def _nda(df: pd.DataFrame, metric: str, what: str) -> tuple[float, str]:
+    """(divisor, unit) for SRAM-bearing ``y``: NDA_REF's own ``y`` (its active
+    power for power, so idle reads against the same reference) when SRAM_NDA."""
+    if not SRAM_NDA:
+        return _units(df, metric)
+    ref = df[df["config"] == NDA_REF]
+    if ref.empty:
+        raise MissingDataError(f"{what}: SRAM_NDA reference {NDA_REF} not in the plotted configs")
+    return float(ref["y"].iloc[0]), NDA_REF_LBL
+
+
+def _storage(outpath: Path, metric: str) -> None:
+    """MEMORY_EXP: Storage (the SRAM block: macros + their wrapper) vs capacity,
+    single- vs dual-port.
 
     Organizations that share a macro area coincide (DP fw1 and fw2 everywhere,
     SP fw2/fw4 from 4 KB up), so instead of one line each, each point is the
     median over fetch widths with a min-max bar.
     """
-    df = _exp(_load(), "MEMORY_EXP").copy()
-    df["y"] = _blocks(df, ["blk_sram"], "Storage area") / K
+    df = _metric(_exp(_load(), "MEMORY_EXP"), ["sram"], metric, "Storage " + metric)
     df["kb"] = df["storage_capacity"] / 1024
+    scale, unit = _nda(df, metric, "Storage")
+    _sp_dp_fig(outpath, df, "kb", metric, f"Storage {metric}", "Capacity (KB)",
+               sorted(df["kb"].unique()), lambda v: f"{v:g}", scale, unit)
+
+
+def storage_area_vs_capacity(ctx, outpath: Path) -> None:
+    _storage(outpath, "area")
+
+
+def storage_power_vs_capacity(ctx, outpath: Path) -> None:
+    _storage(outpath, "power")
+
+
+# ---- Physical Unified Buffer (the Lake spec: controller + Storage) ------------
+
+
+def _pub_capacity(outpath: Path, metric: str) -> None:
+    """MEMORY_EXP: PUB (lake controller + SRAM block) vs capacity, one line per
+    memory organization (color = SRAM bits/cycle, dashed = dual-port). Power =
+    active."""
+    df = _metric(_exp(_load(), "MEMORY_EXP"), ["ctrl", "sram"], metric, "PUB " + metric)
+    df["kb"] = df["storage_capacity"] / 1024
+    scale, unit = _nda(df, metric, "PUB")
     fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
-    for dp, c, m, ls, name in ((False, SERIES[0], "o", "-", "Single-port SRAM"),
-                               (True, SERIES[1], "s", "--", "Dual-port SRAM")):
-        st = df[df["dual_port"] == dp].groupby("kb")["y"].agg(["median", "min", "max"])
-        ax.errorbar(st.index, st["median"], yerr=[st["median"] - st["min"], st["max"] - st["median"]],
-                    color=c, marker=m, linestyle=ls, markersize=4.5, markeredgecolor="white",
-                    markeredgewidth=0.6, capsize=2, elinewidth=0.8, label=name)
+    groups = sorted(df.groupby(["sram_bw_bits", "dual_port", "vec_width", "in_ports"]),
+                    key=lambda kv: (kv[0][1], kv[0][0]))
+    for _, g in groups:
+        g = g.sort_values("kb")
+        r = g.iloc[0]
+        kind = "DP" if r["dual_port"] else "SP"
+        ax.plot(g["kb"], g["y"] / scale, markersize=4,
+                label=f"{kind} fw{int(r['vec_width'])} {int(r['in_ports'])}×{int(r['out_ports'])}",
+                **_topo_style(r))
     _log2_axis(ax, sorted(df["kb"].unique()))
     ax.set_xlabel("Capacity (KB)")
-    ax.set_ylabel("Storage area (10³ µm²)")
+    ax.set_ylabel(f"PUB {'area' if metric == 'area' else 'active power'} ({unit})")
     ax.set_ylim(bottom=0)
-    ax.legend(loc="upper left")
+    _legend_above(ax, ncol=3)
     _ax_style(ax)
     fig.tight_layout()
     _save(fig, outpath)
+
+
+def pub_capacity_area(ctx, outpath: Path) -> None:
+    _pub_capacity(outpath, "area")
+
+
+def pub_capacity_power(ctx, outpath: Path) -> None:
+    _pub_capacity(outpath, "power")
+
+
+def _pub_bandwidth(outpath: Path, metric: str) -> None:
+    """MEMORY_EXP at 8 KB: PUB split into SRAM block and lake controller,
+    single- vs dual-port per SRAM bandwidth. Power: bars = active, tick = idle
+    total. Relative to the single-port lowest-bandwidth PUB under SRAM_NDA."""
+    df = _exp(_load(), "MEMORY_EXP")
+    df = df[df["storage_capacity"] == 8192].copy()
+    if df.empty or df["sram_bw_bits"].nunique() < 2:
+        raise MissingDataError("need 8 KB MEMORY_EXP configs at several bandwidths")
+    pre = "blk_" if metric == "area" else "pw_synth_active_"
+    _blocks(df, [pre + "sram", pre + "ctrl"], "PUB " + metric)
+    df["y"] = df[pre + "sram"] + df[pre + "ctrl"]
+    if metric == "power":
+        df["y2"] = _blocks(df, ["pw_synth_idle_sram", "pw_synth_idle_ctrl"], "PUB idle power")
+    bws = sorted(df["sram_bw_bits"].unique())
+    if SRAM_NDA:
+        ref = df[(df["sram_bw_bits"] == bws[0]) & ~df["dual_port"]]
+        scale, unit = float(ref["y"].iloc[0]), f"× SP {int(bws[0])}b"
+    else:
+        scale, unit = _units(df, metric)
+    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    w, gap = 0.36, 0.04
+    ticks, tick_lbls = [], []
+    for i, bw in enumerate(bws):
+        for j, dp in enumerate((False, True)):
+            r = df[(df["sram_bw_bits"] == bw) & (df["dual_port"] == dp)]
+            if r.empty:
+                continue
+            r = r.iloc[0]
+            x = i + (j - 0.5) * (w + gap)
+            first = i == 0 and j == 0
+            ax.bar(x, r[pre + "sram"] / scale, w, color=SERIES[0], edgecolor="white", linewidth=1,
+                   label="Storage (SRAM)" if first else None)
+            ax.bar(x, r[pre + "ctrl"] / scale, w, bottom=r[pre + "sram"] / scale, color=SERIES[1],
+                   edgecolor="white", linewidth=1, label="Lake controller" if first else None)
+            if metric == "power":
+                ax.scatter(x, r["y2"] / scale, marker="_", s=110, color=INK, linewidth=1.4,
+                           zorder=4, label="Idle total" if first else None)
+            ticks.append(x)
+            tick_lbls.append("DP" if dp else "SP")
+        ax.text(i, -0.13, f"{int(bw)}", transform=ax.get_xaxis_transform(),
+                ha="center", va="top", fontsize=7.5, color=INK2)
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(tick_lbls, fontsize=7)
+    ax.tick_params(axis="x", length=0)
+    ax.set_ylabel(f"PUB {'area' if metric == 'area' else 'active power'} ({unit})")
+    ax.set_xlabel("SRAM bandwidth (bits/cycle), 8 KB", labelpad=12)
+    ax.set_ylim(0, df["y"].max() / scale * 1.06)
+    _legend_above(ax, ncol=3)
+    _ax_style(ax)
+    fig.tight_layout()
+    _save(fig, outpath)
+
+
+def pub_bandwidth_area(ctx, outpath: Path) -> None:
+    _pub_bandwidth(outpath, "area")
+
+
+def pub_bandwidth_power(ctx, outpath: Path) -> None:
+    _pub_bandwidth(outpath, "power")
+
+
+# ---- latency-insensitive (RV) ScheduleGenerator ---------------------------------
+# The RV controller replaces the per-port static ScheduleGenerators with small
+# RV ones plus a comparison network across ports (lake spec.py: each port's SG
+# compares against every port of the other direction). "LI ScheduleGenerator"
+# = c_sg + c_rvnet of the RV builds.
+
+# lake commit that fixed the comparison network's wrap fixup at the top level
+# of power-of-2 dims (2/4/8); RV RTL generated before it is marked hollow.
+RVNET_FIX = "8748240d"
+_LAKE_REPO = Path(__file__).resolve().parents[2]
+
+
+def _rvnet_prefix(df: pd.DataFrame) -> pd.Series:
+    """True for RV rows whose RTL predates RVNET_FIX in a dim it changes."""
+    if "rtl_lake_commit" not in df.columns:
+        return pd.Series(False, index=df.index)
+    import subprocess
+    pre = {}
+    for c in df["rtl_lake_commit"].dropna().unique():
+        rc = subprocess.run(["git", "-C", str(_LAKE_REPO), "merge-base", "--is-ancestor",
+                             RVNET_FIX, c], capture_output=True).returncode
+        pre[c] = rc == 1  # 0 = has the fix; anything else (unknown commit) = don't mark
+    return (df["mode"].eq("rv") & df["dims"].isin([2, 4, 8])
+            & df["rtl_lake_commit"].map(pre).fillna(False).astype(bool))
+
+
+def _li_ports(outpath: Path, metric: str) -> None:
+    """LI ScheduleGenerator vs Lake ports, stacked comparison network + RV SGs:
+    every RV config at the default 6 dims and extents (MEMORY/PORT sweeps),
+    median with a min-max bar on the total. Power: bars = active, tick = idle."""
+    df = _load("rv")
+    df = df[(df["dims"] == 6) & df["max_extent"].isna() & df["max_sequence_width"].isna()].copy()
+    if df["in_ports"].nunique() < 2:
+        raise MissingDataError("need RV tile builds at several port counts")
+    pre = "blk_" if metric == "area" else "pw_synth_active_"
+    _blocks(df, [pre + "c_rvnet", pre + "c_sg"], "LI ScheduleGenerator " + metric)
+    df["y"] = df[pre + "c_rvnet"] + df[pre + "c_sg"]
+    if metric == "power":
+        df["y2"] = _blocks(df, ["pw_synth_idle_c_rvnet", "pw_synth_idle_c_sg"], "LI SG idle")
+    scale, unit = _units(df, metric)
+    ports = sorted(df["in_ports"].unique())
+    g = df.groupby("in_ports")
+    med = g[[pre + "c_rvnet", pre + "c_sg"]].median()
+    tot = g["y"].agg(["median", "min", "max"])
+    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    xs = np.arange(len(ports))
+    net, sg = med.loc[ports, pre + "c_rvnet"] / scale, med.loc[ports, pre + "c_sg"] / scale
+    ax.bar(xs, net, 0.55, color=SERIES[0], label="Comparison network")
+    ax.bar(xs, sg, 0.55, bottom=net, color=SERIES[1], label="RV ScheduleGenerators")
+    ax.errorbar(xs, (net + sg).values, yerr=[(tot["median"] - tot["min"]).loc[ports] / scale,
+                                             (tot["max"] - tot["median"]).loc[ports] / scale],
+                fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
+    if metric == "power":
+        idle = g["y2"].median().loc[ports] / scale
+        ax.scatter(xs, idle, marker="_", s=110, color=INK, linewidth=1.4, zorder=4,
+                   label="Idle total")
+        for xi, top, v in zip(xs, (tot["max"].loc[ports] / scale).values, idle.values):
+            ax.text(xi, top, f"idle {v:.1f}", ha="center", va="bottom", fontsize=6.5, color=INK2)
+    ax.set_xticks(xs)
+    ax.set_xticklabels([f"{p}×{p}\n(n={g.size()[p]})" for p in ports])
+    ax.set_xlabel("Lake ports (in × out)")
+    ax.set_ylabel(f"LI SG {'area' if metric == 'area' else 'active power'} ({unit})")
+    ax.set_ylim(0, tot["max"].max() / scale * 1.12)
+    _legend_above(ax, ncol=2)
+    _ax_style(ax)
+    fig.tight_layout()
+    _save(fig, outpath)
+
+
+def li_sched_ports_area(ctx, outpath: Path) -> None:
+    _li_ports(outpath, "area")
+
+
+def li_sched_ports_power(ctx, outpath: Path) -> None:
+    _li_ports(outpath, "power")
+
+
+def li_sched_loc_area(ctx, outpath: Path) -> None:
+    """ITERATION_DOMAIN_EXP, RV: LI ScheduleGenerator vs levels of comparison
+    (iteration-domain dimensionality), one line per maximum extent."""
+    _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
+               "Levels of comparison (dimensionality)", ["c_rvnet", "c_sg"],
+               "LI SG", mode="rv")
+
+
+def li_sched_loc_power(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
+               "Levels of comparison (dimensionality)", ["c_rvnet", "c_sg"],
+               "LI SG", mode="rv", metric="power")

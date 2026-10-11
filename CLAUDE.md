@@ -217,13 +217,18 @@ extracted zip in the user's workspace: `HANDOFF.md`, `<sweep>/analysis/ANALYSIS.
 ```bash
 # Ingest a sweep zip (or extracted dir) -> THESIS/data/tile_sweep/{<sweep>,latest}.csv
 python3 -m THESIS.pipeline.tile_sweep ../NEW_SWEEP_<host>_<ts>_slim.zip
-# Regenerate every tile-sweep figure (MEMTILE_CHARACTERIZATION + Ch. 4 component area)
-python3 THESIS/generate_thesis_artifacts.py --only memtile_capacity_area memtile_bandwidth_area \
-    memtile_interconnect_area memtile_port_buffer_area memtile_control_area \
-    memtile_rv_overhead_area memtile_synth_vs_pnr_area \
-    port_area_vs_data_width port_area_vs_vc iter_dom_area_vs_dim iter_dom_area_vs_max_extent \
-    affine_area_vs_dim affine_area_vs_max_value memory_port_area_vs_interface_width \
-    storage_area_vs_capacity
+# Regenerate every tile-sweep figure (zsh: ${=IDS} to word-split a variable)
+python3 THESIS/generate_thesis_artifacts.py --only \
+    port_area_vs_data_width port_power_vs_data_width port_area_vs_vc port_power_vs_vc \
+    iter_dom_area_vs_dim iter_dom_power_vs_dim iter_dom_area_vs_max_extent iter_dom_power_vs_max_extent \
+    affine_area_vs_dim affine_power_vs_dim affine_area_vs_max_value affine_power_vs_max_value \
+    memory_port_area_vs_interface_width memory_port_power_vs_interface_width \
+    storage_area_vs_capacity storage_power_vs_capacity \
+    pub_capacity_area pub_capacity_power pub_bandwidth_area pub_bandwidth_power \
+    memtile_interconnect_area memtile_interconnect_power memtile_block_breakdown \
+    memtile_rv_overhead_area memtile_synth_vs_pnr_area memtile_synth_vs_pnr_power \
+    li_sched_ports_area li_sched_ports_power li_sched_loc_area li_sched_loc_power \
+    memtile_capacity_area memtile_bandwidth_area memtile_port_buffer_area memtile_control_area
 ```
 
 Every ingest overwrites `THESIS/data/tile_sweep/latest.csv` (what the figures
@@ -245,20 +250,39 @@ so power remainders can come out slightly negative — plot named blocks only).
 The sweep's own `correlation.csv` / `memtile_power.csv` columns (PnR role,
 synth→PnR projections, PT WNS, power totals) are merged in by config.
 
-The Ch. 4 component characterization **area** figures (replaced the THESIS_BUILDS
-versions 2026-10-06, same output paths) plot their own blocks: Port =
-`c_port` (4 `port_inst`), IterationDomain = `c_id`, affine pattern generators =
-`c_ag + c_sg`, MemoryPort = `c_mp`, Storage = `sram`. Every tile figure keeps
-only `data_width == 16` (`tile_figures.DATA_WIDTH`), so `port_area_vs_data_width`
-is BOGUS. The Ch. 4 `*_power` figures are still wired to THESIS_BUILDS (BOGUS).
+What the sweep feeds (registry `tf.*`; all `data_width == 16`,
+`tile_figures.DATA_WIDTH`):
+- Ch. 4 component **area and power** (replaced the THESIS_BUILDS versions, same
+  output paths), each from its own blocks: Port = `c_port` (4 `port_inst`),
+  IterationDomain = `c_id`, affine pattern generators = `c_ag + c_sg`,
+  MemoryPort = `c_mp`, Storage = `sram`. Power = PT synth-level active (solid)
+  and idle (dashed). `port_{area,power}_vs_data_width` are BOGUS (dw16 only).
+- PUB = `ctrl + sram`: `pub_capacity_*` (line per memory organization),
+  `pub_bandwidth_*` (8 KB, SP vs DP, stacked SRAM / controller).
+- Memory tile: `memtile_interconnect_{area,power}` (CB/SB/glue vs ports),
+  `memtile_block_breakdown` (area/idle/active share per block, 3 fit
+  geometries × static/RV), `memtile_rv_overhead_area`.
+- Synth→PnR model `memtile_synth_vs_pnr_{area,power}`: the 12 PnR builds by
+  `pnr_role` (8 `fit` dots, 4 `validate` stars), one linear fit per runtime mode
+  (reproduces garnet `correlation_fit.csv` / `memtile_power_fit.csv`), R² in the
+  legend, per-build prediction error below.
+- LI ScheduleGenerator (RV) = `c_rvnet + c_sg`: `li_sched_ports_*` (dims-6 RV
+  configs by port count), `li_sched_loc_*` (ITERATION_DOMAIN RV, "levels of
+  comparison" read as dims; pre-`8748240d` RTL drawn hollow via the
+  `rtl_lake_commit` ingest column).
+- `tile_figures.SRAM_NDA = True` (the thesis says the GF12 macro numbers are
+  under NDA): Storage, PUB and model values are relative to a reference config
+  (`NDA_REF`, or the smallest fit tile for the model). Set False for µm²/mW.
+Placement + captions for main.tex (the Overleaf project "Thesis Rough Draft" is
+the live copy; local `main_thesis.tex` is stale):
+`THESIS/output/snippets/memtile_figures.tex` (EDIT 1–7).
 
 Loader/parsers: `THESIS/pipeline/tile_sweep.py` (maps each config to its
 experiment by spec, picks up configs still building when the zip was cut,
 finds mflowgen step dirs by name since step numbers shift between graphs).
-Plots: `THESIS/pipeline/tile_figures.py` → `THESIS/output/figures/memtile/`.
-Ready-to-paste figure environments with captions and suggested placement:
-`THESIS/output/snippets/memtile_figures.tex` (under the untracked
-`THESIS/output/`, so local to this checkout).
+Plots: `THESIS/pipeline/tile_figures.py` → `THESIS/output/figures/` (new
+figures under `figures/memtile/`; the whole `THESIS/output/` tree, snippet file
+included, is untracked, so local to this checkout).
 
 Known quirks of the dw16 dataset:
 - Tile RTL was generated at 8 lake commits (gen_rtl takes `origin/THESIS` at

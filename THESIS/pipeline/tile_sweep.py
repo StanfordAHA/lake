@@ -393,6 +393,12 @@ def ingest(src_path: Path) -> pd.DataFrame:
         exps = grids.get(_key(spec), [])
         row["experiments"] = ";".join(exps)
         row["base_config"] = name[:-3] if name.endswith("_rv") else name
+        # gen_rtl checks out lake origin/THESIS at RTL time and logs the commit
+        # after its "Mek Mek Mek" banner; a sweep can span several commits.
+        rtl = src.read(f"{src.step(name, 'rtl')}/mflowgen-run.log") or ""
+        m = re.search(r"Mek Mek Mek.*?^([0-9a-f]{7,40}) ", rtl, re.S | re.M)
+        if m:
+            row["rtl_lake_commit"] = m.group(1)
         syn = f"{src.step(name, 'cadence-genus-synthesis')}/results_syn"
         gates = src.read(f"{syn}/final_gates.rpt")
         if gates:

@@ -104,21 +104,27 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
 - **garnet Tile_MemCore sweep** (not THESIS_BUILDS; ingest with
   `python3 -m THESIS.pipeline.tile_sweep <sweep.zip>`), all in
   `pipeline/tile_figures.py`, 16-bit-data configs only (other widths have
-  broken RTL as of 2026-10-06):
-  - the Ch. 4 component **area** figures (replaced the THESIS_BUILDS versions
-    2026-10-06, same output paths): port_area_vs_{data_width,vc},
-    iter_dom_area_vs_{dim,max_extent}, affine_area_vs_{dim,max_value},
-    memory_port_area_vs_interface_width, storage_area_vs_capacity. From the
-    hierarchy-kept dw16 sweep (2026-10-09) each plots its own lake-controller
-    block (`blk_*` columns; CLAUDE.md §1.8). port_area_vs_data_width stays
-    BOGUS until non-16-bit builds work.
-  - the seven `memtile_*_area` figures (capacity, bandwidth, interconnect,
-    port buffer, control, RV overhead, synth vs PnR).
-  See CLAUDE.md §1.8.
-- **THESIS_BUILDS** (standalone lakespec) → the Ch. 4 `*_power` figures
-  (BOGUS until the power flow runs) and the `tab:memtile_model_*` /
-  `tab:ul_ppa_summary` tables. The standalone area generators remain in
-  `generators.py` but are no longer registered.
+  broken RTL as of 2026-10-06). From the hierarchy-kept dw16 sweep
+  (2026-10-09) each figure plots its own blocks (`blk_*` area, `pw_synth_*`
+  power; CLAUDE.md §1.8):
+  - the Ch. 4 component **area and power** figures (same output paths as the
+    old THESIS_BUILDS versions): port_{area,power}_vs_{data_width,vc},
+    iter_dom_*, affine_*_vs_{dim,max_value}, memory_port_*, storage_*. Power =
+    active (solid) + idle (dashed). The data_width pair stays BOGUS until
+    non-16-bit builds work.
+  - PUB (controller + SRAM): pub_capacity_{area,power}, pub_bandwidth_{area,power}.
+  - memory tile: memtile_interconnect_{area,power}, memtile_block_breakdown,
+    memtile_rv_overhead_area, and the synth->PnR model
+    memtile_synth_vs_pnr_{area,power} (8 fit builds as dots, 4 held out as
+    stars, per-mode fits + error panel). memtile_{capacity,bandwidth,
+    port_buffer,control}_area are generated but superseded (not placed).
+  - LI ScheduleGenerator (RV builds): li_sched_{ports,loc}_{area,power}.
+  - `tile_figures.SRAM_NDA` (default True): values that include the SRAM
+    macros (Storage, PUB, model) are plotted relative to a reference config.
+  Placement and captions for the tex: `THESIS/output/snippets/memtile_figures.tex`.
+- **THESIS_BUILDS** (standalone lakespec) → the `tab:memtile_model_*` /
+  `tab:ul_ppa_summary` tables. The standalone area/power generators remain in
+  `generators.py` but are no longer registered for the component figures.
 
 Everything else in `main_thesis.tex` is either BOGUS (data pending) or
 manual (block diagram / curated table). Full breakdown: run
