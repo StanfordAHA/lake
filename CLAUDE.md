@@ -353,6 +353,15 @@ Known quirks of the dw16 dataset:
   machine's): plain → stops at `current_design`, no clocks; compat → clock +
   multicycle applied. Existing workspaces: redo the ptpx steps (garnet
   `sweep_specs.py --standalone-only --fresh` rebuilds a standalone in ~16 min).
+  Since 5ed60bd1 it also drops the synthesis-only directives PT 2019 rejects
+  (set_dont_use, set_dont_touch, set_dont_touch_network, set_ideal_net,
+  set_fix_hold): the 2026-10-08 gf12 rerun stopped at Genus's `set_dont_use`
+  (the first of 155, after set_driving_cell; only the other 154 were after
+  it, so the power numbers didn't change, but the postcondition failed). The list is explicit because read_sdc accepts some
+  SDC commands that `info commands` doesn't list (set_logic_zero,
+  set_max_dynamic_power, ...). To redo only those steps: `make
+  clean-synopsys-ptpx-synth-{idle,active}-power` (sweep_specs
+  `--standalone-only --make ...`), then rebuild.
 - **App-driven standalone power** (2026-10-07, graph kwarg `app_bundle`;
   garnet `sweep_specs.py --standalone-synth --app-bundle-dir` passes it for
   static configs): `pd/thesis/app-power-gen/gen_app_stimulus.py` replays one
