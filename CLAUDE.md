@@ -684,9 +684,10 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   RV), controller integration, pond RV accumulation (bit-identity with
   `get_vec_accum_pond` + RTL), spec RV programs (stream / row-lag / barrier /
   sweep on fw1 dp, fw2 sp, fw2 dp, fw4 sp, garnet default; free + stress).
-  As of 2026-10-08 (lake `8748240d`): 296 pass + 5 xfail; the 13 failures in
-  `test_extract_compiler_information.py` are pre-existing (same on clean HEAD;
-  OPEN_ISSUES `lake/extract-collateral-tests`). Remaining xfails = latent bugs on paths no builder uses:
+  As of 2026-10-08 (lake `8748240d`): 296 pass + 5 xfail. Since 2026-10-11,
+  `test_extract_compiler_information.py` passes too (59). Its 13–16 failures were stale
+  expectations, not extraction bugs; see "Compiler collateral facts" below. Remaining
+  xfails = latent bugs on paths no builder uses:
   MemoryInterfaceDecoder with >1 memory port cannot be built (and its enable
   concat order looks reversed); SingleBankStorage with two write ports cannot
   be emitted (non-remote pond); LFCompBlock 17-bit sum overflow for counters
@@ -694,9 +695,26 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   private copy of the `lake/` package: `PYTHONPATH=<copy>` overrides the
   editable install, also under pytest (verified 2026-10-08); check with
   `python -c 'import lake; print(lake.__file__)'`, and don't run a script that
-  sits next to another `lake/` directory (sys.path[0] wins). Pre-existing, unrelated: `test_extract_compiler_information.py`
-  13 failures (same on clean HEAD); `tests/test_spec/dual_port_rv.py` legacy
-  flow fails "Not enough data on port r0" (same before today's fixes).
+  sits next to another `lake/` directory (sys.path[0] wins). Pre-existing, unrelated:
+  `tests/test_spec/dual_port_rv.py` legacy flow fails "Not enough data on port r0"
+  (same before today's fixes).
+- **Compiler collateral facts** (`Spec.extract_compiler_information`; checked 2026-10-11
+  against clockwork `options.h` `LakeCollateral` and the fw1 dual-port collateral that
+  passed on the CGRA):
+  - `capacity` is in addresses: storage bytes / (word_width words × data bytes). The
+    `_extract_capacity` helper alone returns bytes. The default MEM spec (4096 B, fw4)
+    gives sram 512, agg 8, tb 8, which is clockwork's built-in `"mem"` collateral.
+  - Wide-fetch specs with one primary storage get `agg`/`tb` synthesized
+    (`_synthesize_wide_fetch_hierarchy`): `in2agg_N` / `tb2out_N`, agg→sram→tb
+    `read_port`/`write_port`, and load/store latency 0. fw1 specs instead rename the
+    `sram` keys to `mem` and set `controller_name` to `["regfile"]`.
+  - `dual_port_sram` is set only for the storage named `sram`. All real callers use
+    extraction's own naming (single storage → `sram`); an explicit `{stg: "mem"}` map
+    hides it. A dual-port SRAM is `bank_num` 1.
+  - `lake/utils/generate_collateral.py` (a reference agg/sram/tb spec; nothing calls it)
+    matches clockwork's `"mem"` in capacity, word width and bank count. It lacks the
+    agg output / tb input widths, because its agg and tb have external-side memory
+    ports only.
 - **OPEN** (OPEN_ISSUES `lake/spec-memcore-chaining-rom`; not rechecked since 2026-09-30): MEM-tile output CHAINING (`chain_en`) has no lake-spec equivalent.
   The spec MemCore also cannot be loaded with ROM contents (`init`): apps
   whose clockwork mapping uses ROM "port_controller_Counter" tiles (matmul's

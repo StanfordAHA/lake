@@ -61,7 +61,9 @@ def build_mem_level_spec():
         ls.connect(port, ag_)
         ls.connect(port, sg_)
 
-    agg = SingleBankStorage(capacity=8)
+    # Capacities are in bytes; extraction reports addresses (bytes / (word_width
+    # words x 2 bytes)): 16 / 4096 / 16 -> clockwork's {agg: 8, sram: 512, tb: 8}.
+    agg = SingleBankStorage(capacity=16)
     agg_wr_mp_0 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=0)
     agg_wr_mp_1 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=0)
     ls.register(agg, agg_wr_mp_0, agg_wr_mp_1)
@@ -70,12 +72,12 @@ def build_mem_level_spec():
     ls.connect(agg_wr_mp_0, agg)
     ls.connect(agg_wr_mp_1, agg)
 
-    sram = SingleBankStorage(capacity=512)
+    sram = SingleBankStorage(capacity=4096)
     sram_rw_mp = MemoryPort(data_width=64, mptype=MemoryPortType.RW, delay=0)
     ls.register(sram, sram_rw_mp)
     ls.connect(sram_rw_mp, sram)
 
-    tb = SingleBankStorage(capacity=8)
+    tb = SingleBankStorage(capacity=16)
     tb_rd_mp_0 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=0)
     tb_rd_mp_1 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=0)
     ls.register(tb, tb_rd_mp_0, tb_rd_mp_1)

@@ -98,19 +98,26 @@ def _build_single_port_wide_fetch(storage_capacity=1024, data_width=16,
 # ---------------------------------------------------------------------------
 
 class TestExtractCompilerInformationDualPort:
-    """Test collateral extraction on a simple dual-port Spec."""
+    """Test collateral extraction on a simple dual-port Spec.
+
+    Uses extraction's own storage naming, as every real caller does: the single
+    storage is "sram", and for fetch_width 1 its keys are then renamed "mem" and
+    controller_name becomes ["regfile"] (clockwork's dual-port convention).
+    dual_port_sram is reported for the storage named "sram" only, so passing an
+    explicit {stg: 'mem'} map would hide it. Same shape as the fw1 dual-port
+    collateral that passed end to end on the CGRA (2026-10-10)."""
 
     @pytest.fixture(autouse=True)
     def setup(self):
         self.ls, self.stg = _build_simple_dual_port()
-        self.collateral = self.ls.extract_compiler_information(
-            controller_name_map={self.stg: 'mem'})
+        self.collateral = self.ls.extract_compiler_information()
 
     def test_controller_name(self):
-        assert self.collateral['controller_name'] == ['mem']
+        assert self.collateral['controller_name'] == ['regfile']
 
     def test_capacity(self):
-        assert self.collateral['capacity'] == {'mem': 1024}
+        # Capacity is in addresses: 1024 bytes / (1 word x 2 bytes).
+        assert self.collateral['capacity'] == {'mem': 512}
 
     def test_word_width(self):
         assert self.collateral['word_width'] == {'mem': 1}
@@ -122,7 +129,8 @@ class TestExtractCompilerInformationDualPort:
         assert self.collateral['out_port_width'] == {'mem': 1}
 
     def test_bank_num(self):
-        assert self.collateral['bank_num'] == {'mem': 2}
+        # One bank with separate R and W ports (dual_port_sram says so).
+        assert self.collateral['bank_num'] == {'mem': 1}
 
     def test_single_port_false(self):
         assert self.collateral['single_port'] == {'mem': False}
@@ -164,7 +172,11 @@ class TestExtractCompilerInformationDualPort:
 
 
 class TestExtractCompilerInformationWideFetch:
-    """Test collateral extraction on a single-port wide-fetch Spec."""
+    """Test collateral extraction on a single-port wide-fetch Spec.
+
+    A wide-fetch spec with one primary storage gets "agg" and "tb" entries
+    synthesized from its Ports' SIPO/PISO (_synthesize_wide_fetch_hierarchy):
+    the agg -> sram -> tb shape of clockwork's LakeCollateral("mem")."""
 
     @pytest.fixture(autouse=True)
     def setup(self):
@@ -174,23 +186,29 @@ class TestExtractCompilerInformationWideFetch:
             controller_name_map={self.stg: 'sram'})
 
     def test_controller_name(self):
-        assert self.collateral['controller_name'] == ['sram']
+        assert sorted(self.collateral['controller_name']) == ['agg', 'sram', 'tb']
 
     def test_capacity(self):
-        assert self.collateral['capacity'] == {'sram': 1024}
+        # Addresses: sram 1024 B / (4 words x 2 B); agg/tb hold
+        # vec_capacity (2) x 64 bits = 16 B = 8 one-word addresses.
+        assert self.collateral['capacity'] == {'agg': 8, 'sram': 128, 'tb': 8}
 
     def test_word_width(self):
-        assert self.collateral['word_width'] == {'sram': 4}
+        assert self.collateral['word_width'] == {'agg': 1, 'sram': 4, 'tb': 1}
 
     def test_in_out_port_width(self):
-        assert self.collateral['in_port_width'] == {'sram': 4}
-        assert self.collateral['out_port_width'] == {'sram': 4}
+        assert self.collateral['in_port_width'] == {'agg': 1, 'sram': 4, 'tb': 4}
+        assert self.collateral['out_port_width'] == {'agg': 4, 'sram': 4, 'tb': 1}
 
     def test_bank_num(self):
-        assert self.collateral['bank_num'] == {'sram': 1}
+        assert self.collateral['bank_num'] == {'agg': 1, 'sram': 1, 'tb': 1}
 
     def test_single_port_true(self):
-        assert self.collateral['single_port'] == {'sram': True}
+        assert self.collateral['single_port'] == {'agg': False, 'sram': True, 'tb': False}
+
+    def test_storage_topology(self):
+        assert self.collateral['read_port'] == {'agg': 'sram', 'sram': 'tb'}
+        assert self.collateral['write_port'] == {'sram': 'agg', 'tb': 'sram'}
 
     def test_dual_port_sram_false(self):
         assert self.collateral['dual_port_sram'] is False
@@ -202,7 +220,8 @@ class TestExtractCompilerInformationWideFetch:
         assert self.collateral['multi_sram_accessor'] is True
 
     def test_load_latency(self):
-        assert self.collateral['load_latency'] == 1
+        # agg/tb absorb the SRAM's read delay at the buffer interface.
+        assert self.collateral['load_latency'] == 0
 
     def test_store_latency(self):
         assert self.collateral['store_latency'] == 0
@@ -212,8 +231,8 @@ class TestExtractCompilerInformationWideFetch:
 
     def test_iter_level_map(self):
         assert self.collateral['iter_level_map'] == {
-            'in2sram_0': 6,
-            'sram2out_0': 6,
+            'in2agg_0': 6,
+            'tb2out_0': 6,
         }
 
 
@@ -246,10 +265,10 @@ class TestExtractCapacity:
 class TestExtractMemoryPortInfo:
     def test_dual_port_info(self):
         ls, stg = _build_simple_dual_port()
-        info = ls._extract_memory_port_info({stg: 'mem'})
+        info = ls._extract_memory_port_info({stg: 'sram'})
         assert info['dual_port_sram'] is True
-        assert info['single_port'] == {'mem': False}
-        assert info['bank_num'] == {'mem': 2}
+        assert info['single_port'] == {'sram': False}
+        assert info['bank_num'] == {'sram': 1}   # one bank, separate R and W ports
 
     def test_single_port_rw_info(self):
         ls, stg = _build_single_port_wide_fetch()
@@ -341,6 +360,7 @@ LAKE_COLLATERAL_KEYS = {
     'multi_sram_accessor', 'dual_port_sram', 'wire_chain_en',
     'interconnect_in_num', 'interconnect_out_num',
     'read_port', 'write_port',
+    'data_width',
 }
 
 
@@ -408,8 +428,11 @@ def _build_mem_level_spec():
         ls.connect(port, ag_)
         ls.connect(port, sg_)
 
-    # Agg (2 banks, capacity=8, word_width=1 word, in_port_width=1, out_port_width=4)
-    agg = SingleBankStorage(capacity=8)
+    # Storage capacities are in bytes; the collateral reports addresses
+    # (bytes / (word_width words x 2 bytes)), so these give clockwork's
+    # LakeCollateral("mem") capacities {agg: 8, sram: 512, tb: 8}.
+    # Agg (2 banks, 16 B = 8 one-word addresses, in_port_width=1, out_port_width=4)
+    agg = SingleBankStorage(capacity=16)
     agg_wr_mp_0 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=0)
     agg_wr_mp_1 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=0)
     ls.register(agg, agg_wr_mp_0, agg_wr_mp_1)
@@ -418,16 +441,16 @@ def _build_mem_level_spec():
     ls.connect(agg_wr_mp_0, agg)
     ls.connect(agg_wr_mp_1, agg)
 
-    # Sram (1 bank, capacity=512, word_width=4, in/out_port_width=4)
-    sram = SingleBankStorage(capacity=512)
+    # Sram (1 bank, 4096 B = 512 four-word addresses, in/out_port_width=4)
+    sram = SingleBankStorage(capacity=4096)
     sram_rw_mp = MemoryPort(data_width=64, mptype=MemoryPortType.RW, delay=0)
     ls.register(sram, sram_rw_mp)
     # sram connects to agg (read side) and tb (write side) — shared RW port
     # For topology detection: sram_rw_mp bridges agg and sram
     ls.connect(sram_rw_mp, sram)
 
-    # Tb (2 banks, capacity=8, word_width=1, in_port_width=4, out_port_width=1)
-    tb = SingleBankStorage(capacity=8)
+    # Tb (2 banks, 16 B = 8 one-word addresses, in_port_width=4, out_port_width=1)
+    tb = SingleBankStorage(capacity=16)
     tb_rd_mp_0 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=0)
     tb_rd_mp_1 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=0)
     ls.register(tb, tb_rd_mp_0, tb_rd_mp_1)
