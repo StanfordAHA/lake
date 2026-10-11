@@ -719,6 +719,18 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   The spec MemCore also cannot be loaded with ROM contents (`init`): apps
   whose clockwork mapping uses ROM "port_controller_Counter" tiles (matmul's
   `kernel = 2x + y`) cannot run on lake-spec MemCores (static or RV).
+- **Hand-written RV configs (`spec/hack_rv_mem_pond_bitstream.py`, by test name via
+  `TEST_NAME_FOR_HACKING_CHECK`) on THESIS are the 2025-05-13 version** (branch point
+  aa3fc1a2). Master's later per-app configs (mem transpose/slice/filter unit tests,
+  layer norm, gelu, maxpool, path-balancing ponds, ...) never came here; master
+  dropped name dispatch for most of them in b9c7374b (2026-04) in favour of a
+  `lake_rv_config` entry in the design_top MEM metadata (written by strait
+  templates), which THESIS's `gen_bitstream` doesn't read. So an app that relies on
+  a master-only hand-written config silently gets clockwork's own program here
+  (mek dropped the mem_*_test_RV entries: aha 9ab0a36). `hack_rv_config` takes
+  `node_name` since 40981694 (spec.py passed it -> TypeError). Its remaining
+  THESIS pond configs hit IterationDomain's extent range check (extent 1, or
+  > 2**extent_width): OPEN_ISSUES `lake/hacked-pond-extent-range`.
 - **RESOLVED (2026-10-01) — harris_color end to end** (the STRM_G2F hang above):
   not the MEM tiles. Causes were clockwork stream framing (`rv_reframe_line_buffers`),
   canal register pre-fill landing on the wrong-width register, and the PE-FIFO
