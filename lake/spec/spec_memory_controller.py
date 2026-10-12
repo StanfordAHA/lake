@@ -13,13 +13,14 @@ from lake.top.tech_maps import GF_Tech_Map
 
 
 def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: int = 6, vec_width=4, physical=True,
-                                  reg_file=False, vec_capacity=2, opt_rv=True, remote_storage=True, id_width=16, add_filter_path=True) -> Spec:
+                                  reg_file=False, vec_capacity=2, opt_rv=True, remote_storage=True, id_width=16, add_filter_path=True,
+                                  prune_rv_comparators=False) -> Spec:
 
     # TODO: Override this in garnet and not here...
     id_width = 11
 
     ls = Spec(name="lakespec_mem", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
-              config_passthru=True, comply_17=True)
+              config_passthru=True, comply_17=True, prune_rv_comparators=prune_rv_comparators)
 
     # Don't opt timing on the in ports (which really just adds a fifo at the input which we don't need)
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
@@ -629,7 +630,7 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
 def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
                   dims=6, in_ports=2, out_ports=2, dual_port=False,
                   vec_capacity=2, max_extent=None, max_sequence_width=None,
-                  add_filter_path=True, physical=True):
+                  add_filter_path=True, physical=True, prune_rv_comparators=True):
     """Factory function to build an RV (ready-valid / dynamic) lake Spec.
 
     Mirrors build_four_port_wide_fetch_rv but accepts configurable params
@@ -651,6 +652,12 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
         max_sequence_width: Maximum sequence width (affects stride width).
         add_filter_path: Add a filter input/output path (matches default garnet).
         physical: Use a physical SRAM tech map.
+        prune_rv_comparators: Build RV comparators only between ports on the
+            same storage. The filter path has its own storage, so its ports
+            never get a dependence on a data port (Spec's converter rejects
+            one), yet the full network gave every filter/data pair a
+            comparator: 2*(in+1)*(out+1) -> 2*in*out + 2. False rebuilds the
+            full network (garnet default / silicon layout).
 
     Returns:
         A lake Spec instance configured for RV hardware generation.
@@ -669,7 +676,8 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
         stride_width = max(1, math.ceil(math.log2(max(max_sequence_width, 2))))
 
     ls = Spec(name="lakespec_mem", opt_rv=True, remote_storage=True,
-              run_flush_pass=False, config_passthru=True, comply_17=True)
+              run_flush_pass=False, config_passthru=True, comply_17=True,
+              prune_rv_comparators=prune_rv_comparators)
 
     vc = vec_capacity if vec_width > 1 else None
     int_dw = data_width * vec_width

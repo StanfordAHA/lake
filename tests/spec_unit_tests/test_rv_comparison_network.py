@@ -22,7 +22,10 @@ Function:
     behind; a reader that runs into the next outer iteration ahead of the
     writer, possible with a negative RAW scalar, gets the extent added to the
     wrong side -- the known single-row limitation behind LAKE_RV_ROW_RAW);
-  * pairs without a constraint never block (enable_comparison = 0 -> 1).
+  * pairs without a constraint never block (enable_comparison = 0 -> 1);
+  * prune_cross_group: ports carry a storage group, and a writer/reader pair
+    from different groups gets no block at all; its comparison bit is tied to
+    1 (what an unconfigured block outputs) and a constraint on it is an error.
 The network only reads the SGs' iterator widths and dimensionality, so the
 tests hand it stub SGs.
 """
@@ -32,6 +35,7 @@ from types import SimpleNamespace as NS
 import pytest
 
 from lake.modules.rv_comparison_network import RVComparisonNetwork
+from lake.utils.spec_enum import Direction
 from lake.utils.spec_enum import LFComparisonOperator as Op
 from rtl_harness import pack, pack_config, requires_xrun, run_vectors
 from test_lf_comp_block import lfc_model
@@ -51,11 +55,19 @@ class StubSG:
         return {k: NS(width=self.width) for k in ("iterators", "extents", "finished", "comparisons")}
 
 
-def make_net(w_dims, r_dims, width=16):
+def make_net(w_dims, r_dims, width=16, groups=None):
+    """groups = (writer groups, reader groups): build with prune_cross_group."""
     _uid[0] += 1
-    net = RVComparisonNetwork(name=f"rvcn_t{_uid[0]}",
-                              writes=[StubSG(d, width) for d in w_dims],
-                              reads=[StubSG(d, width) for d in r_dims])
+    if groups is None:
+        net = RVComparisonNetwork(name=f"rvcn_t{_uid[0]}",
+                                  writes=[StubSG(d, width) for d in w_dims],
+                                  reads=[StubSG(d, width) for d in r_dims])
+    else:
+        net = RVComparisonNetwork(name=f"rvcn_t{_uid[0]}", prune_cross_group=True)
+        for d, g in zip(w_dims, groups[0]):
+            net.add_reader_writer(Direction.IN, StubSG(d, width), group=g)
+        for d, g in zip(r_dims, groups[1]):
+            net.add_reader_writer(Direction.OUT, StubSG(d, width), group=g)
     net.gen_hardware()
     return net
 
@@ -97,8 +109,8 @@ def state_inputs(W, R, state, width):
     return c
 
 
-def net_case(w_dims, r_dims, constraints, states, width=16):
-    net = make_net(w_dims, r_dims, width)
+def net_case(w_dims, r_dims, constraints, states, width=16, groups=None):
+    net = make_net(w_dims, r_dims, width, groups)
     W, R = len(w_dims), len(r_dims)
     cfg = pack_config(net.gen_bitstream(constraints=constraints))
     inputs = [state_inputs(W, R, s, width) for s in states]
@@ -110,11 +122,15 @@ def net_case(w_dims, r_dims, constraints, states, width=16):
 SCALARS = [0, 1, -1, 2, -2, 3, -3, 5, -5, 8, 36, -36, 1000, -1000, 16383, 32767, -32768]
 
 
-def random_constraints(rng, W, R, dims, max_level=None, p_cfg=0.7):
+def random_constraints(rng, W, R, dims, max_level=None, p_cfg=0.7, pgroup=None):
+    """pgroup: storage group per port (writers then readers); pairs across
+    groups get no constraint."""
     cons = []
     for p1 in range(W + R):
         others = range(W, W + R) if p1 < W else range(W)
         for p2 in others:
+            if pgroup is not None and pgroup[p1] != pgroup[p2]:
+                continue
             if rng.random() > p_cfg:
                 continue
             d1, d2 = dims[p1], dims[p2]
@@ -146,12 +162,13 @@ def random_states(rng, dims, n, max_ext=20):
     return states
 
 
-def random_case(seed, w_dims=(3, 3), r_dims=(3, 3), width=16, max_level=None, n=300):
+def random_case(seed, w_dims=(3, 3), r_dims=(3, 3), width=16, max_level=None, n=300, groups=None):
     rng = random.Random(seed)
     dims = list(w_dims) + list(r_dims)
-    cons = random_constraints(rng, len(w_dims), len(r_dims), dims, max_level)
+    pgroup = None if groups is None else list(groups[0]) + list(groups[1])
+    cons = random_constraints(rng, len(w_dims), len(r_dims), dims, max_level, pgroup=pgroup)
     states = random_states(rng, dims, n)
-    return net_case(w_dims, r_dims, cons, states, width)
+    return net_case(w_dims, r_dims, cons, states, width, groups)
 
 
 @requires_xrun
@@ -350,3 +367,51 @@ def test_rvcn_reader_more_dims_than_writer_builds():
     LAST writer's dimensionality (leaked from the writer loop), so a reader with
     more levels than that writer failed inline_multiplexer's sel-width assert."""
     make_net((2,), (4,))
+
+
+# ---------------------------------------------------------------- pruned network
+# build_spec_rv geometry: data ports on storage 0, the filter in/out pair on
+# storage 1 (the last writer and the last reader).
+FILTER_GROUPS = {"1x1": ((0, 1), (0, 1)), "2x2": ((0, 0, 1), (0, 0, 1)), "4x4": ((0,) * 4 + (1,), (0,) * 4 + (1,))}
+
+
+@pytest.mark.parametrize("shape", list(FILTER_GROUPS))
+def test_rvcn_pruned_structure(shape):
+    """Only same-group pairs get blocks (2 * in * out + 2 for a data + filter
+    spec), and the config space shrinks by exactly the dropped blocks' bits."""
+    wg, rg = FILTER_GROUPS[shape]
+    dims = 6
+    full = make_net((dims,) * len(wg), (dims,) * len(rg))
+    pruned = make_net((dims,) * len(wg), (dims,) * len(rg), groups=(wg, rg))
+    n_in, n_out = len(wg) - 1, len(rg) - 1
+    assert len(full.lfcs) == 2 * (n_in + 1) * (n_out + 1)
+    assert len(pruned.lfcs) == pruned.num_comparators() == 2 * n_in * n_out + 2
+    for key in pruned.lfcs:
+        d, a, b = key.rsplit("_", 2)
+        w, r = (int(a), int(b)) if d == "wr_to_rd" else (int(b), int(a))
+        assert wg[w] == rg[r], key
+    per_block = full.get_config_size() // len(full.lfcs)
+    assert pruned.get_config_size() == per_block * len(pruned.lfcs)
+
+
+def test_rvcn_pruned_cross_group_constraint_raises():
+    wg, rg = FILTER_GROUPS["2x2"]
+    net = make_net((3,) * 3, (3,) * 3, groups=(wg, rg))
+    W = 3
+    net.gen_bitstream([(W + 0, 0, 0, 0, LT, 1)])            # data reader 0 on data writer 0: fine
+    with pytest.raises(ValueError, match="different storages"):
+        net.gen_bitstream([(W + 2, 0, 0, 0, LT, 1)])        # filter reader on data writer 0
+    with pytest.raises(ValueError, match="different storages"):
+        net.gen_bitstream([(2, 0, W + 1, 0, GT, 1)])        # filter writer on data reader 1
+
+
+@requires_xrun
+@pytest.mark.parametrize("seed", [61, 62])
+def test_rvcn_rtl_pruned_random_2x2_filter(seed):
+    """Pruned 2x2 + filter network, random same-group constraints: every
+    comparisons bit (incl. the tied cross-group ones) matches the full-network
+    model, where a cross-group pair is an unconfigured block (always 1)."""
+    net, inputs, expect, cfg = random_case(seed, w_dims=(3, 3, 3), r_dims=(3, 3, 3), width=11,
+                                           groups=FILTER_GROUPS["2x2"])
+    res = run_vectors(net, inputs, expect, config=cfg)
+    assert res.passed, res

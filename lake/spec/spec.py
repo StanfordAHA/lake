@@ -33,7 +33,8 @@ class Spec():
                  config_passthru=False,
                  opt_rv=False, remote_storage=False,
                  run_flush_pass=True,
-                 comply_17=False) -> None:
+                 comply_17=False,
+                 prune_rv_comparators=False) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
         self._name = name
@@ -66,6 +67,10 @@ class Spec():
         self._final_gen = Component(name=self._name)
         # When complying with 17, we add an extra bit for integration with CGRA
         self.comply_17 = comply_17
+        # RV only: build comparators only between ports on the same storage
+        # (RVComparisonNetwork prune_cross_group). Off keeps the full writer x
+        # reader network, which is what silicon has.
+        self.prune_rv_comparators = prune_rv_comparators
 
     def set_name(self, name):
         self._name = name
@@ -285,7 +290,8 @@ class Spec():
         # Just instantiate one comparison thing for now...
         if self.any_rv_sg:
             # In later stage of spec hw gen will add each read and write port to this...
-            self.rv_comparison_network = RVComparisonNetwork(name='rv_comparison_network_this_spec')
+            self.rv_comparison_network = RVComparisonNetwork(name='rv_comparison_network_this_spec',
+                                                             prune_cross_group=self.prune_rv_comparators)
 
         self.hw_attr = {}
         self.hw_attr['clk'] = self._final_gen.get_clock()
@@ -399,7 +405,10 @@ class Spec():
 
             if self.any_rv_sg:
                 # Just add the Port Direction and SG to the RVComparisonNetwork
-                self.rv_comparison_network.add_reader_writer(direction=port_direction, sg=port_sg)
+                port_stg = self._storage_of(port)
+                self.rv_comparison_network.add_reader_writer(
+                    direction=port_direction, sg=port_sg,
+                    group=None if port_stg is None else storage_nodes.index(port_stg))
 
             port.gen_hardware(dimensionality=id_dims, external_id=port_id)
 
@@ -1987,7 +1996,10 @@ class Spec():
 
     def _port_storage(self, port_name):
         """The Storage node behind a port (through its memory ports)."""
-        port = self.get_port_from_idx(self.port_name_to_int(port_name))
+        return self._storage_of(self.get_port_from_idx(self.port_name_to_int(port_name)))
+
+    def _storage_of(self, port):
+        """The Storage node behind a Port (through its memory ports)."""
         for mp in self.get_memory_ports(port):
             for nb in self._hw_graph.neighbors(mp):
                 if isinstance(nb, Storage):

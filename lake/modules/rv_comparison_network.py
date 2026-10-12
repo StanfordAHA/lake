@@ -9,7 +9,7 @@ from lake.spec.component import Component
 class RVComparisonNetwork(Component):
 
     def __init__(self, name: str, debug: bool = False, is_clone: bool = False, internal_generator=None,
-                 writes=None, reads=None):
+                 writes=None, reads=None, prune_cross_group=False):
         super().__init__(name=name)
         # super().__init__(name, debug, is_clone, internal_generator)
         self.writes = []
@@ -18,6 +18,15 @@ class RVComparisonNetwork(Component):
             self.writes.extend(writes)
         if reads is not None:
             self.reads.extend(reads)
+        # Storage group of each writer/reader (None = unknown, pairs with everything).
+        # With prune_cross_group, a writer/reader pair from different groups gets no
+        # LFCompBlock, muxes or select registers: its comparison bit is tied to 1,
+        # what a disabled block outputs. Spec passes each port's storage index;
+        # its bitstream converter already rejects cross-storage dependences (the
+        # data never meets), so those blocks could never be enabled.
+        self.write_groups = [None] * len(self.writes)
+        self.read_groups = [None] * len(self.reads)
+        self.prune_cross_group = prune_cross_group
         self.rw_div = None
 
         self.lfcs = {}
@@ -31,14 +40,26 @@ class RVComparisonNetwork(Component):
 
         self.connections = []
 
-    def add_reader_writer(self, direction: Direction, sg: ScheduleGenerator):
+    def add_reader_writer(self, direction: Direction, sg: ScheduleGenerator, group=None):
         # Based on the direction, register this with either self.writes or self.reads
         if direction == Direction.IN:
             self.writes.append(sg)
+            self.write_groups.append(group)
         elif direction == Direction.OUT:
             self.reads.append(sg)
+            self.read_groups.append(group)
         else:
             raise NotImplementedError
+
+    def pair_exists(self, write_idx, read_idx):
+        """Whether writer write_idx and reader read_idx get comparators."""
+        if not self.prune_cross_group:
+            return True
+        wg, rg = self.write_groups[write_idx], self.read_groups[read_idx]
+        return wg is None or rg is None or wg == rg
+
+    def num_comparators(self):
+        return 2 * sum(self.pair_exists(i, j) for i in range(len(self.writes)) for j in range(len(self.reads)))
 
     def get_connections(self):
         return self.connections
@@ -68,7 +89,10 @@ class RVComparisonNetwork(Component):
             adj_p2_idx = p2
             rd_to_wr = 'rd_to_wr'
 
-        return self.sels_map[f"{rd_to_wr}_{adj_p1_idx}_{adj_p2_idx}"]
+        key = f"{rd_to_wr}_{adj_p1_idx}_{adj_p2_idx}"
+        if key not in self.sels_map:
+            raise ValueError(f"RV comparison network: no comparator for {key} (ports on different storages)")
+        return self.sels_map[key]
         # return in_list[adj_p1_idx], out_list[adj_p2_idx]
 
     def get_lfc_from_indexes(self, p1, p2):
@@ -88,7 +112,10 @@ class RVComparisonNetwork(Component):
             adj_p2_idx = p2
             rd_to_wr = 'rd_to_wr'
 
-        return self.lfcs[f"{rd_to_wr}_{adj_p1_idx}_{adj_p2_idx}"]
+        key = f"{rd_to_wr}_{adj_p1_idx}_{adj_p2_idx}"
+        if key not in self.lfcs:
+            raise ValueError(f"RV comparison network: no comparator for {key} (ports on different storages)")
+        return self.lfcs[key]
 
     def _outer_counter(self, name, mux_name, sel, iters, dims, width):
         """The port's iterator one level above the selected level `sel` (for
@@ -169,6 +196,9 @@ class RVComparisonNetwork(Component):
             # in_sel = kts.const(0, num_write_ctrs_bw)
 
             for j in range(len(self.reads)):
+                if not self.pair_exists(i, j):
+                    self.wire(self._writer_comparisons[i][j], kts.const(1, 1))
+                    continue
                 in_sel = self.config_reg(name=f"write_{i}_to_read_{j}_sel_in", width=num_write_ctrs_bw)
                 # self.in_sels_wr_to_rd.append(in_sel)
                 read_sg = self.reads[j]
@@ -251,6 +281,9 @@ class RVComparisonNetwork(Component):
             # in_sel = kts.const(0, num_read_ctrs_bw)
             # in_sel = self.config_reg(name=f"read_{i}_to_write_sel", width=num_write_ctrs_bw)
             for j in range(len(self.writes)):
+                if not self.pair_exists(j, i):
+                    self.wire(self._reader_comparisons[i][j], kts.const(1, 1))
+                    continue
                 # in_sel = self.config_reg(name=f"read_{i}_to_write_{j}_sel", width=num_write_ctrs_bw)
                 in_sel = self.config_reg(name=f"read_{i}_to_write_{j}_sel_in", width=num_rd_dims_bw)
                 # self.in_sels_rd_to_wr.append(in_sel)
