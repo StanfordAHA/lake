@@ -22,7 +22,7 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
 
         def visit(self, node):
             if isinstance(node, _kratos.Generator):
-                ports_ = node.get_port_names()
+                ports_ = sorted(node.get_port_names())
                 for port_name in ports_:
                     curr_port = node.get_port(port_name)
                     # Skip config registers that are driven...

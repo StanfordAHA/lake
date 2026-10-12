@@ -495,6 +495,22 @@ non-deterministic — the same geometry passes on retry. The `aha` driver
 wraps garnet.py in `retry()` (`aha/util/garnet.py`); any bare local sweep
 must retry too or a transient crash reads as a config failure.
 
+### 5.4 Gotcha: never iterate `get_port_names()` unsorted (fixed 2026-10-11, session 1fa8a391)
+
+kratos' `Generator.get_port_names()` comes back as a Python **set**, so a loop
+over it follows `PYTHONHASHSEED` (random per process). `extract_top_config()`
+order becomes the order of garnet `CoreCombinerCore`'s read-only (pass-through)
+configs on the core's `read_config_data` mux, so the PE tile's readback mux took
+`reduce_pe_cluster` O2/O3/O4 in a different order on every `garnet.py` run, and
+RTL (`garnet.py --verilog`) and bitstream (`aha pnr`) are different processes.
+Every loop in lake now iterates `sorted(...)`; do the same in new code.
+`tests/spec_unit_tests/test_port_order_determinism.py` runs extract_top_config /
+get_interface under five seeds. Still seed-dependent but only textual:
+kratos' own `util.to_magma` (port declaration / connection order) and its C++
+FSM default-assignment order, so compare two `garnet.v` functionally (strip
+trailing commas, sort lines), not by md5. Details: garnet mflowgen/CLAUDE.md
+"App bundles".
+
 ---
 
 ## 6. Ready-valid (RV) bitstreams from clockwork (2026-09-28/29)

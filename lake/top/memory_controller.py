@@ -203,7 +203,7 @@ class MemoryController(kts.Generator):
         ins = []
         int_gen = self.internal_generator
         # Now get the config registers from the top definition
-        for port_name in int_gen.get_port_names():
+        for port_name in sorted(int_gen.get_port_names()):
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
             memport_excl_attr = curr_port.find_attribute(lambda a: isinstance(a, MemoryPortExclusionAttr))
@@ -222,7 +222,7 @@ class MemoryController(kts.Generator):
         outs = []
         int_gen = self.internal_generator
         # Now get the config registers from the top definition
-        for port_name in int_gen.get_port_names():
+        for port_name in sorted(int_gen.get_port_names()):
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
             memport_excl_attr = curr_port.find_attribute(lambda a: isinstance(a, MemoryPortExclusionAttr))
@@ -241,7 +241,7 @@ class MemoryController(kts.Generator):
         liftable = []
         int_gen = self.internal_generator
         # Now get the config registers from the top definition
-        for port_name in int_gen.get_port_names():
+        for port_name in sorted(int_gen.get_port_names()):
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
             memport_excl_attr = curr_port.find_attribute(lambda a: isinstance(a, MemoryPortExclusionAttr))
@@ -309,7 +309,7 @@ class MemoryController(kts.Generator):
 
         self.__fifo_list = []
         # First get ports
-        self_ports = self.internal_generator.get_port_names()
+        self_ports = sorted(self.internal_generator.get_port_names())
         # just track the valids
         valids_in = [self.get_port(port) for port in self_ports if "_valid" in port and "In" in str(self.get_port(port).port_direction)]
         valids_out = [self.get_port(port) for port in self_ports if "_valid" in port and "Out" in str(self.get_port(port).port_direction)]

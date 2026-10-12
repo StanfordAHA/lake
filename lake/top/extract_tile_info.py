@@ -16,7 +16,7 @@ def extract_top_config(circuit_gen: kts.Generator, verbose=False):
     config_list = []
 
     # Now get the config registers from the top definition
-    for port_name in int_gen.get_port_names():
+    for port_name in sorted(int_gen.get_port_names()):
         curr_port = int_gen.get_port(port_name)
         attrs = curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
         if len(attrs) != 1:
@@ -37,7 +37,7 @@ def get_interface(circuit_gen: kts.Generator):
     intf_sigs = []
     int_gen = circuit_gen.internal_generator
     # Now get the config registers from the top definition
-    for port_name in int_gen.get_port_names():
+    for port_name in sorted(int_gen.get_port_names()):
         curr_port = int_gen.get_port(port_name)
         attrs = curr_port.find_attribute(lambda a: isinstance(a, ControlSignalAttr))
         if len(attrs) != 1:

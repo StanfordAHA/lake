@@ -221,7 +221,7 @@ def modular_formal_annotation(gen, mem_names):
 def extract_formal_annotation(generator, filepath, module_attr="agg"):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
-    port_names = int_gen.get_port_names()
+    port_names = sorted(int_gen.get_port_names())
 
     # mapping for which config regs the dimensionality config regs constrain
     pairings = {}
@@ -368,7 +368,7 @@ def extract_formal_annotation_collat(generator, filepath, mem_names, edges):
 
     with open(filepath, "w+") as fi:
         # Now get the config registers from the top definition
-        for port_name in int_gen.get_port_names():
+        for port_name in sorted(int_gen.get_port_names()):
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
             pdir = "input"
@@ -413,7 +413,7 @@ def get_configs_dict(configs):
 
 def set_configs_sv(generator, filepath, configs_dict, iterator_support=6):
     int_gen = generator.internal_generator
-    ports = int_gen.get_port_names()
+    ports = sorted(int_gen.get_port_names())
     configs_list = []
 
     remain = []

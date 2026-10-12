@@ -333,7 +333,7 @@ class LakeTop(Generator):
         tw_int_gen = to_wrap.internal_generator
         new_gen = Generator(name=wrapper_name)
         new_gen.add_child(f"{tw_int_gen.name}_inst", to_wrap)
-        for port_name in tw_int_gen.get_port_names():
+        for port_name in sorted(tw_int_gen.get_port_names()):
 
             port = tw_int_gen.get_port(port_name)
             # Check if the cfg has a value already assigned
