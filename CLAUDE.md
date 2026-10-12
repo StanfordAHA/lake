@@ -750,9 +750,25 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   templates), which THESIS's `gen_bitstream` doesn't read. So an app that relies on
   a master-only hand-written config silently gets clockwork's own program here
   (mek dropped the mem_*_test_RV entries: aha 9ab0a36). `hack_rv_config` takes
-  `node_name` since 40981694 (spec.py passed it -> TypeError). Its remaining
-  THESIS pond configs hit IterationDomain's extent range check (extent 1, or
-  > 2**extent_width): OPEN_ISSUES `lake/hacked-pond-extent-range`.
+  `node_name` since 40981694 (spec.py passed it -> TypeError). Its pond configs
+  encode since the 2026-10-11 extent changes (next bullet); multi-tile designs
+  (vector_reduction_fp: filter MEM + 2 ponds; layer_norm_pass2_fp: 39 ponds +
+  37 MEMs) still get ONE pond program on every MEM/pond, and `node_name` is
+  dropped in memtile_builder / spec_memory_controller (master e257c43e):
+  OPEN_ISSUES `lake/thesis-hack-configs-per-node`.
+- **RV pond extent + extent-1 levels (2026-10-11).** (a) `IterationDomain.gen_bitstream`
+  drops OUTERMOST extent-1 levels (index always 0 = where a dropped level's counter
+  stays, so AG / comparisons / wrap fixup are unchanged); an all-ones domain is 0-D,
+  which runs once (no level is ever "not at max"). Inner extent-1 levels still raise.
+  Needed by one-output reductions (`get_accum_pond(num_output_pixels=1)`, final read
+  `[1]`). (b) `build_pond_rv(max_extent=)` + pond-spec key `max_extent`; garnet's RV
+  pond (`resolve_cgra_pond_params(rv=True)`) defaults to 4096 = 12-bit iteration
+  domains (layer_norm_pass2_fp reduces 3072; the old fixed 11 bits stop at 2048).
+  `build_pond_rv` called directly keeps 11 bits. Verified: unit suite 324 + 5 xfail;
+  RTL one-pixel accumulation + 3072-step reduction on the default pond (free +
+  stress); 12 clockwork accumulation programs on a 12-bit 4-D pond cycle-identical
+  to 11-bit; Zircon pr_aha1 map + PnR: scalar_reduction / scalar_max / scalar_avg /
+  stable_softmax_pass2 compile (scratchpad 352df910 `fpc/`).
 - **RESOLVED (2026-10-01) — harris_color end to end** (the STRM_G2F hang above):
   not the MEM tiles. Causes were clockwork stream framing (`rv_reframe_line_buffers`),
   canal register pre-fill landing on the wrong-width register, and the PE-FIFO

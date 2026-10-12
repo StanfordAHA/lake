@@ -22,6 +22,17 @@ class IterationDomain(Component):
 
     def gen_bitstream(self, dimensionality, extents, rv=False):
 
+        # 2026-10-11: a level of extent 1 can't be encoded (extent - 2 < 0), but an
+        # OUTERMOST one needn't be: its index is always 0, and a dropped level's
+        # counter stays 0, so the AG, the comparisons and the wrap fixup see the
+        # same iterators. An all-ones domain becomes dimensionality 0, which runs
+        # once (no level is ever "not at max": the first step is the last), e.g.
+        # the final read / clear of a one-output-pixel accumulation pond. Inner
+        # extent-1 levels would shift level indices: they still raise below.
+        while dimensionality > 0 and extents[dimensionality - 1] == 1:
+            dimensionality -= 1
+        extents = list(extents[:dimensionality])
+
         self.clear_configuration()
         # Actually add one if rv (to be safe) - only need to do this when
         # the comparison is at the top level, but let's just do this for now

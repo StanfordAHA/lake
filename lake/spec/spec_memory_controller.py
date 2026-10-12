@@ -158,13 +158,16 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 
 def build_pond_rv(storage_capacity: int = 64, data_width=16,
                   dims: int = 6, physical=False, reg_file=True,
-                  remote_storage=True, opt_rv=True, filter=False) -> Spec:
+                  remote_storage=True, opt_rv=True, filter=False, max_extent=None) -> Spec:
     """Ready-valid pond. filter=True gives the data input lake's filter
     (item-drop) hardware, so a broadcast-banked writer (one stream feeding
-    several ponds, e.g. weight banks) keeps only its own items."""
+    several ponds, e.g. weight banks) keeps only its own items.
+    max_extent sizes the iteration-domain counters like build_pond's
+    (default: 11 bits, extents up to 2048)."""
 
-    # TODO: Override this in garnet and not here...
     id_width = 11
+    if max_extent is not None:
+        id_width = max(1, math.ceil(math.log2(max(max_extent, 2))))
 
     read_delay = 0
 
@@ -368,7 +371,7 @@ def build_pond(storage_capacity: int = 64, data_width=16, dims: int = 4,
 
 # Pond-spec JSON keys (garnet --lake-pond-spec-config / lake.utils.pond_collateral)
 CGRA_POND_KEYS = {"storage_capacity", "dims", "data_width", "max_extent", "max_sequence_width"}
-CGRA_POND_KEYS_RV = {"storage_capacity", "dims", "data_width", "filter"}
+CGRA_POND_KEYS_RV = {"storage_capacity", "dims", "data_width", "filter", "max_extent"}
 
 
 def resolve_cgra_pond_params(params=None, rv=False):
@@ -376,7 +379,9 @@ def resolve_cgra_pond_params(params=None, rv=False):
     64 B, 16-bit data, 4 dims; the static pond also gets 16-bit iteration
     ranges (max_extent 2**16) like the legacy LakeTop pond it replaces, the RV
     pond gets input filter hardware (filter=True: broadcast-banked weight
-    ponds). Unknown keys raise (a typo would silently mean the default)."""
+    ponds) and max_extent 4096 (12-bit ranges; 2026-10-11: layer_norm_pass2_fp's
+    3072-step reductions overflowed the old 11 bits). Unknown keys raise (a typo
+    would silently mean the default)."""
     params = dict(params or {})
     allowed = CGRA_POND_KEYS_RV if rv else CGRA_POND_KEYS
     unknown = set(params) - allowed
@@ -386,6 +391,7 @@ def resolve_cgra_pond_params(params=None, rv=False):
     resolved = {"storage_capacity": 64, "data_width": 16, "dims": 4}
     if rv:
         resolved["filter"] = True
+        resolved["max_extent"] = 4096
     else:
         resolved["max_extent"] = 2 ** 16
     resolved.update(params)
@@ -402,7 +408,7 @@ def build_cgra_pond(params=None, rv=False, comply_17=True) -> Spec:
     if rv:
         return build_pond_rv(storage_capacity=p["storage_capacity"], data_width=p["data_width"],
                              dims=p["dims"], physical=False, reg_file=True, opt_rv=True,
-                             filter=p["filter"])
+                             filter=p["filter"], max_extent=p.get("max_extent"))
     return build_pond(storage_capacity=p["storage_capacity"], data_width=p["data_width"], dims=p["dims"],
                       max_extent=p.get("max_extent"), max_sequence_width=p.get("max_sequence_width"),
                       physical=False, reg_file=True, remote_storage=True, config_passthru=True,

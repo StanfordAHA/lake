@@ -4,7 +4,8 @@ nest of a spec Port: one per Port, stepped by the Port's schedule generator
 iterators drive the Port's address and schedule generators, see spec.py).
 
 Configuration: gen_bitstream(dimensionality, extents) with each extent encoded
-as extent - 2, so an extent is in [2, 2**extent_width + 1].
+as extent - 2, so an extent is in [2, 2**extent_width]; outermost levels of
+extent 1 are dropped (an all-ones domain is 0-D: one iteration).
 
 Function:
   * iterators[0..dim-1] enumerate the loop nest in lexicographic order, level 0
@@ -194,10 +195,23 @@ def test_iteration_domain_model_enumerates_loop_nest(cfg):
 def test_iteration_domain_bitstream_rejects_unencodable_extents():
     dut = IterationDomain(dimensionality=2, extent_width=4)
     dut.gen_hardware()
-    for bad in (1, 0, (1 << 4) + 1, (1 << 4) + 2):
+    for bad in (0, (1 << 4) + 1, (1 << 4) + 2):
         with pytest.raises(ValueError):
             dut.gen_bitstream(2, [3, bad])
+    with pytest.raises(ValueError):             # an inner extent 1 can't be dropped
+        dut.gen_bitstream(2, [1, 3])
     dut.gen_bitstream(2, [2, 1 << 4])           # both ends of the accepted range
+
+
+def test_iteration_domain_bitstream_drops_outer_extent_one():
+    """An outermost level of extent 1 is dropped (its index is always 0, which is
+    where a dropped level's counter stays); all ones -> the 0-D domain."""
+    dut = IterationDomain(dimensionality=3, extent_width=5)
+    dut.gen_hardware()
+    assert dut.gen_bitstream(3, [4, 1, 1]) == dut.gen_bitstream(1, [4])
+    assert dut.gen_bitstream(2, [3, 1]) == dut.gen_bitstream(1, [3])
+    assert dut.gen_bitstream(1, [1]) == dut.gen_bitstream(0, [])
+    assert dut.gen_bitstream(3, [1, 1, 1]) == dut.gen_bitstream(0, [])
 
 
 @requires_xrun

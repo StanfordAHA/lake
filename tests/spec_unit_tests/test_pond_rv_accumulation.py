@@ -18,7 +18,7 @@ import copy
 import pytest
 
 from lake.spec.hack_rv_mem_pond_bitstream import get_vec_accum_pond
-from lake.spec.spec_memory_controller import build_pond_rv
+from lake.spec.spec_memory_controller import build_cgra_pond, build_pond_rv, resolve_cgra_pond_params
 from rtl_harness import requires_xrun
 from spec_rtl import SpecSim
 
@@ -76,5 +76,48 @@ def test_pond_accumulation_rtl(pond_sim, R, P, stress, seed):
                                       name=f"acc_{R}_{P}_{int(stress)}_{seed}", lb_add=add)
     r0, r1 = expected(R, P, add)
     assert done, f"timeout after {cycles} cycles: r0 {len(outs['port_r0'])}/{R * P}, r1 {len(outs['port_r1'])}/{P}"
+    assert outs["port_r0"] == r0
+    assert outs["port_r1"] == r1
+
+
+@requires_xrun
+@pytest.mark.parametrize("R,stress,seed", [(64, False, 1), (64, True, 7), (2, True, 3), (300, True, 5)])
+def test_pond_accumulation_one_pixel_rtl(pond_sim, R, stress, seed):
+    """One output pixel (scalar reduction): the clear and the final read have
+    extent [1] (0-D domains) and the update ports [R, 1] (outer level dropped)."""
+    add = 3
+    bs = pond_sim.spec.gen_bitstream(get_vec_accum_pond(num_partial_reduction=R, num_output_pixels=1), over=True)
+    outs, done, cycles = pond_sim.run(bs, {"port_w0": R, "port_r0": R, "port_r1": 1},
+                                      loopback={"port_w0": "port_r0"}, stress=stress, seed=seed,
+                                      name=f"acc1_{R}_{int(stress)}_{seed}", lb_add=add)
+    r0, r1 = expected(R, 1, add)
+    assert done, f"timeout after {cycles} cycles: r0 {len(outs['port_r0'])}/{R}, r1 {len(outs['port_r1'])}/1"
+    assert outs["port_r0"] == r0
+    assert outs["port_r1"] == r1
+
+
+def test_cgra_pond_rv_max_extent():
+    """The pond spec's max_extent sizes the RV pond's iteration domains; garnet's
+    default RV pond uses 4096 (12 bits), a 2048 pond (11 bits) rejects 3072."""
+    assert resolve_cgra_pond_params({}, rv=True)["max_extent"] == 4096
+    spec = build_cgra_pond({"max_extent": 2048}, rv=True)
+    spec.generate_hardware()
+    with pytest.raises(ValueError):
+        spec.gen_bitstream(get_vec_accum_pond(num_partial_reduction=3072, num_output_pixels=1), over=True)
+
+
+@requires_xrun
+@pytest.mark.parametrize("stress,seed", [(False, 2), (True, 9)])
+def test_pond_accumulation_max_extent_rtl(stress, seed):
+    """garnet's default RV pond (max_extent 4096 -> 12-bit iteration domains)
+    runs a 3072-step reduction."""
+    add, R = 3, 3072
+    sim = SpecSim(build_cgra_pond({}, rv=True))
+    bs = sim.spec.gen_bitstream(get_vec_accum_pond(num_partial_reduction=R, num_output_pixels=1), over=True)
+    outs, done, cycles = sim.run(bs, {"port_w0": R, "port_r0": R, "port_r1": 1},
+                                 loopback={"port_w0": "port_r0"}, stress=stress, seed=seed,
+                                 name=f"accx_{R}_{int(stress)}_{seed}", lb_add=add)
+    r0, r1 = expected(R, 1, add)
+    assert done, f"timeout after {cycles} cycles: r0 {len(outs['port_r0'])}/{R}, r1 {len(outs['port_r1'])}/1"
     assert outs["port_r0"] == r0
     assert outs["port_r1"] == r1
