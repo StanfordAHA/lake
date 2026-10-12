@@ -12,7 +12,13 @@ The testbench is generated from the spec's top-level port list:
     port (``clear`` zeroes the whole storage); all delay 1 unless the spec
     says 0 (combinational read) — read-old on a same-cycle write;
   * stress: random valid/ready (25% low), writer 0 stalled for cycles
-    500..1499 and reader 0 for cycles 2000..5999.
+    500..1499 and reader 0 for cycles 2000..5999;
+  * ``bcast=[i, ...]``: those writers get ONE stream (index k), which advances
+    only after every one of them took token k, like an interconnect fork from
+    one producer; it uses the first writer's size and stall window;
+  * ``lockstep=[j, ...]``: those readers are drained together, one token from
+    each only when all of them hold one, like a PE that fires on all inputs;
+    they use reader 0's stall window if reader 0 is in the group.
 Reset: rst_n low 5 cycles with flush high, config loaded, flush released.
 """
 import contextlib
@@ -38,8 +44,10 @@ def _mp_delays(spec):
 class SpecSim:
     """Generate a spec's RTL + testbench once; run many programs on it."""
 
-    def __init__(self, spec, workdir=None, top=None, max_data=1 << 16):
+    def __init__(self, spec, workdir=None, top=None, max_data=1 << 16, bcast=None, lockstep=None):
         self.spec = spec
+        self.bcast = list(bcast or [])
+        self.lockstep = list(lockstep or [])
         self.workdir = workdir or tempfile.mkdtemp(prefix="lake_spec_rtl_")
         os.makedirs(os.path.join(self.workdir, "rtl"), exist_ok=True)
         with contextlib.redirect_stdout(io.StringIO()):
@@ -107,6 +115,15 @@ class SpecSim:
             L += [f"  integer w{i}_n = 0, w{i}_idx = 0, lb_w{i} = -1;", f"  logic [15:0] lbq{i}[$];"]
         for j in readers:
             L += [f"  integer r{j}_n = 0, r{j}_idx = 0, fd_r{j};"]
+        bc = [i for i in self.bcast if i in writers]
+        lk = [j for j in self.lockstep if j in readers]
+        if bc:
+            L += ["  integer bc_idx = 0;"] + [f"  logic bc_acc{i} = 1'b0;" for i in bc]
+        if lk:
+            L += ["  logic lk_go = 1'b0;"]
+            allv = " && ".join(f"port_{self.n_in + j}_valid" for j in lk)
+            for j in lk:
+                L.append(f"  assign port_{self.n_in + j}_ready = lk_go && {allv};")
         L += ["  initial begin",
               '    if (!$value$plusargs("TEST_DIR=%s", test_dir)) $fatal(1, "no +TEST_DIR");',
               '    void\'($value$plusargs("stress=%d", stress)); void\'($value$plusargs("max_time=%d", max_time));',
@@ -126,7 +143,8 @@ class SpecSim:
         for i in writers:
             L.append(f"    port_{i} = '0; port_{i}_valid = 1'b0;")
         for j in readers:
-            L.append(f"    port_{self.n_in + j}_ready = 1'b0;")
+            if j not in lk:
+                L.append(f"    port_{self.n_in + j}_ready = 1'b0;")
         for sig in mps.values():
             for r, s in sig.items():
                 if P[s][0] == "input" and s not in comb_driven:
@@ -146,8 +164,23 @@ class SpecSim:
             for i in writers:
                 L.append(f"      if (lb_w{i} == {j}) lbq{i}.push_back({p}[15:0] + lb_add[15:0]);")
             L.append("    end")
-            L.append(f"    {p}_ready <= gate({'sr_lo' if j == 0 else -1}, {'sr_hi' if j == 0 else -1});")
+            if j not in lk:
+                L.append(f"    {p}_ready <= gate({'sr_lo' if j == 0 else -1}, {'sr_hi' if j == 0 else -1});")
+        if lk:
+            L.append(f"    lk_go <= gate({'sr_lo' if 0 in lk else -1}, {'sr_hi' if 0 in lk else -1});")
+        if bc:
+            b0 = bc[0]
+            for i in bc:
+                L.append(f"    if (port_{i}_valid && port_{i}_ready) begin bc_acc{i} = 1'b1; w{i}_idx++; end")
+            L.append("    if (" + " && ".join(f"bc_acc{i}" for i in bc) + ") begin bc_idx++; "
+                     + " ".join(f"bc_acc{i} = 1'b0;" for i in bc) + " end")
+            L.append(f"    if (bc_idx < w{b0}_n && gate({'sw_lo' if b0 == 0 else -1}, {'sw_hi' if b0 == 0 else -1})) begin")
+            for i in bc:
+                L.append(f"      port_{i}_valid <= !bc_acc{i}; port_{i} <= {{1'b0, bc_idx[15:0]}};")
+            L.append("    end else begin " + " ".join(f"port_{i}_valid <= 1'b0;" for i in bc) + " end")
         for i in writers:
+            if i in bc:
+                continue
             p = f"port_{i}"
             L.append(f"    if ({p}_valid && {p}_ready) begin w{i}_idx++; if (lb_w{i} >= 0) void'(lbq{i}.pop_front()); end")
             L.append(f"    if ((lb_w{i} >= 0 ? (lbq{i}.size() > 0) : 1'b1) && w{i}_idx < w{i}_n && "

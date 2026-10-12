@@ -1992,6 +1992,19 @@ class Spec():
                 for pn in (this_depends, on_this):
                     self._check_resident_fits(ret_config[self.port_name_to_int(pn)], pn)
 
+        # 2026-10-12 (opt-in; clockwork never emits it): "lake_constraints" lists
+        # comparator constraints exactly as the network takes them,
+        # [port, level, port, level, "LT" | "GT", scalar] with lake port names
+        # (port_wN / port_rN), for hand-built programs the dep_values encodings
+        # cannot express: a reader whose data row leads its own iteration row,
+        # or a stream through a ring buffer smaller than the stream.
+        for p1, l1, p2, l2, op, sc in app_json.get("lake_constraints", []):
+            st_a, st_b = self._port_storage(p1), self._port_storage(p2)
+            if st_a is not None and st_b is not None and st_a is not st_b:
+                raise ValueError(f"RV program: lake_constraints pair {p1}, {p2} is on different storages")
+            ret_config["constraints"].append((self.port_name_to_int(p1), l1, self.port_name_to_int(p2), l2,
+                                              LFComparisonOperator[op].value, sc))
+
         return ret_config
 
     def _port_storage(self, port_name):
