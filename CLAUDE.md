@@ -708,6 +708,29 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   `/aha/sweep_out/rv_prune_20261011/RESULTS.md`. After this lands, an RV
   lake-spec garnet.v built from older lake no longer matches bitstreams from newer
   lake: rebuild garnet.v.
+- **The filter path (`build_spec_rv(add_filter_path=True)`) is never used by compiled
+  apps (checked 2026-10-11).** It is an extra in/out port pair with its own ID/AG/SG
+  and a small local buffer (8–32 words). No clockwork code targets the collateral's
+  "filter" controller (`in2filter`/`filter2out` appear nowhere in clockwork's history).
+  Collateral from `spec_config_to_collateral` (what `gen_app_bundle.py` uses) is built
+  from the static `build_spec`, so there clockwork never sees the filter ports;
+  collateral from `build_spec_rv(...).extract_compiler_information()` counts them as
+  ordinary ports (resnet's second writer lands there on 1-input specs and lake rejects
+  the tile). MetaMapper also
+  hard-codes `cgralib.Mem` as 2 in / 2 out (`irs/coreir/__init__.py` generator args and
+  the peak spec in `irs/coreir/ir.py`), so a design that wires MEM `data_in_2` /
+  `data_out_2` fails in `aha pnr`. On `fw4_dw16_sc8192_sp_in2_out2_vc2` it costs 8.1k µm²
+  of the lake controller (30%, freepdk45) and 12.0k µm² / 1.27 mW of the MEM tile (21% /
+  28%, ungated). **conv_3_3 "eat rows up front" experiment:** the newest tap goes through
+  the filter path with an item filter skipping 2 rows, and the SRAM readers start at
+  rows 0/1. It runs bit-accurately on a 16×16 CGRA and saves 3.1% of PE firings and
+  38% of SRAM reads, but costs more than it saves for one 3×3 stage. Results:
+  `/aha/sweep_out/fp_tradeoff_20261011/` and the figure page
+  https://claude.ai/artifact/NRTbNTFFRQ8fDz6vEhjKhY. What it needed (not pushed): lake
+  branch `rv-explicit-constraints` (`af6683be`: opt-in converter key `lake_constraints`
+  plus SpecSim `bcast`/`lockstep` options, since the dep_values encodings cannot express
+  a reader whose data row leads its iteration row), a pre-PnR hook, and a private
+  3-port MetaMapper (session cfc4174c scratchpad `fp/`).
 - **FIXED 2026-09-30 (`lake/spec/spec.py` converter, committed `6f73bc91`) — capacity.**
   (a) clockwork emits `null` WAR for line buffers and the converter used
   "writer ≤ 8 rows ahead"; on a small memory (512 words = 8 rows of 64) a
