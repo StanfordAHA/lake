@@ -637,6 +637,28 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   current clockwork program puts a non-barrier constraint at those levels.
   Related limit: the fixup adds `counter + extent` in iterator width, so a
   level whose fixup can fire must have extent ≤ 2**(ew−1) (1024 for 11-bit IDs).
+  (c) **Same-storage pruning (2026-10-11, `ab354105`): `build_spec_rv`
+  (`prune_rv_comparators=True`, the default there) builds comparators only between
+  ports on the same storage.** The filter path's in/out pair sits on its own
+  storage and the converter rejects any filter↔data dependence, so 2·(n_in+n_out)
+  blocks could never be enabled: 8→4, 18→10, 50→34. A pruned pair's comparisons bit
+  is tied to 1 (what a disabled block outputs), and its 25 config bits disappear from
+  the top of the config space (the network is the last slice), so every other config
+  offset is unchanged. A constraint on a pruned pair raises ValueError.
+  `build_four_port_wide_fetch_rv` (garnet default / silicon) keeps the full network
+  by default and is byte-identical; `Spec(prune_rv_comparators=...)` /
+  `RVComparisonNetwork(prune_cross_group=...)` are the knobs. Checked: the RTL
+  differs only in the network + config width; 546 RV MEM tiles of the 09-30 compile
+  sweep on 6 specs keep identical config bits below the network. Generic Genus
+  (freepdk45, 10 ns, hierarchy kept) lake controller: −12% to −20%, about 593 µm² per
+  removed comparator. Each comparator's area splits into 44% level-select muxes,
+  12% extent mux, 29% LFCompBlock (both LT and GT adders and compares, 16-bit
+  scalar) and 15% wrap fixup. At the tile, the config registers also drop (1×1:
+  36→32 words). Results and the app port-dependency audit (4×4 apps enable only
+  10 of the 34 remaining comparators, all on W0/W1) are in
+  `/aha/sweep_out/rv_prune_20261011/RESULTS.md`. After this lands, an RV
+  lake-spec garnet.v built from older lake no longer matches bitstreams from newer
+  lake: rebuild garnet.v.
 - **FIXED 2026-09-30 (`lake/spec/spec.py` converter, committed `6f73bc91`) — capacity.**
   (a) clockwork emits `null` WAR for line buffers and the converter used
   "writer ≤ 8 rows ahead"; on a small memory (512 words = 8 rows of 64) a
