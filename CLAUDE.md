@@ -494,6 +494,9 @@ backend, well past tech-map selection ("Printing mode map..."). It is
 non-deterministic — the same geometry passes on retry. The `aha` driver
 wraps garnet.py in `retry()` (`aha/util/garnet.py`); any bare local sweep
 must retry too or a transient crash reads as a config failure.
+A crash can also be `rc=134` ("double free or corruption") at exit, after
+"garnet.py DONE" with garnet.v already written, and a hung one can sit
+sleeping. Check for garnet.v rather than trusting rc.
 
 ### 5.4 Gotcha: never iterate `get_port_names()` unsorted (fixed 2026-10-11, session 1fa8a391)
 
@@ -512,6 +515,36 @@ trailing commas, sort lines), not by md5. Details: garnet mflowgen/CLAUDE.md
 "App bundles".
 
 ---
+
+### 5.5 Tile data width = spec `data_width` (2026-10-06)
+
+garnet builds the whole fabric at the spec's `data_width` (dw). Garnet side:
+garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
+
+- `MemoryTileBuilder(data_width=)` (CoreCombiner passes it): legal port widths
+  are `[dw+1, dw, 1]` per instance. Any other width is still split into 1-bit
+  `_b_<i>` pins (silently), so every controller data port must be dw or dw+1.
+  The class attribute `legal_widths=[17,16,1]` stays for old callers.
+- `realize_mem_config`: the config-bus SRAM word is `min(dw, 32)` (it was a
+  hard-coded 16).
+- Sparse token layout per width: `MemoryController.token_opcode_bt/
+  token_stop_bt/token_proxy(dw, code)` and `const_concat`. EOS is at bit dw,
+  opcode `[9:8]` and stop `[7:0]` for dw ≥ 10 (dw 16 returns the old
+  `DONE_PROXY`/`OPCODE_BT` objects); dw 8 shrinks to opcode `[7:6]`, stop
+  `[5:0]` (sam does not know this layout). Intersect, CrdDrop, Locator, Repeat,
+  RSG, Reg, OnyxPE and ReducePECluster take it from `self.data_width`.
+- `OnyxPEInterface.inst` width = `Assembler(gen_Inst_fc(dw).Py).width`.
+- StrgRAM/StrgRAMRV: `int_addr_width = max(addr_width, mem_addr_width +
+  word_width)`, zero-extending a narrow track address (dw8).
+- kratos re-reads `@always_*` source from disk: editing a generator file while
+  a garnet.py build imports it gives bogus `NameError`s in `<ast>`.
+- **Compiler collateral carries the width (2026-10-10, `spec/spec.py`; §5.5
+  code committed as lake 2f20b666, aha mek 30abb17).** `extract_compiler_information` now writes `data_width` (the
+  ports' external width) at every level. Before, only the pond (`regfile`)
+  collateral had it. Halide, clockwork and MetaMapper take the CGRA data width
+  from `LAKE_COLLATERAL_JSON_MEM`'s `data_width`, so the spec is the single
+  source for fabric and compiler. All other keys are unchanged. The thesis_sweep
+  tests check individual keys, so they don't care.
 
 ## 6. Ready-valid (RV) bitstreams from clockwork (2026-09-28/29)
 
