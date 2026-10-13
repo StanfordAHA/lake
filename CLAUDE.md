@@ -546,6 +546,61 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
   source for fabric and compiler. All other keys are unchanged. The thesis_sweep
   tests check individual keys, so they don't care.
 
+### 5.6 Clock gating: what synthesis gates and what it can't (audit 2026-10-12, session 5b33d095)
+
+- **Synthesis already gates almost every register.** The mflowgen Genus node
+  defaults to `gate_clock: True` (`lp_insert_clock_gating true`); no lake or
+  garnet graph overrides it. Genus extracts enables even from separate
+  `always_comb` next-state logic and gives each array entry its own ICG. Examples:
+  each IterationDomain counter is gated separately (so only the levels that step
+  are clocked), and the storage is gated per word.
+  - Locally: fw4 SP 2×2 4 KB, freepdk45, Genus with `--clock-gating` on
+    `generic_synth_power.sh` (uncommitted, see below): 36,620 of 36,644 flops
+    gated. Idle 17.8 → 4.73 mW, active 29.9 → 11.4 mW vs no gating.
+  - Left ungated: 1–2-bit registers below the minimum bank width (each ID's
+    `finished_lcl_sticky`, 1-bit AGs, memintfdec delay bits); gating them costs
+    about what it saves. Also the static OUT ports' step/mux_sel/restart delay
+    lines (`shift_reg`, enable = 1, spec.py `shreg_*`).
+- **The RV comparison network has no registers** (all `always_comb`, plus config
+  bits): about 2 µW idle in a gf12 tile. Nothing to gate.
+- **What synthesis can't fix is logic that is busy every cycle.** gf12 tile
+  synth-level power from the dw16 sweep (fw4 SP 2×2 4 KB static, idle 1.59 mW;
+  lakespec 982 µW):
+  - The static ScheduleGenerator `clk_ctr` is a free-running cycle counter.
+    It is `add_counter(increment=1, clear=flush)` in schedule_generator.py,
+    one per SG including the port-internal SIPO/PISO SGs: 4×34 + 4×39 = 292
+    flops. It counts every cycle even in an unconfigured port. It costs 564 µW
+    in idle AND active: 57% of lakespec idle, 35% of tile idle.
+  - ICG cells see the clock every cycle: about 231 µW static, 347 µW RV.
+  - RV in-ports' filter SG counts input valids even when unconfigured
+    (port.py `external_count`), about 132 µW (RV tile).
+  - Smaller items: the arbiter `grant_line` rotates every cycle (~12 µW); the
+    static OUT delay lines (~9 µW per port).
+- **Per-port coarse gating removes nearly all of it in an idle tile.**
+  `Spec(clock_gate_ports=True)` is an uncommitted patch, pending a user decision
+  (OPEN_ISSUES `lake/port-clock-gating`; session 5b33d095 scratchpad
+  `cg2/lake_port_clock_gating.patch`). It gates each port's
+  Port/ID/AG/SG/rd_buf/memintfdec on a per-port `port_enable` bit in its ID.
+  - gf12 estimate from the same reports: port-logic modules draw 891 µW of the
+    tile's 1590 µW idle (static, ~56%) and 582 of 1410 µW (RV, ~41%). Almost
+    none of it is leakage.
+  - Measured locally with Genus auto-CG: port logic idle 0.56 → 0.28 mW
+    (leakage only), active unchanged.
+- **Other ideas, not implemented:**
+  - one shared cycle counter per spec instead of one per SG (the static ones
+    are identical: +1 per cycle, cleared on flush). This also saves active
+    power;
+  - stop `clk_ctr` once the port's ID is finished;
+  - AND the filter SG's `external_count` with its enable;
+  - enable the OUT delay lines with `quali_step`;
+  - rotate the arbiter only on a request.
+- **Measuring gated designs before CTS: use ideal clocks.**
+  `generic_synth_power.sh`'s PT sets `set_propagated_clock`. A gated clock
+  driven by one unbuffered AND/ICG then has very slow edges, and flop CK
+  internal power is inflated: +4.8 mW active on fw4 2×2, which disappears with
+  ideal clocks on both builds. Genus netlists also vary ±0.5 mW between small
+  RTL changes, so compare by block (port logic vs the rest), not total only.
+
 ## 6. Ready-valid (RV) bitstreams from clockwork (2026-09-28/29)
 
 Path: clockwork `DENSE_READY_VALID=1` tile config (static keys + RV program:
