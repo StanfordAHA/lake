@@ -818,9 +818,12 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   and 32. The MEM's readers (FIFO output included) are never starved: they are
   backpressured by the PE side (~2,000 cycles in B vs 1,365 in A, `vcd_stalls.py` in
   session cfc4174c scratchpad `fp/`), and the FIFO fills because the PE does not drain
-  it. So the slowdown is downstream of the MEM (PE tree / routes / output path of this
-  PnR), not the FIFO or the SRAM readers; not root-caused. The tile-level SpecSim (no
-  fabric) runs B at full rate.
+  it. Root cause (archipelago/CLAUDE.md "Dense RV throughput is set by reconvergent
+  forks"): a row tap forks into a direct branch (3 more multiply-add PEs to the output
+  PE) and a 1-token stencil delay branch (1 PE to the output PE); with RV's
+  `MATCH_BRANCH_DELAY=0` nothing balances them, so the loop caps the rate: A 3/4, B 2/3
+  tokens/cycle (B's placement stretches the tree). At equal rates B would finish first
+  (3,968 vs 4,096 outputs). The tile-level SpecSim (no fabric) runs B at full rate.
 - **FIXED 2026-09-30 (`lake/spec/spec.py` converter, committed `6f73bc91`) — capacity.**
   (a) clockwork emits `null` WAR for line buffers and the converter used
   "writer ≤ 8 rows ahead"; on a small memory (512 words = 8 rows of 64) a
