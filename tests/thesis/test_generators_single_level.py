@@ -9,11 +9,11 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")  # headless — CI-safe
 
-import pandas as pd
-import pytest
+import pandas as pd  # noqa: E402 (after matplotlib.use)
+import pytest  # noqa: E402 (after matplotlib.use)
 
-from THESIS.pipeline import apps_query, generators
-from THESIS.pipeline.errors import MissingDataError
+from THESIS.pipeline import apps_query, generators  # noqa: E402 (after matplotlib.use)
+from THESIS.pipeline.errors import MissingDataError  # noqa: E402 (after matplotlib.use)
 
 
 ALL_GENERATORS = [
@@ -50,15 +50,15 @@ def _seed_full_matrix(root: Path) -> None:
     """3 apps x 2 designs, all fields populated (power+cycles+area+util+clock)."""
     designs = [
         ("port_baseline", {"synth_total_area_um2": 14000.0,
-                           "synth_logic_area_um2":  6500.0,
+                           "synth_logic_area_um2": 6500.0,
                            "synth_storage_area_um2": 7500.0,
-                           "synth_power_w":          0.012,
-                           "clock_period_ps":        1428.0}),
-        ("mem_small_sp",  {"synth_total_area_um2":  9000.0,
-                           "synth_logic_area_um2":  6100.0,
-                           "synth_storage_area_um2":2900.0,
-                           "synth_power_w":          0.008,
-                           "clock_period_ps":        1428.0}),
+                           "synth_power_w": 0.012,
+                           "clock_period_ps": 1428.0}),
+        ("mem_small_sp", {"synth_total_area_um2": 9000.0,
+                          "synth_logic_area_um2": 6100.0,
+                          "synth_storage_area_um2": 2900.0,
+                          "synth_power_w": 0.008,
+                          "clock_period_ps": 1428.0}),
     ]
     apps = [("matmul_agg", 0.70, 500), ("gaussian_agg", 0.42, 800),
             ("resnet_agg", 0.55, 1200)]

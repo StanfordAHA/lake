@@ -14,8 +14,8 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MODULE_PATH = (REPO_ROOT / "pd" / "thesis" / "clockwork-roundtrip-common"
-               / "run_roundtrip_sim.py")
+MODULE_PATH = (REPO_ROOT / "pd" / "thesis" / "clockwork-roundtrip-common" /
+               "run_roundtrip_sim.py")
 
 
 @pytest.fixture(scope="module")

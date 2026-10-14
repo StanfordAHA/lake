@@ -47,10 +47,10 @@ def test_load_reads_every_results_json(tmp_path):
 
 
 def test_pass_only_default_filters_failed_cells(tmp_path):
-    _write_result(tmp_path, "d1", "ok",   {"design_id": "d1", "app_id": "ok",
-                                           "sim_status": "PASS"})
-    _write_result(tmp_path, "d1", "bad",  {"design_id": "d1", "app_id": "bad",
-                                           "sim_status": "FAIL"})
+    _write_result(tmp_path, "d1", "ok", {"design_id": "d1", "app_id": "ok",
+                                         "sim_status": "PASS"})
+    _write_result(tmp_path, "d1", "bad", {"design_id": "d1", "app_id": "bad",
+                                          "sim_status": "FAIL"})
     _write_result(tmp_path, "d1", "miss", {"design_id": "d1", "app_id": "miss",
                                            "sim_status": "MISSING"})
     df = apps_query.load_app_results_df(tmp_path)
@@ -59,8 +59,8 @@ def test_pass_only_default_filters_failed_cells(tmp_path):
 
 
 def test_pass_only_false_keeps_everything(tmp_path):
-    _write_result(tmp_path, "d1", "ok",  {"design_id": "d1", "app_id": "ok",
-                                          "sim_status": "PASS"})
+    _write_result(tmp_path, "d1", "ok", {"design_id": "d1", "app_id": "ok",
+                                         "sim_status": "PASS"})
     _write_result(tmp_path, "d1", "bad", {"design_id": "d1", "app_id": "bad",
                                           "sim_status": "FAIL"})
     df = apps_query.load_app_results_df(tmp_path, pass_only=False)

@@ -34,10 +34,10 @@ def _make_synthetic_tile():
         "read_data_stride": [1],
     }
     return {
-        "in2agg_0":   {**base, "cycle_starting_addr": [0]},
+        "in2agg_0": {**base, "cycle_starting_addr": [0]},
         "agg2sram_0": {**base, "cycle_starting_addr": [0]},
-        "sram2tb_0":  {**base, "cycle_starting_addr": [4]},
-        "tb2out_0":   {**base, "cycle_starting_addr": [4]},
+        "sram2tb_0": {**base, "cycle_starting_addr": [4]},
+        "tb2out_0": {**base, "cycle_starting_addr": [4]},
     }
 
 

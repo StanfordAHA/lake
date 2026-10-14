@@ -70,8 +70,8 @@ class StaticScheduleLoop:
         if not (self.init or flush):
             step = None
         else:
-            step = int(bool(self.init and self.enable and not flush and not self.id.finished
-                            and self.ctr == self.target()))
+            step = int(bool(self.init and self.enable and not flush and not self.id.finished and
+                            self.ctr == self.target()))
         id_step = bool(step) and bool(ext)
         o = self.id.outputs(id_step)
         if flush:
@@ -220,7 +220,9 @@ def test_schedule_generator_rtl_external_count(cfg, recurrence):
     dims, ew, sw, dim, extents, offset, strides = cfg
     sg = make_sg(dims, ew, sw, recurrence, external_count=True)
     config = pack_config(sg.gen_bitstream({"offset": offset, "strides": strides}, extents, dim))
-    mk = lambda: StaticScheduleLoop(dims, ew, dim, extents, offset, strides, external_count=True)
+
+    def mk():
+        return StaticScheduleLoop(dims, ew, dim, extents, offset, strides, external_count=True)
     cycles = sg_stimulus(mk(), seed=11 + dims, ext=True)
     ins, exp = sg_vectors(mk(), cycles, ew)
     res = run_vectors(sg, ins, exp, config=config)
