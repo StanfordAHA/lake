@@ -811,19 +811,18 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   23.1k, general 27.4k; the filter path 8.1k -> 3.8k µm² (storage 3.8k -> 1.0k,
   comparators 1.2k -> 0, AG+SG 0.46k -> 0.1k; its two IDs, 1.5k, are now the
   largest part). Reports: `/aha/sweep_out/fp_fifo_20261013/area/`.
-  **On a 16×16 CGRA (`gen_app_bundle`, ff8/16/32, 2026-10-13):** A and B bit-accurate at
-  every depth; B reads the SRAM in 1,984 cycles vs A's 3,204 (−38%; A's two readers
-  issue 56% more fetches than the 2,048 their data needs), but runs 11% longer (6,167
-  vs 5,533 ns; MEM input span 6,062 vs 5,461 cycles), identically at FIFO depth 8, 16
-  and 32. The MEM's readers (FIFO output included) are never starved: they are
-  backpressured by the PE side (~2,000 cycles in B vs 1,365 in A, `vcd_stalls.py` in
-  session cfc4174c scratchpad `fp/`), and the FIFO fills because the PE does not drain
-  it. Root cause (archipelago/CLAUDE.md "Dense RV throughput is set by reconvergent
-  forks"): a row tap forks into a direct branch (3 more multiply-add PEs to the output
-  PE) and a 1-token stencil delay branch (1 PE to the output PE); with RV's
-  `MATCH_BRANCH_DELAY=0` nothing balances them, so the loop caps the rate: A 3/4, B 2/3
-  tokens/cycle (B's placement stretches the tree). At equal rates B would finish first
-  (3,968 vs 4,096 outputs). The tile-level SpecSim (no fabric) runs B at full rate.
+  **On a 16×16 CGRA (`gen_app_bundle`, ff8, balanced, 2026-10-14):** A and B both run at
+  one token per cycle and are bit-accurate (A 4,096 outputs in 4,097 cycles, 4,173 ns;
+  B 3,968 in 3,969, 4,189 ns: both set by the 4,096-token input stream). B reads the
+  SRAM in 1,984 cycles vs A's 3,204 (−38%; A's two readers issue 56% more fetches than
+  the 2,048 their data needs). Unbalanced (2026-10-13, every FIFO depth 8/16/32) B ran
+  11% longer (6,167 vs 5,533 ns): not in the MEM, whose readers were never starved, but
+  downstream. A row tap forks into a direct branch (3 more multiply-add PEs to the
+  output PE) and a 1-token stencil delay branch (1 PE). With RV's `MATCH_BRANCH_DELAY=0`
+  nothing balances them, so the loop capped the rate at A 3/4, B 2/3 tokens/cycle
+  (archipelago/CLAUDE.md "Dense RV throughput is set by reconvergent forks"). garnet
+  `gen_app_bundle.py --rv-balance` latency-matches those joins (garnet mflowgen/CLAUDE.md
+  "RV branch balancing"). The tile-level SpecSim (no fabric) runs B at full rate.
 - **FIXED 2026-09-30 (`lake/spec/spec.py` converter, committed `6f73bc91`) — capacity.**
   (a) clockwork emits `null` WAR for line buffers and the converter used
   "writer ≤ 8 rows ahead"; on a small memory (512 words = 8 rows of 64) a
