@@ -226,7 +226,7 @@ python3 THESIS/generate_thesis_artifacts.py --only \
     storage_area_vs_capacity storage_power_vs_capacity \
     pub_capacity_area pub_capacity_power pub_bandwidth_area pub_bandwidth_power \
     memtile_interconnect_area memtile_interconnect_power memtile_block_breakdown \
-    memtile_rv_overhead_area memtile_synth_vs_pnr_area memtile_synth_vs_pnr_power \
+    memtile_rv_overhead_area memtile_rv_energy_breakdown memtile_synth_vs_pnr_area memtile_synth_vs_pnr_power \
     li_sched_ports_area li_sched_ports_power li_sched_loc_area li_sched_loc_power \
     memtile_capacity_area memtile_bandwidth_area memtile_port_buffer_area memtile_control_area
 ```
@@ -261,7 +261,9 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
   `pub_bandwidth_*` (8 KB, SP vs DP, stacked SRAM / controller).
 - Memory tile: `memtile_interconnect_{area,power}` (CB/SB/glue vs ports),
   `memtile_block_breakdown` (area/idle/active share per block, 3 fit
-  geometries × static/RV), `memtile_rv_overhead_area`.
+  geometries × static/RV), `memtile_rv_overhead_area`, `memtile_rv_energy_breakdown`
+  (static vs RV per block: non-SRAM active pJ per delivered bit, idle power;
+  bandwidth = the active test's designed rate, `tile_figures._bw_gbps`).
 - Synth→PnR model `memtile_synth_vs_pnr_{area,power}`: the 12 PnR builds by
   `pnr_role` (8 `fit` dots, 4 `validate` stars), one linear fit per runtime mode
   (reproduces garnet `correlation_fit.csv` / `memtile_power_fit.csv`), R² in the

@@ -114,7 +114,7 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
     non-16-bit builds work.
   - PUB (controller + SRAM): pub_capacity_{area,power}, pub_bandwidth_{area,power}.
   - memory tile: memtile_interconnect_{area,power}, memtile_block_breakdown,
-    memtile_rv_overhead_area, and the synth->PnR model
+    memtile_rv_overhead_area, memtile_rv_energy_breakdown, and the synth->PnR model
     memtile_synth_vs_pnr_{area,power} (8 fit builds as dots, 4 held out as
     stars, per-mode fits + error panel). memtile_{capacity,bandwidth,
     port_buffer,control}_area are generated but superseded (not placed).

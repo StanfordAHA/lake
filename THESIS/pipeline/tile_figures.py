@@ -131,7 +131,7 @@ _BW_COLOR = {32: SERIES[0], 64: SERIES[1], 128: SERIES[2]}
 
 def _topo_label(r) -> str:
     kind = "DP" if r["dual_port"] else "SP"
-    return f"{kind} fw{int(r['vec_width'])}, {int(r['in_ports'])}×{int(r['out_ports'])} ports"
+    return f"{kind} fw{int(r['vec_width'])}, {int(r['in_ports'])} in, {int(r['out_ports'])} out"
 
 
 def _topo_style(r):
@@ -231,8 +231,8 @@ def memtile_interconnect_area(ctx, outpath: Path) -> None:
                     fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
     ax.set_xticks(range(len(ports)))
     n = df.groupby("in_ports").size()
-    ax.set_xticklabels([f"{p}×{p}\n(n={n[p]})" for p in ports])
-    ax.set_xlabel(f"Lake ports (in × out), {DATA_WIDTH}-bit data")
+    ax.set_xticklabels([f"{p}, {p}\n(n={n[p]})" for p in ports])
+    ax.set_xlabel(f"Lake ports (in, out), {DATA_WIDTH}-bit data")
     ax.set_ylabel(AREA_LBL)
     ax.set_ylim(0, hi.values.max() / K * 1.08)
     _legend_above(ax, ncol=2)
@@ -371,8 +371,8 @@ def memtile_interconnect_power(ctx, outpath: Path) -> None:
         ax.scatter(xs, imed.loc[ports, f"pw_synth_idle_{b}"] / UW, marker="_", s=90, color=INK,
                    linewidth=1.4, zorder=4, label="Idle" if k == 0 else None)
     ax.set_xticks(range(len(ports)))
-    ax.set_xticklabels([f"{p}×{p}\n(n={g.size()[p]})" for p in ports])
-    ax.set_xlabel(f"Lake ports (in × out), {DATA_WIDTH}-bit data")
+    ax.set_xticklabels([f"{p}, {p}\n(n={g.size()[p]})" for p in ports])
+    ax.set_xlabel(f"Lake ports (in, out), {DATA_WIDTH}-bit data")
     ax.set_ylabel("Active power (µW)")
     ax.set_ylim(0, hi.values.max() / UW * 1.08)
     _legend_above(ax, ncol=2)
@@ -394,9 +394,9 @@ _BREAKDOWN = [
 ]
 # Three of the PnR fit geometries, small to large; each is built static and RV.
 _BREAKDOWN_CONFIGS = [
-    ("fw1_dw16_sc4096_sp_in1_out1", "fw1, 4 KB, 1×1"),
-    ("fw4_dw16_sc8192_sp_in2_out2_vc2", "fw4, 8 KB, 2×2"),
-    ("fw8_dw16_sc32768_sp_in4_out4_vc2", "fw8, 32 KB, 4×4"),
+    ("fw1_dw16_sc4096_sp_in1_out1", "fw1, 4 KB, 1 in, 1 out"),
+    ("fw4_dw16_sc8192_sp_in2_out2_vc2", "fw4, 8 KB, 2 in, 2 out"),
+    ("fw8_dw16_sc32768_sp_in4_out4_vc2", "fw8, 32 KB, 4 in, 4 out"),
 ]
 
 
@@ -438,6 +438,93 @@ def memtile_block_breakdown(ctx, outpath: Path) -> None:
     h, l = axes[0].get_legend_handles_labels()
     fig.legend(h, l, loc="upper center", ncol=4, bbox_to_anchor=(0.5, 0.0), fontsize=7)
     fig.tight_layout()
+    _save(fig, outpath)
+
+
+def _bw_gbps(df: pd.DataFrame) -> pd.Series:
+    """Delivered output bandwidth of the active power test (Gb/s). The static
+    program (lake utils/power_test_programs.py) moves one SRAM word per port
+    per period P = max(fw, n_in + n_out) (single-port) or max(fw, n_in, n_out)
+    (dual-port), fw elements at one per cycle, so each port carries fw / P
+    elements per cycle. RV twins measure the same output activity (within 1%)."""
+    period = np.where(df["dual_port"],
+                      np.maximum.reduce([df["vec_width"], df["in_ports"], df["out_ports"]]),
+                      np.maximum(df["vec_width"], df["in_ports"] + df["out_ports"]))
+    return df["out_ports"] * df["vec_width"] / period * df["data_width"] / df["clock_period_ps"] * 1e3
+
+
+# RV-vs-static energy breakdown: non-SRAM blocks (tile_sweep BLOCKS) grouped.
+_RV_GROUPS = [
+    ("Ports (SIPO/PISO)", ["c_port"], SERIES[0]),
+    ("IterationDomains + AddressGens", ["c_id", "c_ag"], BLUE_RAMP[0]),
+    ("Static ScheduleGens", ["c_sg"], SERIES[7]),
+    ("Comparison network", ["c_rvnet"], SERIES[1]),
+    ("Filter storage + read buffers", ["c_storage", "c_rdbuf"], SERIES[3]),
+    ("Tile I/O FIFOs", ["fifos"], SERIES[2]),
+    ("Switch + connection boxes", ["sb", "cb"], SERIES[6]),
+    ("Config registers", ["cfg_regs"], MUTED),
+    ("MemoryPort, StencilValid, ROM", ["c_mp", "stencil", "rom"], SERIES[4]),
+]
+_RV_CONFIGS = [
+    ("fw1_dw16_sc8192_sp_in2_out2_me1024", "fw1 8 KB\n6-D\n2 in, 2 out"),
+    ("fw1_dw16_sc4096_sp_in1_out1", "fw1 4 KB\n1 in, 1 out"),
+    ("fw4_dw16_sc8192_sp_in2_out2_vc2", "fw4 8 KB\n2 in, 2 out"),
+    ("fw8_dw16_sc32768_sp_in4_out4_vc2", "fw8 32 KB\n4 in, 4 out"),
+    ("fw4_dw16_sc8192_dp_in4_out4_vc2", "DP fw4\n8 KB\n4 in, 4 out"),
+]
+
+
+def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
+    """Static vs RV twins, per block: (a) non-SRAM active energy per delivered
+    bit, with the SRAM's share of active power on top; (b) non-SRAM idle power."""
+    df = _load(mode=None).set_index("config")
+    missing = [c + s for c, _ in _RV_CONFIGS for s in ("", "_rv") if c + s not in df.index]
+    if missing:
+        raise MissingDataError(f"RV breakdown configs not in the tile sweep: {', '.join(missing)}")
+    _blocks(df.reset_index(), [f"pw_synth_{v}_{b}" for v in ("active", "idle")
+                               for _, bs, _ in _RV_GROUPS for b in bs if b not in ("c_rvnet", "c_storage", "c_rdbuf")],
+            "RV energy breakdown")
+    bw = _bw_gbps(df)
+    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 3.0))
+    w = 0.38
+    for ax, var in zip(axes, ("active", "idle")):
+        ticks, labels = [], []
+        for i, (cfg, lab) in enumerate(_RV_CONFIGS):
+            for j, (suffix, mode) in enumerate((("", "Static"), ("_rv", "RV"))):
+                r = df.loc[cfg + suffix]
+                x = i + (j - 0.5) * (w + 0.04)
+                scale = 1e12 / (bw[cfg + suffix] * 1e9) if var == "active" else 1e3  # pJ/bit or mW
+                bottom = 0.0
+                for name, bs, c in _RV_GROUPS:
+                    # PT prints 3 significant digits, so a tiny block can come out < 0
+                    v = max(sum(np.nan_to_num(r.get(f"pw_synth_{var}_{b}", 0.0)) for b in bs), 0.0) * scale
+                    ax.bar(x, v, w, bottom=bottom, color=c, edgecolor="white", linewidth=0.5,
+                           label=name if (i == 0 and j == 1) else None)
+                    bottom += v
+                if var == "active":
+                    share = r["pw_synth_active_sram"] / r["synth_active_total_power"] * 100
+                    note = f"{share:.0f}%" if SRAM_NDA else f"+{r['pw_synth_active_sram'] * scale:.2f}"
+                else:
+                    note = f"{bottom:.2f}"
+                ax.text(x, bottom, note, ha="center", va="bottom", fontsize=5.5, color=INK2)
+                ticks.append(x)
+                labels.append("S" if mode == "Static" else "RV")
+            ax.text(i, -0.09, lab, transform=ax.get_xaxis_transform(), ha="center", va="top",
+                    fontsize=6, color=INK2)
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(labels, fontsize=6)
+        ax.tick_params(axis="x", length=0)
+        ax.set_ylim(0, ax.get_ylim()[1] * 1.12)
+        _ax_style(ax)
+    axes[0].set_ylabel("Non-SRAM active energy (pJ/bit)")
+    axes[0].set_title("(a) Active per bit (top: SRAM share)" if SRAM_NDA else
+                      "(a) Active per bit (top: SRAM pJ/bit)", loc="left", fontsize=8, color=INK2)
+    axes[1].set_ylabel("Non-SRAM idle power (mW)")
+    axes[1].set_title("(b) Idle (top: total)", loc="left", fontsize=8, color=INK2)
+    h, l = axes[0].get_legend_handles_labels()
+    fig.legend(h, l, loc="upper center", ncol=3, fontsize=7, bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.3, wspace=0.2)
     _save(fig, outpath)
 
 
@@ -772,7 +859,7 @@ def _memory_port(outpath: Path, metric: str) -> None:
     ports = df.groupby("sram_bw_bits")["in_ports"].first().to_dict()
     _sp_dp_fig(outpath, df, "sram_bw_bits", metric, f"MemoryPort {metric}",
                "SRAM interface width (bits/cycle)", sorted(ports),
-               lambda b: f"{int(b)}\n{ports[b]}×{ports[b]} ports", scale, unit)
+               lambda b: f"{int(b)}\n{ports[b]} in, {ports[b]} out", scale, unit)
 
 
 def memory_port_area_vs_interface_width(ctx, outpath: Path) -> None:
@@ -788,7 +875,7 @@ def memory_port_power_vs_interface_width(ctx, outpath: Path) -> None:
 # include the macros (Storage, PUB, the synth->PnR model) plots them relative
 # to a reference instead of in µm² / mW. Set False for absolute units.
 SRAM_NDA = True
-NDA_REF = "fw1_dw16_sc1024_dp_in1_out1"  # the smallest tile: 1 KB dual-port, fw1, 1×1
+NDA_REF = "fw1_dw16_sc1024_dp_in1_out1"  # the smallest tile: 1 KB dual-port, fw1, 1 in, 1 out
 NDA_REF_LBL = "× 1 KB DP"
 
 
@@ -844,13 +931,13 @@ def _pub_capacity(outpath: Path, metric: str) -> None:
         r = g.iloc[0]
         kind = "DP" if r["dual_port"] else "SP"
         ax.plot(g["kb"], g["y"] / scale, markersize=4,
-                label=f"{kind} fw{int(r['vec_width'])} {int(r['in_ports'])}×{int(r['out_ports'])}",
+                label=f"{kind} fw{int(r['vec_width'])}, {int(r['in_ports'])} in, {int(r['out_ports'])} out",
                 **_topo_style(r))
     _log2_axis(ax, sorted(df["kb"].unique()))
     ax.set_xlabel("Capacity (KB)")
     ax.set_ylabel(f"PUB {'area' if metric == 'area' else 'active power'} ({unit})")
     ax.set_ylim(bottom=0)
-    _legend_above(ax, ncol=3)
+    _legend_above(ax, ncol=2)
     _ax_style(ax)
     fig.tight_layout()
     _save(fig, outpath)
@@ -984,8 +1071,8 @@ def _li_ports(outpath: Path, metric: str) -> None:
         for xi, top, v in zip(xs, (tot["max"].loc[ports] / scale).values, idle.values):
             ax.text(xi, top, f"idle {v:.1f}", ha="center", va="bottom", fontsize=6.5, color=INK2)
     ax.set_xticks(xs)
-    ax.set_xticklabels([f"{p}×{p}\n(n={g.size()[p]})" for p in ports])
-    ax.set_xlabel("Lake ports (in × out)")
+    ax.set_xticklabels([f"{p}, {p}\n(n={g.size()[p]})" for p in ports])
+    ax.set_xlabel("Lake ports (in, out)")
     ax.set_ylabel(f"LI SG {'area' if metric == 'area' else 'active power'} ({unit})")
     ax.set_ylim(0, tot["max"].max() / scale * 1.12)
     _legend_above(ax, ncol=2)
