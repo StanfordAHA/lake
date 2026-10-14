@@ -121,3 +121,23 @@ def test_pond_accumulation_max_extent_rtl(stress, seed):
     assert done, f"timeout after {cycles} cycles: r0 {len(outs['port_r0'])}/{R}, r1 {len(outs['port_r1'])}/1"
     assert outs["port_r0"] == r0
     assert outs["port_r1"] == r1
+
+
+@requires_xrun
+@pytest.mark.parametrize("R,P,stress,seed", [(64, 1, False, 1), (64, 2, False, 1), (64, 2, True, 7), (2, 2, True, 3)])
+def test_scalar_accum_pond_rtl(R, P, stress, seed):
+    """get_accum_pond (scalar_reduction_fp / scalar_max_fp / scalar_avg_fp): no clear
+    port, the final read r1 waits on (r1 | w0, LT, R). The apps read the sum out twice
+    (P=2, their output IO extent is 2); P=1 is a 0-D final read. On garnet's default RV pond."""
+    from lake.spec.hack_rv_mem_pond_bitstream import get_accum_pond
+    add = 3
+    # The CGRA testbench starts registers at 0 (xrun -initreg0); nothing clears this pond
+    sim = SpecSim(build_cgra_pond({}, rv=True), init_zero=True)
+    bs = sim.spec.gen_bitstream(get_accum_pond(num_partial_reduction=R, num_output_pixels=P), over=True)
+    outs, done, cycles = sim.run(bs, {"port_w0": R, "port_r0": R, "port_r1": P},
+                                 loopback={"port_w0": "port_r0"}, stress=stress, seed=seed,
+                                 name=f"sacc_{R}_{P}_{int(stress)}_{seed}", lb_add=add)
+    r0, r1 = expected(R, 1, add)
+    assert done, f"timeout after {cycles} cycles: r0 {len(outs['port_r0'])}/{R}, r1 {len(outs['port_r1'])}/{P}"
+    assert outs["port_r0"] == r0
+    assert outs["port_r1"] == r1 * P

@@ -44,8 +44,11 @@ def _mp_delays(spec):
 class SpecSim:
     """Generate a spec's RTL + testbench once; run many programs on it."""
 
-    def __init__(self, spec, workdir=None, top=None, max_data=1 << 16, bcast=None, lockstep=None):
+    def __init__(self, spec, workdir=None, top=None, max_data=1 << 16, bcast=None, lockstep=None, init_zero=False):
+        """init_zero: start registers and memories at 0, as the CGRA testbench does
+        (xrun -initmem0 -initreg0); programs without a clear port rely on it."""
         self.spec = spec
+        self.init_zero = init_zero
         self.bcast = list(bcast or [])
         self.lockstep = list(lockstep or [])
         self.workdir = workdir or tempfile.mkdtemp(prefix="lake_spec_rtl_")
@@ -172,8 +175,8 @@ class SpecSim:
             b0 = bc[0]
             for i in bc:
                 L.append(f"    if (port_{i}_valid && port_{i}_ready) begin bc_acc{i} = 1'b1; w{i}_idx++; end")
-            L.append("    if (" + " && ".join(f"bc_acc{i}" for i in bc) + ") begin bc_idx++; "
-                     + " ".join(f"bc_acc{i} = 1'b0;" for i in bc) + " end")
+            L.append("    if (" + " && ".join(f"bc_acc{i}" for i in bc) + ") begin bc_idx++; " +
+                     " ".join(f"bc_acc{i} = 1'b0;" for i in bc) + " end")
             L.append(f"    if (bc_idx < w{b0}_n && gate({'sw_lo' if b0 == 0 else -1}, {'sw_hi' if b0 == 0 else -1})) begin")
             for i in bc:
                 L.append(f"      port_{i}_valid <= !bc_acc{i}; port_{i} <= {{1'b0, bc_idx[15:0]}};")
@@ -203,7 +206,8 @@ class SpecSim:
 
     def _compile(self):
         files = " ".join(os.path.relpath(f, self.workdir) for f in self.rtl_files)
-        log = self._xrun(f"-sv -64bit -elaborate -top spec_tb spec_tb.sv {files}", "compile.log")
+        init = " -initmem0 -initreg0" if self.init_zero else ""
+        log = self._xrun(f"-sv -64bit -elaborate{init} -top spec_tb spec_tb.sv {files}", "compile.log")
         if re.search(r"\*[EF],", log):
             raise RuntimeError("spec tb compile failed:\n" + "\n".join(l for l in log.splitlines() if "*E" in l or "*F" in l))
 

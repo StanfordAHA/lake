@@ -1287,8 +1287,8 @@ class Spec():
             stg = self.get_nodes(Storage)[0]
             mps = self._get_memports_for_storage(stg)
             collateral['interconnect_in_num'] = sum(
-                1 for mp in mps if mp.get_type() in (MemoryPortType.W, MemoryPortType.RW)
-                and not mp.get_clear_mem())
+                1 for mp in mps if mp.get_type() in (MemoryPortType.W, MemoryPortType.RW) and
+                not mp.get_clear_mem())
             collateral['interconnect_out_num'] = sum(
                 1 for mp in mps if mp.get_type() in (MemoryPortType.R, MemoryPortType.RW))
             static_sgs = [sg for sg in self.get_nodes(ScheduleGenerator)
@@ -1979,8 +1979,8 @@ class Spec():
                 # default encoding is what runs on chip today.
                 # Explicit [level, level, scalar] entries (clockwork's barrier /
                 # sweep constraints for reuse buffers) are kept as emitted.
-                if ((os.environ.get("LAKE_RV_ROW_RAW") == "1" or this_depends in force_row_raw)
-                        and comparison == LFComparisonOperator.LT.value and scalar_json is None):
+                if ((os.environ.get("LAKE_RV_ROW_RAW") == "1" or this_depends in force_row_raw) and
+                        comparison == LFComparisonOperator.LT.value and scalar_json is None):
                     ndims = len(app_json["domain"][this_depends]["extents"])
                     nz = [pd for pd in prec_delts if pd[1] != 0]
                     if nz:
@@ -2503,7 +2503,8 @@ class Spec():
 
         test_name = os.environ.get("TEST_NAME_FOR_HACKING_CHECK", None)
         use_pond_path_balancing = os.getenv("POND_PATH_BALANCING", "0") != "0"
-        override = test_name in APPS_NEEDING_HACKS or use_pond_path_balancing
+        # ROM tiles keep their own config (as on master)
+        override = (test_name in APPS_NEEDING_HACKS or use_pond_path_balancing) and "rom_" not in (node_name or "")
         if override is True:
             application = hack_rv_config(test_name, node_name=node_name)
             print("HARDCODED APPLICATION")

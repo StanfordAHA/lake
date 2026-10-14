@@ -1333,11 +1333,15 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         break
 
             ctrl_to_conf = mode_map[mode_used]
+            # The lake-spec controller takes the tile name (hand-written RV configs are picked by it)
+            ctrl_kwargs = {}
+            if kwargs.get('node_name') is not None and ctrl_to_conf.get_config_mode_str() == 'lakespec':
+                ctrl_kwargs['node_name'] = kwargs['node_name']
             # Have some guard to see if config is in there or not...
             if 'config' in config_json:
-                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'])
+                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'], **ctrl_kwargs)
             else:
-                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json)
+                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json, **ctrl_kwargs)
 
         # Now need to chop up cfg space
         tmp_cfg_space = [0 for i in range(self.num_chopped_cfg)]

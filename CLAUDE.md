@@ -871,7 +871,8 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   RV), controller integration, pond RV accumulation (bit-identity with
   `get_vec_accum_pond` + RTL), spec RV programs (stream / row-lag / barrier /
   sweep on fw1 dp, fw2 sp, fw2 dp, fw4 sp, garnet default; free + stress).
-  As of 2026-10-08 (lake `8748240d`): 296 pass + 5 xfail. Since 2026-10-11,
+  As of 2026-10-13: 342 pass + 5 xfail; `python -m pycodestyle lake/ tests/` (lake CI,
+  setup.cfg) is clean with pycodestyle 2.12. Since 2026-10-11,
   `test_extract_compiler_information.py` passes too (59). Its 13–16 failures were stale
   expectations, not extraction bugs; see "Compiler collateral facts" below. Remaining
   xfails = latent bugs on paths no builder uses:
@@ -906,21 +907,34 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   The spec MemCore also cannot be loaded with ROM contents (`init`): apps
   whose clockwork mapping uses ROM "port_controller_Counter" tiles (matmul's
   `kernel = 2x + y`) cannot run on lake-spec MemCores (static or RV).
-- **Hand-written RV configs (`spec/hack_rv_mem_pond_bitstream.py`, by test name via
-  `TEST_NAME_FOR_HACKING_CHECK`) on THESIS are the 2025-05-13 version** (branch point
-  aa3fc1a2). Master's later per-app configs (mem transpose/slice/filter unit tests,
-  layer norm, gelu, maxpool, path-balancing ponds, ...) never came here; master
-  dropped name dispatch for most of them in b9c7374b (2026-04) in favour of a
-  `lake_rv_config` entry in the design_top MEM metadata (written by strait
-  templates), which THESIS's `gen_bitstream` doesn't read. So an app that relies on
-  a master-only hand-written config silently gets clockwork's own program here
-  (mek dropped the mem_*_test_RV entries: aha 9ab0a36). `hack_rv_config` takes
-  `node_name` since 40981694 (spec.py passed it -> TypeError). Its pond configs
-  encode since the 2026-10-11 extent changes (next bullet); multi-tile designs
-  (vector_reduction_fp: filter MEM + 2 ponds; layer_norm_pass2_fp: 39 ponds +
-  37 MEMs) still get ONE pond program on every MEM/pond, and `node_name` is
-  dropped in memtile_builder / spec_memory_controller (master e257c43e):
-  OPEN_ISSUES `lake/thesis-hack-configs-per-node`.
+- **Hand-written RV configs (`spec/hack_rv_mem_pond_bitstream.py`) = master's module as of
+  b9c7374b^ (ported 2026-10-13, session 352df910; THESIS had the 2025-05-13 version).**
+  Halide-to-Hardware's `hw_support/hack_design_top.py` rewrites ~34 apps after clockwork
+  (inserts filter MEMs, accumulation ponds and path-balancing ponds with empty configs). For
+  an app in `APPS_NEEDING_HACKS` (`TEST_NAME_FOR_HACKING_CHECK`, set by garnet.py) lake
+  configures EVERY MEM/pond by (app, tile name) and ignores clockwork's program; tiles with
+  `rom_` in the name keep theirs. Path-balancing ponds read `bin/path_balancing.json` from
+  the /aha app dir (hard-coded path). The tile name is garnet's instance name:
+  core_combiner_core -> `MemoryTileBuilder.get_bitstream(node_name=)` (forwarded to the
+  `lakespec` controller only) -> `SpecMemoryController.get_bitstream` -> `Spec.gen_bitstream`
+  -> `hack_rv_config` (no name -> ValueError for multi-tile apps). Master's later
+  `lake_rv_config` metadata path (b9c7374b, strait templates) is not ported: mek's
+  Halide-to-Hardware writes none.
+  - THESIS-only: scalar_reduction/max/avg_fp read the sum out twice (`num_output_pixels=2`).
+    H2H sets their output IO extent to 2 ("the f2g interrupt does not fire with 1"). Master
+    wrote the final read's extent 1 unchecked as -1, so it did not stop after one value;
+    THESIS encodes extent 1 exactly (0-D, next bullet), so one value came out and the store
+    DMA hung (STRM_F2G timeout).
+  - Verified 2026-10-13 on Zircon pr_aha1 (28x16, 12 cols removed; behavioral matrix unit,
+    since the MatrixUnit RTL is not on /aha), map + PnR + `aha test --dense-fp`:
+    scalar_reduction/max/avg_fp, vector_reduction_fp and stable_softmax_pass2_fp pass;
+    layer_norm_pass2_fp passes the regression check (0.86% of outputs outside the per-value
+    tolerance, 6% allowed). Needs process.cpp's preset input `.raw` files (aha map makes only
+    missing ones since 2026-10-13). The other hacked apps in mek's regression (layer_norm
+    pass1/3, softmax pass1/3, gelu, mat_vec_mul, tanh, ...) now get master's configs too;
+    not run. Tests: `test_hack_rv_node_name.py`, `test_scalar_accum_pond_rtl` (SpecSim
+    `init_zero=True` = the CGRA tb's `-initmem0 -initreg0`; this pond has no clear port).
+    Drivers: scratchpad 352df910 `fpc/{compile_fp2.sh,test_fp.sh}`.
 - **RV pond extent + extent-1 levels (2026-10-11).** (a) `IterationDomain.gen_bitstream`
   drops OUTERMOST extent-1 levels (index always 0 = where a dropped level's counter
   stays, so AG / comparisons / wrap fixup are unchanged); an all-ones domain is 0-D,
