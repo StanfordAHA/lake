@@ -260,9 +260,71 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
     def get_iterator_intf(self):
         return self.iterator_intf
 
+    def in_comparison_network(self):
+        return True
+
     def gen_bitstream(self, schedule_map=None, extents=None, dimensionality=None):
         self.clear_configuration()
         # Enable through the configuration
         self.configure(self._enable, 1)
         return self.get_configuration()
         # return super().gen_bitstream(schedule_map=sched_map)
+
+
+class FIFOScheduleGenerator(ReadyValidScheduleGenerator):
+    """Ready-valid schedule generator of one side of a FIFO: the comparison
+    network's job, fixed. A write side steps while the FIFO is not full, a read
+    side while it is not empty, so a stream passes through in order and the
+    ports need no dependence constraints. Full/empty compare the two sides'
+    LinearAddressGenerator pointers (address + lap bit): Spec wires `pointer`
+    (this side's) and `peer_pointer` (the other side's). Not part of the
+    RVComparisonNetwork. Configuration: `enable` only."""
+
+    def __init__(self, direction: Direction, dimensionality=6, name=None):
+        assert direction in (Direction.IN, Direction.OUT)
+        self.direction = direction
+        use_name = name
+        if name is None:
+            use_name = f"schedulegenerator_fifo_{'w' if direction == Direction.IN else 'r'}_dim_{dimensionality}"
+        super().__init__(dimensionality=dimensionality, name=use_name)
+
+    def in_comparison_network(self):
+        return False
+
+    def gen_hardware(self, id: IterationDomain = None, pointer_width: int = None, pos_reset=False):
+        assert id is not None
+        assert pointer_width is not None and pointer_width >= 2
+        id_ext_width = id.get_extent_width()
+        self.num_comparisons = 0
+        # Same inputs as ReadyValidScheduleGenerator (Spec wires them alike);
+        # only finished is used.
+        self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
+        self._restart = self.input("restart", 1)
+        self._finished = self.input("finished", 1)
+        self._ctrs = self.input("iterators", id_ext_width,
+                                size=self.dimensionality_support,
+                                packed=True, explicit_array=True)
+        self._extents = self.input("extents", id_ext_width,
+                                   size=self.dimensionality_support,
+                                   packed=True, explicit_array=True)
+        self._pointer = self.input("pointer", pointer_width)
+        self._peer_pointer = self.input("peer_pointer", pointer_width)
+        self._enable = self.config_reg(name="enable", width=1)
+        self._step_out = self.output("step", 1)
+        self._step = self.var("step_lcl", 1)
+
+        msb = pointer_width - 1
+        if self.direction == Direction.IN:
+            # not full: the pointers differ in their address bits or share a lap
+            w, r = self._pointer, self._peer_pointer
+            self.wire(self._step, (w[msb - 1, 0] != r[msb - 1, 0]) | (w[msb] == r[msb]))
+        else:
+            # not empty
+            self.wire(self._step, self._pointer != self._peer_pointer)
+        self.wire(self._step_out, self._step & ~self._flush & self._enable & ~self._finished)
+
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
+
+    def get_iterator_intf(self):
+        raise NotImplementedError("a FIFOScheduleGenerator is not in the comparison network")

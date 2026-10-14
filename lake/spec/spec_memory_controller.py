@@ -4,9 +4,9 @@ from lake.top.memory_controller import MemoryController
 from lake.spec.spec import Spec
 from lake.spec.port import Port
 from lake.utils.spec_enum import Runtime, Direction, MemoryPortType
-from lake.spec.address_generator import AddressGenerator
+from lake.spec.address_generator import AddressGenerator, LinearAddressGenerator
 from lake.spec.iteration_domain import IterationDomain
-from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGenerator
+from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGenerator, FIFOScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
 from lake.top.tech_maps import GF_Tech_Map
@@ -636,7 +636,8 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
 def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
                   dims=6, in_ports=2, out_ports=2, dual_port=False,
                   vec_capacity=2, max_extent=None, max_sequence_width=None,
-                  add_filter_path=True, physical=True, prune_rv_comparators=True):
+                  add_filter_path=True, physical=True, prune_rv_comparators=True,
+                  filter_fifo_depth=None):
     """Factory function to build an RV (ready-valid / dynamic) lake Spec.
 
     Mirrors build_four_port_wide_fetch_rv but accepts configurable params
@@ -664,6 +665,14 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
             one), yet the full network gave every filter/data pair a
             comparator: 2*(in+1)*(out+1) -> 2*in*out + 2. False rebuilds the
             full network (garnet default / silicon layout).
+        filter_fifo_depth: None (default) = the filter path as a general
+            buffer: 8 * fetch-width words (8 at fw1, 32 at fw4) with its own
+            address/schedule generators and a comparator pair in the RV
+            network. A power of two N = the filter path as an N-deep FIFO: each
+            side keeps its iteration domain (and the input its item filter),
+            the address is a wrapping pointer (LinearAddressGenerator, no
+            config) and the schedule is fixed full/empty
+            (FIFOScheduleGenerator); no comparators, no dependence constraints.
 
     Returns:
         A lake Spec instance configured for RV hardware generation.
@@ -740,15 +749,23 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
         out_controllers.append((id_, ag_, sg_))
 
     # Create filter controllers
+    fifo = add_filter_path and filter_fifo_depth is not None
+    if fifo and (filter_fifo_depth < 2 or filter_fifo_depth & (filter_fifo_depth - 1)):
+        raise ValueError(f"filter_fifo_depth {filter_fifo_depth} is not a power of two >= 2")
     if add_filter_path:
         in_id_filter = IterationDomain(dimensionality=dims, extent_width=id_width)
-        in_ag_filter = AddressGenerator(dimensionality=dims)
-        in_sg_filter = ReadyValidScheduleGenerator(dimensionality=dims)
-        ls.register(in_id_filter, in_ag_filter, in_sg_filter)
-
         out_id_filter = IterationDomain(dimensionality=dims, extent_width=id_width)
-        out_ag_filter = AddressGenerator(dimensionality=dims)
-        out_sg_filter = ReadyValidScheduleGenerator(dimensionality=dims)
+        if fifo:
+            in_ag_filter = LinearAddressGenerator(dimensionality=dims)
+            in_sg_filter = FIFOScheduleGenerator(Direction.IN, dimensionality=dims)
+            out_ag_filter = LinearAddressGenerator(dimensionality=dims)
+            out_sg_filter = FIFOScheduleGenerator(Direction.OUT, dimensionality=dims)
+        else:
+            in_ag_filter = AddressGenerator(dimensionality=dims)
+            in_sg_filter = ReadyValidScheduleGenerator(dimensionality=dims)
+            out_ag_filter = AddressGenerator(dimensionality=dims)
+            out_sg_filter = ReadyValidScheduleGenerator(dimensionality=dims)
+        ls.register(in_id_filter, in_ag_filter, in_sg_filter)
         ls.register(out_id_filter, out_ag_filter, out_sg_filter)
 
     # Create storage and memory ports
@@ -775,6 +792,8 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
     # Create filter storage and memory ports
     if add_filter_path:
         filter_cap = data_bytes * 8
+        if fifo:
+            filter_cap = filter_fifo_depth * data_width // 8
         stg_filter = SingleBankStorage(capacity=filter_cap, remote=False)
         write_port_filter = MemoryPort(data_width=data_width,
                                        mptype=MemoryPortType.W, delay=1)

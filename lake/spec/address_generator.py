@@ -145,6 +145,66 @@ class AddressGenerator(Component):
             return self._addr_out[self._addr_out.width - 1, trim_bits]
 
 
+class LinearAddressGenerator(AddressGenerator):
+    """A FIFO pointer in place of an address generator: the address starts at 0,
+    increments by one per step and wraps at the end of the memory, which must
+    hold a power-of-two number of words. No configuration. `pointer` is the
+    address with one more bit on top (the lap parity), which the paired
+    FIFOScheduleGenerators compare to tell a full FIFO from an empty one.
+    Takes the same inputs as AddressGenerator so Spec wires it the same way;
+    only step and finished are used."""
+
+    def __init__(self, dimensionality=6):
+        super().__init__(dimensionality=dimensionality, recurrence=True)
+
+    def gen_hardware(self, memports=None, id: IterationDomain = None, pos_reset=False):
+        assert memports is not None
+        assert id is not None
+        assert self.width_mult == 1, "a FIFO pointer addresses whole memory words"
+        id_ext_width = id.get_extent_width()
+        self.total_num_addrs = sum(mp.get_num_addrs() for mp in memports)
+        assert self.total_num_addrs >= 2 and self.total_num_addrs & (self.total_num_addrs - 1) == 0, \
+            f"FIFO depth {self.total_num_addrs} is not a power of two"
+        self.addr_width = kts.clog2(self.total_num_addrs)
+        super(AddressGenerator, self).__init__(name=f"linear_addr_gen_{self.addr_width}")
+
+        self._step = self.input("step", 1)
+        self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
+        self._restart = self.input("restart", 1)
+        self._finished = self.input("finished", 1)
+        self._ctrs = self.input("iterators", id_ext_width,
+                                size=self.dimensionality_support,
+                                packed=True, explicit_array=True)
+        self._addr_out = self.output("addr_out", self.addr_width)
+        self._pointer_out = self.output("pointer", self.addr_width + 1)
+
+        self._pointer = self.var("pointer_lcl", self.addr_width + 1)
+        self.wire(self._pointer_out, self._pointer)
+        self.wire(self._addr_out, self._pointer[self.addr_width - 1, 0])
+        self.add_code(self.advance_pointer)
+
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def advance_pointer(self):
+        if ~self._rst_n:
+            self._pointer = 0
+        elif self._flush:
+            self._pointer = 0
+        elif self._clk_en:
+            if self._step & ~self._finished:
+                self._pointer = self._pointer + 1
+
+    def gen_bitstream(self, address_map=None, extents=None, dimensionality=None):
+        # The address is the FIFO pointer; the app's address map is not used.
+        self.clear_configuration()
+        return self.get_configuration()
+
+    def get_pointer(self):
+        return self._pointer_out
+
+
 class ExplicitAddressGenerator(AddressGenerator):
 
     def __init__(self, dimensionality=16):

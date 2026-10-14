@@ -6,8 +6,8 @@ from lake.spec.memory_port import MemoryPort
 from lake.top.memory_controller import MemoryPort as MemoryPortMC
 from lake.utils.spec_enum import *
 from lake.spec.iteration_domain import IterationDomain
-from lake.spec.address_generator import AddressGenerator
-from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGenerator
+from lake.spec.address_generator import AddressGenerator, LinearAddressGenerator
+from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGenerator, FIFOScheduleGenerator
 from lake.spec.port import Port
 from lake.modules.memory_interface_decoder import MemoryInterfaceDecoder
 import kratos as kts
@@ -363,6 +363,13 @@ class Spec():
         # port_nodes = self.get_nodes(Port)
         # Ensure all input ports come before output ports...
         port_nodes = self.get_in_ports() + self.get_out_ports()
+        # 2026-10-13: ports whose SG is a FIFOScheduleGenerator (a FIFO: the
+        # build_spec_rv filter path with filter_fifo_depth) stay out of the RV
+        # comparison network; their two SGs compare the pair's pointers instead.
+        # The network numbers its writers/readers among the remaining ports.
+        self._fifo_ports = [p for p in port_nodes if self._is_fifo_port(p)]
+        net_in = [p for p in self.get_in_ports() if p not in self._fifo_ports]
+        net_out = [p for p in self.get_out_ports() if p not in self._fifo_ports]
         for i_, port in enumerate(port_nodes):
             port: Port
 
@@ -392,18 +399,20 @@ class Spec():
             port_ag.gen_hardware(memports_, port_id)
             port.set_port_ag_width(port_ag.get_address_width())
 
-            if self.any_rv_sg:
+            if self.any_rv_sg and port in self._fifo_ports:
+                port_sg.gen_hardware(id=port_id, pointer_width=port_ag.get_pointer().width)
+            elif self.any_rv_sg:
                 # We need to include some information about the other ports when building schedule generator
                 if port_direction == Direction.IN:
-                    port_sg.gen_hardware(id=port_id, num_comparisons=self.num_out_ports)
+                    port_sg.gen_hardware(id=port_id, num_comparisons=len(net_out))
                 elif port_direction == Direction.OUT:
-                    port_sg.gen_hardware(id=port_id, num_comparisons=self.num_in_ports)
+                    port_sg.gen_hardware(id=port_id, num_comparisons=len(net_in))
                 else:
                     raise NotImplementedError()
             else:
                 port_sg.gen_hardware(port_id)
 
-            if self.any_rv_sg:
+            if self.any_rv_sg and port not in self._fifo_ports:
                 # Just add the Port Direction and SG to the RVComparisonNetwork
                 port_stg = self._storage_of(port)
                 self.rv_comparison_network.add_reader_writer(
@@ -794,6 +803,15 @@ class Spec():
 
         # Now can build all the muxing in between the memintf and the mps
         self.build_mp_p()
+
+        # FIFO pairs: each side's SG sees its own pointer and the other side's
+        for w_port, r_port in self._fifo_pairs():
+            w_ag, w_sg = self.get_port_controllers(w_port)[1:]
+            r_ag, r_sg = self.get_port_controllers(r_port)[1:]
+            self._final_gen.wire(w_sg.ports.pointer, w_ag.get_pointer())
+            self._final_gen.wire(w_sg.ports.peer_pointer, r_ag.get_pointer())
+            self._final_gen.wire(r_sg.ports.pointer, r_ag.get_pointer())
+            self._final_gen.wire(r_sg.ports.peer_pointer, w_ag.get_pointer())
 
         # Can now build the comparison network if it's there...
         if self.any_rv_sg:
@@ -2019,6 +2037,53 @@ class Spec():
                     return nb
         return None
 
+    def _is_fifo_port(self, port):
+        """A port with a FIFOScheduleGenerator: one side of a FIFO (its AG must
+        be a LinearAddressGenerator, its storage shared with exactly one port of
+        the other direction, also a FIFO side)."""
+        sg = self.get_associated_controller(ScheduleGenerator, port)
+        if not isinstance(sg, FIFOScheduleGenerator):
+            return False
+        ag = self.get_associated_controller(AddressGenerator, port)
+        assert isinstance(ag, LinearAddressGenerator), "a FIFO side needs a LinearAddressGenerator"
+        assert sg.direction == port.get_direction()
+        assert port.get_fw() == 1, "a FIFO side is not wide-fetch"
+        return True
+
+    def _fifo_pairs(self):
+        """[(write port, read port)] of every FIFO, paired by their storage."""
+        fifo_ports = getattr(self, "_fifo_ports", [])
+        pairs = []
+        for stg in {id(self._storage_of(p)): self._storage_of(p) for p in fifo_ports}.values():
+            sides = [p for p in self.get_in_ports() + self.get_out_ports() if self._storage_of(p) is stg]
+            ws = [p for p in sides if p.get_direction() == Direction.IN]
+            rs = [p for p in sides if p.get_direction() == Direction.OUT]
+            assert len(ws) == 1 and len(rs) == 1 and all(p in fifo_ports for p in sides), \
+                "a FIFO storage has one write and one read port, both FIFO sides"
+            pairs.append((ws[0], rs[0]))
+        return pairs
+
+    def _network_constraints(self, constraints):
+        """Constraints in port numbers (writers 0.., then readers) renumbered
+        for the RV comparison network, which leaves out FIFO ports. Identity
+        without FIFOs."""
+        fifo_ports = getattr(self, "_fifo_ports", [])
+        if not fifo_ports:
+            return constraints
+        ports = self.get_in_ports() + self.get_out_ports()
+        net_in = [p for p in self.get_in_ports() if p not in fifo_ports]
+        net_out = [p for p in self.get_out_ports() if p not in fifo_ports]
+        net_idx = {p: i for i, p in enumerate(net_in)}
+        net_idx.update({p: len(net_in) + i for i, p in enumerate(net_out)})
+        out = []
+        for p1, l1, p2, l2, comp, scalar in constraints:
+            for pi in (p1, p2):
+                if ports[pi] in fifo_ports:
+                    raise ValueError(f"RV program: a constraint on port {pi}, a FIFO side "
+                                     "(its order is fixed; drop the constraint)")
+            out.append((net_idx[ports[p1]], l1, net_idx[ports[p2]], l2, comp, scalar))
+        return out
+
     def _port_capacity_elems(self, port_name):
         """Elements (external data words) of the storage behind a port."""
         port = self.get_port_from_idx(self.port_name_to_int(port_name))
@@ -2554,7 +2619,7 @@ class Spec():
         # Need to program the comparison network as well in ready/valid TODO: separate all the configs into individual SG
         if self.any_rv_sg:
             # get application constraints and pass them to rv_comparison_network
-            constraints = application['constraints']
+            constraints = self._network_constraints(application['constraints'])
             rv_comp_bs = self.rv_comparison_network.gen_bitstream(constraints=constraints)
             self.configure(self.rv_comparison_network, rv_comp_bs)
 
