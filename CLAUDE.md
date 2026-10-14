@@ -773,21 +773,53 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   from the static `build_spec`, so there clockwork never sees the filter ports;
   collateral from `build_spec_rv(...).extract_compiler_information()` counts them as
   ordinary ports (resnet's second writer lands there on 1-input specs and lake rejects
-  the tile). MetaMapper also
-  hard-codes `cgralib.Mem` as 2 in / 2 out (`irs/coreir/__init__.py` generator args and
-  the peak spec in `irs/coreir/ir.py`), so a design that wires MEM `data_in_2` /
-  `data_out_2` fails in `aha pnr`. On `fw4_dw16_sc8192_sp_in2_out2_vc2` it costs 8.1k µm²
-  of the lake controller (30%, freepdk45) and 12.0k µm² / 1.27 mW of the MEM tile (21% /
-  28%, ungated). **conv_3_3 "eat rows up front" experiment:** the newest tap goes through
-  the filter path with an item filter skipping 2 rows, and the SRAM readers start at
-  rows 0/1. It runs bit-accurately on a 16×16 CGRA and saves 3.1% of PE firings and
-  38% of SRAM reads, but costs more than it saves for one 3×3 stage. Results:
-  `/aha/sweep_out/fp_tradeoff_20261011/` and the figure page
-  https://claude.ai/artifact/NRTbNTFFRQ8fDz6vEhjKhY. What it needed (not pushed): lake
-  branch `rv-explicit-constraints` (`af6683be`: opt-in converter key `lake_constraints`
-  plus SpecSim `bcast`/`lockstep` options, since the dep_values encodings cannot express
-  a reader whose data row leads its iteration row), a pre-PnR hook, and a private
-  3-port MetaMapper (session cfc4174c scratchpad `fp/`).
+  the tile). MetaMapper's `cgralib.Mem` is 2 in / 2 out unless
+  `METAMAPPER_MEM_PORTS=3`, so a design that wires MEM `data_in_2` / `data_out_2`
+  needs that for `aha map`/`aha pnr`. On `fw4_dw16_sc8192_sp_in2_out2_vc2` the general
+  path costs 8.1k µm² of the lake controller (30%, freepdk45) and 12.0k µm² / 1.27 mW of
+  the MEM tile (21% / 28%, ungated). **conv_3_3 "eat rows up front"** (B): the newest
+  tap goes through the filter path with an item filter skipping 2 rows, and the SRAM
+  readers start at rows 0/1; bit-accurate on a 16×16 CGRA, saves 3.1% of PE firings and
+  38% of SRAM reads (freepdk45 numbers: `/aha/sweep_out/fp_tradeoff_20261011/`, figure
+  https://claude.ai/artifact/NRTbNTFFRQ8fDz6vEhjKhY). Its program is a pre-PnR hook
+  (garnet `mflowgen/common/application/hooks/conv_3_3_eat_rows_up_front.py`) using the
+  converter's opt-in `lake_constraints` key (`[port, level, port, level, "LT"|"GT",
+  scalar]` as the network takes them; the dep_values encodings cannot express a reader
+  whose data row leads its iteration row) and SpecSim's `bcast`/`lockstep` options.
+  **Pitfall found with it:** a zero-lag column-level RAW (`[r, 0, w, 0, LT, 2·fw·vc+4]`)
+  has a one-row wrap fixup, so when the writer can run 3 rows ahead of the reader it
+  blocks in the writer's early columns; with the newest tap through a buffer shallower
+  than ~2·fw·vc+4 words (an 8-deep FIFO, under stalls) that deadlocks. Use the row level
+  (`[r, 1, w, 1, LT, 0]`: row k written) when the reader trails by whole rows.
+- **Filter path as a FIFO: `build_spec_rv(filter_fifo_depth=N)` (2026-10-13, opt-in;
+  default None = the general buffer, byte-identical RTL + bitstreams).** User
+  direction: keep the iteration domains, make the rest a FIFO. Each side keeps its ID
+  (and the input its item filter); the AG is `LinearAddressGenerator` (address = FIFO
+  pointer, +1 per step, wraps at the N-word memory, no config; `pointer` has one lap
+  bit more) and the SG is `FIFOScheduleGenerator` (write side steps while not full,
+  read side while not empty, from the two pointers: a fixed version of the
+  comparator pair; config `enable` only). Spec keeps FIFO ports out of the RV
+  network (`_fifo_ports`, `_fifo_pairs`), wires the pointers, renumbers constraints
+  for the network (`_network_constraints`; identity without FIFOs) and rejects a
+  constraint on a FIFO side. Storage: N words (general: 8 per fetch-width word).
+  fw4 sc8192 in2 out2: config 1421 -> 1301 bits. Tests: `test_filter_fifo.py`
+  (structure, renumbering, rejected constraint, RTL pass-through at depth 2/8, the
+  conv_3_3 B program free + stressed). garnet: `--spec-set filter_fifo`
+  (`..._ff{8,16,32}_rv`), A/B power driver `mflowgen/cgra_app_power.py` (garnet
+  mflowgen/CLAUDE.md "Whole-CGRA power of app variants"). Generic Genus (freepdk45,
+  hierarchy kept), fw4 sc8192 in2 out2 controller: no filter path 19.3k µm², FIFO-8
+  23.1k, general 27.4k; the filter path 8.1k -> 3.8k µm² (storage 3.8k -> 1.0k,
+  comparators 1.2k -> 0, AG+SG 0.46k -> 0.1k; its two IDs, 1.5k, are now the
+  largest part). Reports: `/aha/sweep_out/fp_fifo_20261013/area/`.
+  **On a 16×16 CGRA (`gen_app_bundle`, ff8, 2026-10-13):** A and B bit-accurate; B reads
+  the SRAM in 1,984 cycles vs A's 3,204 (−38%; A's two readers issue 56% more fetches
+  than the 2,048 their data needs), but runs 11% longer (8,313 vs 7,681 cycles, input
+  span 6,062 vs 5,461). The row-level RAW lets the row-(k+1) reader start only when
+  the writer finishes that row; by then the FIFO (8 + the 2-entry read buffer) holds
+  ~10 tokens of slack ahead of the PE, less than the reader's latency to the PE
+  (SRAM read, PISO, routes: ~20 cycles), so the PE waits ~12 cycles per row (FIFO
+  full). The tile-level SpecSim (no routes) shows no stall. A FIFO deeper than that
+  latency should remove it (ff16/ff32 recordings).
 - **FIXED 2026-09-30 (`lake/spec/spec.py` converter, committed `6f73bc91`) — capacity.**
   (a) clockwork emits `null` WAR for line buffers and the converter used
   "writer ≤ 8 rows ahead"; on a small memory (512 words = 8 rows of 64) a
