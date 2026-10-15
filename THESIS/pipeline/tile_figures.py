@@ -90,7 +90,7 @@ def _panel_label(ax, s):
 
 def _save(fig, outpath: Path):
     outpath.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(outpath, bbox_inches="tight")
+    fig.savefig(outpath, bbox_inches="tight", dpi=200 if outpath.suffix == ".png" else "figure")
     plt.close(fig)
 
 
@@ -139,6 +139,129 @@ def _topo_style(r):
                 linestyle="--" if r["dual_port"] else "-",
                 marker="s" if r["dual_port"] else "o",
                 markeredgecolor="white", markeredgewidth=0.8)
+
+
+# ---- views: raw values, % change per x step, or both ---------------------------
+# A sweep figure shows its raw values ("raw"), the % change between neighboring
+# x values ("pct"), or both ("both": raw on top, % change in a panel below on the
+# same x axis). The registry picks per figure (Entry.view); generators read it
+# as ctx.view, and only the ones marked @_viewable honor it. The % panel puts
+# each step's change at the middle of the step, next to the change in x itself
+# (gray, "y ∝ x"): a series above that line grows faster than proportionally to
+# x, and an affine series (fixed overhead + linear) sits below it.
+VIEWS = ("raw", "pct", "both")
+VIEWABLE: set = set()
+PCT_LBL = "Change per step (%)"
+_REF_STYLE = dict(color=MUTED, linestyle=":", linewidth=1.1, marker="x", markersize=3.5)
+
+
+def _viewable(fn):
+    VIEWABLE.add(fn)
+    return fn
+
+
+def _view(ctx) -> str:
+    v = getattr(ctx, "view", "raw")
+    if v not in VIEWS:
+        raise ValueError(f"unknown view {v!r}; expected one of {VIEWS}")
+    return v
+
+
+def _view_axes(view: str, figsize):
+    """(fig, ax, pax): ``ax`` for the raw values, ``pax`` for the % change; the
+    one the view leaves out is None. "both" stacks them, sharing x."""
+    if view == "raw":
+        fig, ax = plt.subplots(figsize=figsize)
+        return fig, ax, None
+    if view == "pct":
+        fig, pax = plt.subplots(figsize=figsize)
+        return fig, None, pax
+    fig, (ax, pax) = plt.subplots(2, 1, figsize=(figsize[0], figsize[1] * 1.5), sharex=True,
+                                  gridspec_kw={"height_ratios": [2.3, 1]})
+    ax.tick_params(labelbottom=False)
+    return fig, ax, pax
+
+
+def _steps(pos, y, geo: bool = False):
+    """Midpoint of each step between consecutive ``pos`` (geometric on a log
+    axis) and y's % change over it; NaN where y is missing or not positive."""
+    pos, y = np.asarray(pos, float), np.asarray(y, float)
+    keep = ~np.isnan(y)
+    pos, y = pos[keep], y[keep]
+    mid = np.sqrt(pos[:-1] * pos[1:]) if geo else (pos[:-1] + pos[1:]) / 2
+    with np.errstate(divide="ignore", invalid="ignore"):
+        pct = np.where(y[:-1] > 0, (y[1:] / y[:-1] - 1) * 100, np.nan)
+    return mid, pct
+
+
+def _pct_line(pax, pos, y, geo: bool = False, **style):
+    mid, pct = _steps(pos, y, geo)
+    style = {"marker": "o", "markersize": 3.5, "markeredgecolor": "white",
+             "markeredgewidth": 0.5, "linewidth": 1.2, **style}
+    return pax.plot(mid, pct, **style)[0]
+
+
+def _pct_axis(pax, xvals, pos=None, geo: bool = False):
+    """The y ∝ x reference (x's own % change at the same steps), zero line,
+    y range, label and grid; call after the series are drawn. ``pos`` = plot
+    positions of ``xvals`` (indices for bars). The range fits the series, minus
+    outliers (beyond 4x their median |change| and the reference, e.g. a step
+    up from a near-zero value), and takes in the reference only if that
+    doesn't squash them (at most 3x their largest change). Whatever falls
+    outside is noted at the panel edge in its own color; a reference that is
+    off scale at every step gets one note."""
+    pts = [(x, y, l.get_color()) for l in pax.get_lines()
+           for x, y in zip(l.get_xdata(), l.get_ydata()) if np.isfinite(y)]
+    vals = np.array([y for _, y, _ in pts] or [0.0])
+    mid, ref = _steps(xvals if pos is None else pos, xvals, geo)
+    cap = max(4 * np.median(np.abs(vals)), ref.max(initial=0.0), 30.0)
+    inl = vals[np.abs(vals) <= cap]
+    lo, hi = min(0.0, inl.min(initial=0.0)), max(0.0, inl.max(initial=0.0))
+    if ref.max(initial=0.0) <= 3 * max(abs(lo), abs(hi), 5.0):
+        hi = max(hi, ref.max(initial=0.0))
+    pad = max(0.12 * (hi - lo), 2.0)
+    off_ref = [(x, y) for x, y in zip(mid, ref) if y > hi + pad]
+    off = [(x, y, c) for x, y, c in pts if y > hi + pad or y < lo - pad]
+    if len(off_ref) < len(ref):
+        off += [(x, y, MUTED) for x, y in off_ref]
+    room_hi = 2.2 * pad if off_ref or any(y > hi for _, y, _ in off) else 0.0  # for the notes
+    room_lo = 2.2 * pad if any(y < lo for _, y, _ in off) else 0.0
+    pax.set_ylim(lo - (pad if lo < 0 else pad * 0.5) - room_lo, hi + pad + room_hi)
+    pax.plot(mid, np.where(ref > hi + pad, np.nan, ref), zorder=1, **_REF_STYLE)
+    bottom, top = pax.get_ylim()
+    for x, y, c in off:
+        up = y > hi
+        pax.text(x, top if up else bottom, f"{'↑' if up else '↓'}{y:+.0f}%", ha="center",
+                 va="top" if up else "bottom", fontsize=6, color=c)
+    if off_ref and len(off_ref) == len(ref):
+        r0, r1 = min(ref), max(ref)
+        rng = f"{r0:+.0f}%" if round(r0) == round(r1) else f"{r0:+.0f}% to {r1:+.0f}%"
+        pax.text(0.99, 0.97, f"y ∝ x off scale: {rng} per step", transform=pax.transAxes,
+                 ha="right", va="top", fontsize=6, color=MUTED)
+    pax.axhline(0, color=AXIS, linewidth=0.9, zorder=1)
+    if pos is not None:  # categories (bars): half a category of margin, as the bars have
+        pax.set_xlim(-0.5, len(xvals) - 0.5)
+    if len(pax.figure.axes) > 1:  # under a raw panel: a title, so the y labels can't collide
+        pax.set_title(PCT_LBL, loc="left", fontsize=7.5, color=INK2, pad=3)
+    else:
+        pax.set_ylabel(PCT_LBL)
+    _ax_style(pax)
+
+
+def _ref_handle():
+    return Line2D([], [], label="y ∝ x", **_REF_STYLE)
+
+
+def _view_legend(top, pax, handles=None, labels=None, **kw):
+    """_legend_above on the top axis, plus the y ∝ x entry when there's a %
+    panel. Defaults to the top axis's own labeled artists."""
+    if handles is None:
+        handles, labels = top.get_legend_handles_labels()
+    elif labels is None:
+        labels = [h.get_label() for h in handles]
+    if pax is not None:
+        handles, labels = list(handles) + [_ref_handle()], list(labels) + ["y ∝ x"]
+    _legend_above(top, handles, labels, **kw)
 
 
 # ---- figures -------------------------------------------------------------------
@@ -211,6 +334,7 @@ def memtile_bandwidth_area(ctx, outpath: Path) -> None:
     _save(fig, outpath)
 
 
+@_viewable
 def memtile_interconnect_area(ctx, outpath: Path) -> None:
     """CB / SB / other-top-level area vs Lake port count (16-bit data)."""
     df = _load()
@@ -221,22 +345,30 @@ def memtile_interconnect_area(ctx, outpath: Path) -> None:
     med = df.groupby("in_ports")[cols].median()
     lo = df.groupby("in_ports")[cols].min()
     hi = df.groupby("in_ports")[cols].max()
-    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    fig, ax, pax = _view_axes(_view(ctx), (HALF_W, 2.3))
     w = 0.26
     for k, ((col, lab), colr) in enumerate(zip(parts, SERIES[:3])):
-        xs = np.arange(len(ports)) + (k - 1) * w
-        ax.bar(xs, med.loc[ports, col] / K, w * 0.92, color=colr, label=lab)
-        ax.errorbar(xs, med.loc[ports, col] / K,
-                    yerr=[(med - lo).loc[ports, col] / K, (hi - med).loc[ports, col] / K],
-                    fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
-    ax.set_xticks(range(len(ports)))
+        if ax is not None:
+            xs = np.arange(len(ports)) + (k - 1) * w
+            ax.bar(xs, med.loc[ports, col] / K, w * 0.92, color=colr, label=lab)
+            ax.errorbar(xs, med.loc[ports, col] / K,
+                        yerr=[(med - lo).loc[ports, col] / K, (hi - med).loc[ports, col] / K],
+                        fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
+        if pax is not None:
+            _pct_line(pax, range(len(ports)), med.loc[ports, col], color=colr,
+                      label=lab if ax is None else None)
+    if pax is not None:
+        _pct_axis(pax, ports, pos=range(len(ports)))
+    bot = pax if pax is not None else ax
+    bot.set_xticks(range(len(ports)))
     n = df.groupby("in_ports").size()
-    ax.set_xticklabels([f"{p}, {p}\n(n={n[p]})" for p in ports])
-    ax.set_xlabel(f"Lake ports (in, out), {DATA_WIDTH}-bit data")
-    ax.set_ylabel(AREA_LBL)
-    ax.set_ylim(0, hi.values.max() / K * 1.08)
-    _legend_above(ax, ncol=2)
-    _ax_style(ax)
+    bot.set_xticklabels([f"{p}, {p}\n(n={n[p]})" for p in ports])
+    bot.set_xlabel(f"Lake ports (in, out), {DATA_WIDTH}-bit data")
+    if ax is not None:
+        ax.set_ylabel(AREA_LBL)
+        ax.set_ylim(0, hi.values.max() / K * 1.08)
+        _ax_style(ax)
+    _view_legend(ax if ax is not None else pax, pax, ncol=2)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -343,6 +475,7 @@ def memtile_rv_overhead_area(ctx, outpath: Path) -> None:
     _save(fig, outpath)
 
 
+@_viewable
 def memtile_interconnect_power(ctx, outpath: Path) -> None:
     """CB / SB synth-level power vs Lake port count: bars = active (max-traffic)
     power, median with min-max over configs; ticks = idle.
@@ -359,24 +492,38 @@ def memtile_interconnect_power(ctx, outpath: Path) -> None:
     ports = sorted(df["in_ports"].unique())
     g = df.groupby("in_ports")
     med, lo, hi, imed = g[act].median(), g[act].min(), g[act].max(), g[idle].median()
-    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    fig, ax, pax = _view_axes(_view(ctx), (HALF_W, 2.3))
     w = 0.32
     for k, ((b, lab), colr) in enumerate(zip(parts, SERIES[:2])):
-        xs = np.arange(len(ports)) + (k - 0.5) * w
         a = f"pw_synth_active_{b}"
-        ax.bar(xs, med.loc[ports, a] / UW, w * 0.92, color=colr, label=lab)
-        ax.errorbar(xs, med.loc[ports, a] / UW,
-                    yerr=[(med - lo).loc[ports, a] / UW, (hi - med).loc[ports, a] / UW],
-                    fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
-        ax.scatter(xs, imed.loc[ports, f"pw_synth_idle_{b}"] / UW, marker="_", s=90, color=INK,
-                   linewidth=1.4, zorder=4, label="Idle" if k == 0 else None)
-    ax.set_xticks(range(len(ports)))
-    ax.set_xticklabels([f"{p}, {p}\n(n={g.size()[p]})" for p in ports])
-    ax.set_xlabel(f"Lake ports (in, out), {DATA_WIDTH}-bit data")
-    ax.set_ylabel("Active power (µW)")
-    ax.set_ylim(0, hi.values.max() / UW * 1.08)
-    _legend_above(ax, ncol=2)
-    _ax_style(ax)
+        if ax is not None:
+            xs = np.arange(len(ports)) + (k - 0.5) * w
+            ax.bar(xs, med.loc[ports, a] / UW, w * 0.92, color=colr, label=lab)
+            ax.errorbar(xs, med.loc[ports, a] / UW,
+                        yerr=[(med - lo).loc[ports, a] / UW, (hi - med).loc[ports, a] / UW],
+                        fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
+            ax.scatter(xs, imed.loc[ports, f"pw_synth_idle_{b}"] / UW, marker="_", s=90, color=INK,
+                       linewidth=1.4, zorder=4, label="Idle" if k == 0 else None)
+        if pax is not None:
+            _pct_line(pax, range(len(ports)), med.loc[ports, a], color=colr,
+                      label=lab if ax is None else None)
+            _pct_line(pax, range(len(ports)), imed.loc[ports, f"pw_synth_idle_{b}"], color=colr,
+                      linestyle="--", linewidth=0.9, markersize=2.6)
+    if pax is not None:
+        _pct_axis(pax, ports, pos=range(len(ports)))
+    bot = pax if pax is not None else ax
+    bot.set_xticks(range(len(ports)))
+    bot.set_xticklabels([f"{p}, {p}\n(n={g.size()[p]})" for p in ports])
+    bot.set_xlabel(f"Lake ports (in, out), {DATA_WIDTH}-bit data")
+    if ax is not None:
+        ax.set_ylabel("Active power (µW)")
+        ax.set_ylim(0, hi.values.max() / UW * 1.08)
+        _ax_style(ax)
+    top = ax if ax is not None else pax
+    h, l = top.get_legend_handles_labels()
+    if pax is not None:  # the % panel's dashed lines are the idle power
+        h, l = h + [_style_handles("power")[1]], l + ["idle (step)"]
+    _view_legend(top, pax, h, l, ncol=2)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -704,7 +851,7 @@ def _legend_above(ax, handles=None, labels=None, title=None, ncol=None):
 
 def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel: str,
                blocks: list[str], ylabel: str, xfmt=lambda v: f"{v:g}", log2: bool = False,
-               metric: str = "area", mode: str = "static") -> None:
+               metric: str = "area", mode: str = "static", view: str = "raw") -> None:
     """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``."""
     df = _exp(_load(mode), exp).dropna(subset=[x, hue])
     if df[x].nunique() < 2:
@@ -713,31 +860,48 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
     df["prefix"] = _rvnet_prefix(df) if mode == "rv" else False
     scale, unit = _units(df, metric)
     vals = sorted(df[hue].unique())
-    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    fig, ax, pax = _view_axes(view, (HALF_W, 2.3))
     handles = []
     for v, c in zip(vals, _ramp(len(vals))):
         g = df[df[hue] == v].sort_values(x)
-        h, = ax.plot(g[x], g["y"] / scale, color=c, marker="o", markersize=4,
-                     markeredgecolor="white", markeredgewidth=0.6, label=f"{v:g}")
+        style = dict(color=c, marker="o", markersize=4, markeredgecolor="white",
+                     markeredgewidth=0.6, label=f"{v:g}")
+        if ax is not None:
+            h, = ax.plot(g[x], g["y"] / scale, **style)
+            if metric == "power":
+                ax.plot(g[x], g["y2"] / scale, color=c, linestyle="--", linewidth=1.1, marker="o",
+                        markersize=2.6, markeredgewidth=0)
+            pre = g[g["prefix"]]
+            for col in ["y"] + (["y2"] if metric == "power" else []):
+                ax.scatter(pre[x], pre[col] / scale, s=18 if col == "y" else 9, facecolor="white",
+                           edgecolor=c, linewidth=0.9, zorder=4)
+        else:
+            h = Line2D([], [], **style)
         handles.append(h)
-        if metric == "power":
-            ax.plot(g[x], g["y2"] / scale, color=c, linestyle="--", linewidth=1.1, marker="o",
-                    markersize=2.6, markeredgewidth=0)
-        pre = g[g["prefix"]]
-        for col in ["y"] + (["y2"] if metric == "power" else []):
-            ax.scatter(pre[x], pre[col] / scale, s=18 if col == "y" else 9, facecolor="white",
-                       edgecolor=c, linewidth=0.9, zorder=4)
+        if pax is not None:
+            _pct_line(pax, g[x], g["y"], log2, color=c)
+            if metric == "power":
+                _pct_line(pax, g[x], g["y2"], log2, color=c, linestyle="--", linewidth=0.9,
+                          markersize=2.6)
     ticks = sorted(df[x].unique())
-    if log2:
-        _log2_axis(ax, ticks, xfmt)
-    else:
-        ax.set_xticks(ticks)
-        ax.set_xticklabels([xfmt(t) for t in ticks])
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(f"{'Area' if metric == 'area' else 'Power'}, {ylabel} ({unit})")
-    ax.set_ylim(0, df["y"].max() / scale * 1.08)
-    _legend_above(ax, handles + _style_handles(metric, df["prefix"].any()), title=hue_name)
-    _ax_style(ax)
+    if pax is not None:
+        _pct_axis(pax, ticks, geo=log2)
+    for a in (ax, pax):
+        if a is None:
+            continue
+        if log2:
+            _log2_axis(a, ticks, xfmt)
+        else:
+            a.set_xticks(ticks)
+            a.set_xticklabels([xfmt(t) for t in ticks])
+    (pax if pax is not None else ax).set_xlabel(xlabel)
+    if ax is not None:
+        ax.set_ylabel(f"{'Area' if metric == 'area' else 'Power'}, {ylabel} ({unit})")
+        ax.set_ylim(0, df["y"].max() / scale * 1.08)
+        _ax_style(ax)
+    _view_legend(ax if ax is not None else pax, pax,
+                 handles + _style_handles(metric, ax is not None and df["prefix"].any()),
+                 title=hue_name)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -750,79 +914,91 @@ def _port_data_width(ctx, outpath: Path, metric: str) -> None:
             "configs are used (other widths have broken RTL)")
     _sweep_fig(outpath, "PORT_EXP", "data_width", "vec_width", "fetch width",
                "Port data width (bits)", ["c_port"], "4 Ports",
-               log2=True, metric=metric)
+               log2=True, metric=metric, view=_view(ctx))
 
 
+@_viewable
 def port_area_vs_data_width(ctx, outpath: Path) -> None:
     """PORT_EXP: Port area vs port data width, one line per fetch width (vc=2)."""
     _port_data_width(ctx, outpath, "area")
 
 
+@_viewable
 def port_power_vs_data_width(ctx, outpath: Path) -> None:
     _port_data_width(ctx, outpath, "power")
 
 
+@_viewable
 def port_area_vs_vc(ctx, outpath: Path) -> None:
     """PORT_EXP: Port area (the 4 port_inst blocks) vs vectorization capacity,
     one line per fetch width."""
     _sweep_fig(outpath, "PORT_EXP", "vec_capacity", "vec_width", "fetch width",
-               "Vectorization capacity (entries)", ["c_port"], "4 Ports", log2=True)
+               "Vectorization capacity (entries)", ["c_port"], "4 Ports", log2=True, view=_view(ctx))
 
 
+@_viewable
 def port_power_vs_vc(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "PORT_EXP", "vec_capacity", "vec_width", "fetch width",
                "Vectorization capacity (entries)", ["c_port"], "4 Ports", log2=True,
-               metric="power")
+               metric="power", view=_view(ctx))
 
 
+@_viewable
 def iter_dom_area_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
-               "Dimensionality", ["c_id"], "4 IterationDomains")
+               "Dimensionality", ["c_id"], "4 IterationDomains", view=_view(ctx))
 
 
+@_viewable
 def iter_dom_power_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
-               "Dimensionality", ["c_id"], "4 IterationDomains", metric="power")
+               "Dimensionality", ["c_id"], "4 IterationDomains", metric="power", view=_view(ctx))
 
 
+@_viewable
 def iter_dom_area_vs_max_extent(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
-               "Maximum extent", ["c_id"], "4 IterationDomains", log2=True)
+               "Maximum extent", ["c_id"], "4 IterationDomains", log2=True, view=_view(ctx))
 
 
+@_viewable
 def iter_dom_power_vs_max_extent(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
-               "Maximum extent", ["c_id"], "4 IterationDomains", log2=True, metric="power")
+               "Maximum extent", ["c_id"], "4 IterationDomains", log2=True, metric="power", view=_view(ctx))
 
 
+@_viewable
 def affine_area_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "dims", "max_sequence_width",
-               "maximum value", "Dimensionality", ["c_ag", "c_sg"], "4 AGs + 4 SGs")
+               "maximum value", "Dimensionality", ["c_ag", "c_sg"], "4 AGs + 4 SGs", view=_view(ctx))
 
 
+@_viewable
 def affine_power_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "dims", "max_sequence_width",
                "maximum value", "Dimensionality", ["c_ag", "c_sg"], "4 AGs + 4 SGs",
-               metric="power")
+               metric="power", view=_view(ctx))
 
 
+@_viewable
 def affine_area_vs_max_value(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "max_sequence_width", "dims",
                "dimensionality", "Maximum value (max sequence width)", ["c_ag", "c_sg"],
-               "4 AGs + 4 SGs", log2=True)
+               "4 AGs + 4 SGs", log2=True, view=_view(ctx))
 
 
+@_viewable
 def affine_power_vs_max_value(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "max_sequence_width", "dims",
                "dimensionality", "Maximum value (max sequence width)", ["c_ag", "c_sg"],
-               "4 AGs + 4 SGs", log2=True, metric="power")
+               "4 AGs + 4 SGs", log2=True, metric="power", view=_view(ctx))
 
 
 def _sp_dp_fig(outpath: Path, df: pd.DataFrame, x: str, metric: str, ylabel: str,
-               xlabel: str, ticks, xfmt, scale: float, unit: str) -> None:
+               xlabel: str, ticks, xfmt, scale: float, unit: str, view: str = "raw") -> None:
     """Single- vs dual-port lines of ``y`` (and power ``y2``) vs ``x``: median
     over the other parameters with a min-max bar."""
-    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    fig, ax, pax = _view_axes(view, (HALF_W, 2.3))
     for dp, c, m, name in ((False, SERIES[0], "o", "Single-port SRAM"),
                            (True, SERIES[1], "s", "Dual-port SRAM")):
         g = df[df["dual_port"] == dp]
@@ -830,23 +1006,35 @@ def _sp_dp_fig(outpath: Path, df: pd.DataFrame, x: str, metric: str, ylabel: str
             if col not in g.columns:
                 continue
             st = g.groupby(x)[col].agg(["median", "min", "max"]) / scale
-            ax.errorbar(st.index, st["median"], yerr=[st["median"] - st["min"], st["max"] - st["median"]],
-                        color=c, marker=m, linestyle=ls, linewidth=lw, markersize=ms,
-                        markeredgecolor="white", markeredgewidth=0.6, capsize=2, elinewidth=0.8,
-                        label=lab)
-    _log2_axis(ax, ticks, xfmt)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(f"{ylabel} ({unit})")
-    ax.set_ylim(bottom=0)
-    h, l = ax.get_legend_handles_labels()
-    _legend_above(ax, h + _style_handles(metric), l + [s.get_label() for s in _style_handles(metric)],
-                  ncol=2)
-    _ax_style(ax)
+            if ax is not None:
+                ax.errorbar(st.index, st["median"],
+                            yerr=[st["median"] - st["min"], st["max"] - st["median"]],
+                            color=c, marker=m, linestyle=ls, linewidth=lw, markersize=ms,
+                            markeredgecolor="white", markeredgewidth=0.6, capsize=2, elinewidth=0.8,
+                            label=lab)
+            if pax is not None:
+                _pct_line(pax, st.index, st["median"], True, color=c, marker=m, linestyle=ls,
+                          linewidth=lw * 0.75, markersize=ms * 0.8,
+                          label=lab if ax is None else None)
+    if pax is not None:
+        _pct_axis(pax, ticks, geo=True)
+    for a in (ax, pax):
+        if a is not None:
+            _log2_axis(a, ticks, xfmt)
+    (pax if pax is not None else ax).set_xlabel(xlabel)
+    if ax is not None:
+        ax.set_ylabel(f"{ylabel} ({unit})")
+        ax.set_ylim(bottom=0)
+        _ax_style(ax)
+    top = ax if ax is not None else pax
+    h, l = top.get_legend_handles_labels()
+    _view_legend(top, pax, h + _style_handles(metric),
+                 l + [s.get_label() for s in _style_handles(metric)], ncol=2)
     fig.tight_layout()
     _save(fig, outpath)
 
 
-def _memory_port(outpath: Path, metric: str) -> None:
+def _memory_port(outpath: Path, metric: str, view: str = "raw") -> None:
     """MEMORY_EXP: MemoryPort (memory-port muxes, arbiters, interface decoders)
     vs SRAM interface width, single- vs dual-port.
 
@@ -859,15 +1047,17 @@ def _memory_port(outpath: Path, metric: str) -> None:
     ports = df.groupby("sram_bw_bits")["in_ports"].first().to_dict()
     _sp_dp_fig(outpath, df, "sram_bw_bits", metric, f"MemoryPort {metric}",
                "SRAM interface width (bits/cycle)", sorted(ports),
-               lambda b: f"{int(b)}\n{ports[b]} in, {ports[b]} out", scale, unit)
+               lambda b: f"{int(b)}\n{ports[b]} in, {ports[b]} out", scale, unit, view)
 
 
+@_viewable
 def memory_port_area_vs_interface_width(ctx, outpath: Path) -> None:
-    _memory_port(outpath, "area")
+    _memory_port(outpath, "area", _view(ctx))
 
 
+@_viewable
 def memory_port_power_vs_interface_width(ctx, outpath: Path) -> None:
-    _memory_port(outpath, "power")
+    _memory_port(outpath, "power", _view(ctx))
 
 
 # GF12 SRAM macro numbers are under NDA (main_thesis.tex, Storage: "we cannot
@@ -890,7 +1080,7 @@ def _nda(df: pd.DataFrame, metric: str, what: str) -> tuple[float, str]:
     return float(ref["y"].iloc[0]), NDA_REF_LBL
 
 
-def _storage(outpath: Path, metric: str) -> None:
+def _storage(outpath: Path, metric: str, view: str = "raw") -> None:
     """MEMORY_EXP: Storage (the SRAM block: macros + their wrapper) vs capacity,
     single- vs dual-port.
 
@@ -902,56 +1092,70 @@ def _storage(outpath: Path, metric: str) -> None:
     df["kb"] = df["storage_capacity"] / 1024
     scale, unit = _nda(df, metric, "Storage")
     _sp_dp_fig(outpath, df, "kb", metric, f"Storage {metric}", "Capacity (KB)",
-               sorted(df["kb"].unique()), lambda v: f"{v:g}", scale, unit)
+               sorted(df["kb"].unique()), lambda v: f"{v:g}", scale, unit, view)
 
 
+@_viewable
 def storage_area_vs_capacity(ctx, outpath: Path) -> None:
-    _storage(outpath, "area")
+    _storage(outpath, "area", _view(ctx))
 
 
+@_viewable
 def storage_power_vs_capacity(ctx, outpath: Path) -> None:
-    _storage(outpath, "power")
+    _storage(outpath, "power", _view(ctx))
 
 
 # ---- Physical Unified Buffer (the Lake spec: controller + Storage) ------------
 
 
-def _pub_capacity(outpath: Path, metric: str) -> None:
+def _pub_capacity(outpath: Path, metric: str, view: str = "raw") -> None:
     """MEMORY_EXP: PUB (lake controller + SRAM block) vs capacity, one line per
     memory organization (color = SRAM bits/cycle, dashed = dual-port). Power =
     active."""
     df = _metric(_exp(_load(), "MEMORY_EXP"), ["ctrl", "sram"], metric, "PUB " + metric)
     df["kb"] = df["storage_capacity"] / 1024
     scale, unit = _nda(df, metric, "PUB")
-    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    fig, ax, pax = _view_axes(view, (HALF_W, 2.3))
     groups = sorted(df.groupby(["sram_bw_bits", "dual_port", "vec_width", "in_ports"]),
                     key=lambda kv: (kv[0][1], kv[0][0]))
     for _, g in groups:
         g = g.sort_values("kb")
         r = g.iloc[0]
         kind = "DP" if r["dual_port"] else "SP"
-        ax.plot(g["kb"], g["y"] / scale, markersize=4,
-                label=f"{kind} fw{int(r['vec_width'])}, {int(r['in_ports'])} in, {int(r['out_ports'])} out",
-                **_topo_style(r))
-    _log2_axis(ax, sorted(df["kb"].unique()))
-    ax.set_xlabel("Capacity (KB)")
-    ax.set_ylabel(f"PUB {'area' if metric == 'area' else 'active power'} ({unit})")
-    ax.set_ylim(bottom=0)
-    _legend_above(ax, ncol=2)
-    _ax_style(ax)
+        lab = f"{kind} fw{int(r['vec_width'])}, {int(r['in_ports'])} in, {int(r['out_ports'])} out"
+        if ax is not None:
+            ax.plot(g["kb"], g["y"] / scale, markersize=4, label=lab, **_topo_style(r))
+        if pax is not None:
+            _pct_line(pax, g["kb"], g["y"], True, **{**_topo_style(r), "markersize": 3.2,
+                                                     "markeredgewidth": 0.5, "linewidth": 1.1},
+                      label=lab if ax is None else None)
+    kbs = sorted(df["kb"].unique())
+    if pax is not None:
+        _pct_axis(pax, kbs, geo=True)
+    for a in (ax, pax):
+        if a is not None:
+            _log2_axis(a, kbs)
+    (pax if pax is not None else ax).set_xlabel("Capacity (KB)")
+    if ax is not None:
+        ax.set_ylabel(f"PUB {'area' if metric == 'area' else 'active power'} ({unit})")
+        ax.set_ylim(bottom=0)
+        _ax_style(ax)
+    _view_legend(ax if ax is not None else pax, pax, ncol=2)
     fig.tight_layout()
     _save(fig, outpath)
 
 
+@_viewable
 def pub_capacity_area(ctx, outpath: Path) -> None:
-    _pub_capacity(outpath, "area")
+    _pub_capacity(outpath, "area", _view(ctx))
 
 
+@_viewable
 def pub_capacity_power(ctx, outpath: Path) -> None:
-    _pub_capacity(outpath, "power")
+    _pub_capacity(outpath, "power", _view(ctx))
 
 
-def _pub_bandwidth(outpath: Path, metric: str) -> None:
+def _pub_bandwidth(outpath: Path, metric: str, view: str = "raw") -> None:
     """MEMORY_EXP at 8 KB: PUB split into SRAM block and lake controller,
     single- vs dual-port per SRAM bandwidth. Power: bars = active, tick = idle
     total. Relative to the single-port lowest-bandwidth PUB under SRAM_NDA."""
@@ -970,7 +1174,8 @@ def _pub_bandwidth(outpath: Path, metric: str) -> None:
         scale, unit = float(ref["y"].iloc[0]), f"× SP {int(bws[0])}b"
     else:
         scale, unit = _units(df, metric)
-    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    fig, ax, pax = _view_axes(view, (HALF_W, 2.3))
+    bot = pax if pax is not None else ax
     w, gap = 0.36, 0.04
     ticks, tick_lbls = [], []
     for i, bw in enumerate(bws):
@@ -981,35 +1186,62 @@ def _pub_bandwidth(outpath: Path, metric: str) -> None:
             r = r.iloc[0]
             x = i + (j - 0.5) * (w + gap)
             first = i == 0 and j == 0
-            ax.bar(x, r[pre + "sram"] / scale, w, color=SERIES[0], edgecolor="white", linewidth=1,
-                   label="Storage (SRAM)" if first else None)
-            ax.bar(x, r[pre + "ctrl"] / scale, w, bottom=r[pre + "sram"] / scale, color=SERIES[1],
-                   edgecolor="white", linewidth=1, label="Lake controller" if first else None)
-            if metric == "power":
-                ax.scatter(x, r["y2"] / scale, marker="_", s=110, color=INK, linewidth=1.4,
-                           zorder=4, label="Idle total" if first else None)
+            if ax is not None:
+                ax.bar(x, r[pre + "sram"] / scale, w, color=SERIES[0], edgecolor="white",
+                       linewidth=1, label="Storage (SRAM)" if first else None)
+                ax.bar(x, r[pre + "ctrl"] / scale, w, bottom=r[pre + "sram"] / scale,
+                       color=SERIES[1], edgecolor="white", linewidth=1,
+                       label="Lake controller" if first else None)
+                if metric == "power":
+                    ax.scatter(x, r["y2"] / scale, marker="_", s=110, color=INK, linewidth=1.4,
+                               zorder=4, label="Idle total" if first else None)
             ticks.append(x)
             tick_lbls.append("DP" if dp else "SP")
-        ax.text(i, -0.13, f"{int(bw)}", transform=ax.get_xaxis_transform(),
-                ha="center", va="top", fontsize=7.5, color=INK2)
-    ax.set_xticks(ticks)
-    ax.set_xticklabels(tick_lbls, fontsize=7)
-    ax.tick_params(axis="x", length=0)
-    ax.set_ylabel(f"PUB {'area' if metric == 'area' else 'active power'} ({unit})")
-    ax.set_xlabel("SRAM bandwidth (bits/cycle), 8 KB", labelpad=12)
-    ax.set_ylim(0, df["y"].max() / scale * 1.06)
-    _legend_above(ax, ncol=3)
-    _ax_style(ax)
+        if pax is None:
+            bot.text(i, -0.13, f"{int(bw)}", transform=bot.get_xaxis_transform(),
+                     ha="center", va="top", fontsize=7.5, color=INK2)
+        else:  # the % panel is short, so offset by points rather than axes height
+            bot.annotate(f"{int(bw)}", (i, 0), xycoords=bot.get_xaxis_transform(),
+                         xytext=(0, -13), textcoords="offset points", ha="center", va="top",
+                         fontsize=7.5, color=INK2)
+    step_handles = []
+    if pax is not None:  # SP and DP totals, step by step along the bandwidth groups
+        for dp, c, m, name in ((False, SERIES[6], "o", "SP total (step)"),
+                               (True, SERIES[4], "s", "DP total (step)")):
+            s = (df[df["dual_port"] == dp].drop_duplicates("sram_bw_bits")  # = the bars' r.iloc[0]
+                 .set_index("sram_bw_bits").reindex(bws))
+            step_handles.append(_pct_line(pax, range(len(bws)), s["y"], color=c, marker=m,
+                                          label=name))
+            if metric == "power":
+                _pct_line(pax, range(len(bws)), s["y2"], color=c, marker=m, linestyle="--",
+                          linewidth=0.9, markersize=2.6)
+        _pct_axis(pax, bws, pos=range(len(bws)))
+    bot.set_xticks(ticks)
+    bot.set_xticklabels(tick_lbls, fontsize=7)
+    bot.tick_params(axis="x", length=0)
+    bot.set_xlabel("SRAM bandwidth (bits/cycle), 8 KB", labelpad=12)
+    if ax is not None:
+        ax.set_ylabel(f"PUB {'area' if metric == 'area' else 'active power'} ({unit})")
+        ax.set_ylim(0, df["y"].max() / scale * 1.06)
+        _ax_style(ax)
+    top = ax if ax is not None else pax
+    h, l = (ax.get_legend_handles_labels() if ax is not None else ([], []))
+    h, l = h + step_handles, l + [s.get_label() for s in step_handles]
+    if pax is not None and metric == "power":
+        h, l = h + [_style_handles("power")[1]], l + ["idle (step)"]
+    _view_legend(top, pax, h, l, ncol=3 if pax is None else 2)
     fig.tight_layout()
     _save(fig, outpath)
 
 
+@_viewable
 def pub_bandwidth_area(ctx, outpath: Path) -> None:
-    _pub_bandwidth(outpath, "area")
+    _pub_bandwidth(outpath, "area", _view(ctx))
 
 
+@_viewable
 def pub_bandwidth_power(ctx, outpath: Path) -> None:
-    _pub_bandwidth(outpath, "power")
+    _pub_bandwidth(outpath, "power", _view(ctx))
 
 
 # ---- latency-insensitive (RV) ScheduleGenerator ---------------------------------
@@ -1038,7 +1270,7 @@ def _rvnet_prefix(df: pd.DataFrame) -> pd.Series:
             & df["rtl_lake_commit"].map(pre).fillna(False).astype(bool))
 
 
-def _li_ports(outpath: Path, metric: str) -> None:
+def _li_ports(outpath: Path, metric: str, view: str = "raw") -> None:
     """LI ScheduleGenerator vs Lake ports, stacked comparison network + RV SGs:
     every RV config at the default 6 dims and extents (MEMORY/PORT sweeps),
     median with a min-max bar on the total. Power: bars = active, tick = idle."""
@@ -1056,48 +1288,71 @@ def _li_ports(outpath: Path, metric: str) -> None:
     g = df.groupby("in_ports")
     med = g[[pre + "c_rvnet", pre + "c_sg"]].median()
     tot = g["y"].agg(["median", "min", "max"])
-    fig, ax = plt.subplots(figsize=(HALF_W, 2.3))
+    fig, ax, pax = _view_axes(view, (HALF_W, 2.3))
     xs = np.arange(len(ports))
     net, sg = med.loc[ports, pre + "c_rvnet"] / scale, med.loc[ports, pre + "c_sg"] / scale
-    ax.bar(xs, net, 0.55, color=SERIES[0], label="Comparison network")
-    ax.bar(xs, sg, 0.55, bottom=net, color=SERIES[1], label="RV ScheduleGenerators")
-    ax.errorbar(xs, (net + sg).values, yerr=[(tot["median"] - tot["min"]).loc[ports] / scale,
-                                             (tot["max"] - tot["median"]).loc[ports] / scale],
-                fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
     if metric == "power":
         idle = g["y2"].median().loc[ports] / scale
-        ax.scatter(xs, idle, marker="_", s=110, color=INK, linewidth=1.4, zorder=4,
-                   label="Idle total")
-        for xi, top, v in zip(xs, (tot["max"].loc[ports] / scale).values, idle.values):
-            ax.text(xi, top, f"idle {v:.1f}", ha="center", va="bottom", fontsize=6.5, color=INK2)
-    ax.set_xticks(xs)
-    ax.set_xticklabels([f"{p}, {p}\n(n={g.size()[p]})" for p in ports])
-    ax.set_xlabel("Lake ports (in, out)")
-    ax.set_ylabel(f"LI SG {'area' if metric == 'area' else 'active power'} ({unit})")
-    ax.set_ylim(0, tot["max"].max() / scale * 1.12)
-    _legend_above(ax, ncol=2)
-    _ax_style(ax)
+    if ax is not None:
+        ax.bar(xs, net, 0.55, color=SERIES[0], label="Comparison network")
+        ax.bar(xs, sg, 0.55, bottom=net, color=SERIES[1], label="RV ScheduleGenerators")
+        ax.errorbar(xs, (net + sg).values, yerr=[(tot["median"] - tot["min"]).loc[ports] / scale,
+                                                 (tot["max"] - tot["median"]).loc[ports] / scale],
+                    fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
+        if metric == "power":
+            ax.scatter(xs, idle, marker="_", s=110, color=INK, linewidth=1.4, zorder=4,
+                       label="Idle total")
+            for xi, top, v in zip(xs, (tot["max"].loc[ports] / scale).values, idle.values):
+                ax.text(xi, top, f"idle {v:.1f}", ha="center", va="bottom", fontsize=6.5,
+                        color=INK2)
+    step_handles = []
+    if pax is not None:  # each part and the stacked total (the bar top), step by step
+        for y, c, name in ((net, SERIES[0], "Comparison network"),
+                           (sg, SERIES[1], "RV ScheduleGenerators"),
+                           (net + sg, INK, "Total (step)")):
+            step_handles.append(_pct_line(pax, xs, y, color=c, label=name))
+        if metric == "power":
+            step_handles.append(_pct_line(pax, xs, idle, color=INK, linestyle="--", linewidth=0.9,
+                                          markersize=2.6, label="idle (step)"))
+        _pct_axis(pax, ports, pos=xs)
+    bot = pax if pax is not None else ax
+    bot.set_xticks(xs)
+    bot.set_xticklabels([f"{p}, {p}\n(n={g.size()[p]})" for p in ports])
+    bot.set_xlabel("Lake ports (in, out)")
+    if ax is not None:
+        ax.set_ylabel(f"LI SG {'area' if metric == 'area' else 'active power'} ({unit})")
+        ax.set_ylim(0, tot["max"].max() / scale * 1.12)
+        _ax_style(ax)
+    h, l = ax.get_legend_handles_labels() if ax is not None else ([], [])
+    for s in step_handles:  # the % panel reuses the bar colors; add only what's new
+        if s.get_label() not in l:
+            h, l = h + [s], l + [s.get_label()]
+    _view_legend(ax if ax is not None else pax, pax, h, l, ncol=2)
     fig.tight_layout()
     _save(fig, outpath)
 
 
+@_viewable
 def li_sched_ports_area(ctx, outpath: Path) -> None:
-    _li_ports(outpath, "area")
+    _li_ports(outpath, "area", _view(ctx))
 
 
+@_viewable
 def li_sched_ports_power(ctx, outpath: Path) -> None:
-    _li_ports(outpath, "power")
+    _li_ports(outpath, "power", _view(ctx))
 
 
+@_viewable
 def li_sched_loc_area(ctx, outpath: Path) -> None:
     """ITERATION_DOMAIN_EXP, RV: LI ScheduleGenerator vs levels of comparison
     (iteration-domain dimensionality), one line per maximum extent."""
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
                "Levels of comparison (dimensionality)", ["c_rvnet", "c_sg"],
-               "LI SG", mode="rv")
+               "LI SG", mode="rv", view=_view(ctx))
 
 
+@_viewable
 def li_sched_loc_power(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
                "Levels of comparison (dimensionality)", ["c_rvnet", "c_sg"],
-               "LI SG", mode="rv", metric="power")
+               "LI SG", mode="rv", metric="power", view=_view(ctx))

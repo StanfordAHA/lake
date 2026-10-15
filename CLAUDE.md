@@ -275,6 +275,12 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
 - `tile_figures.SRAM_NDA = True` (the thesis says the GF12 macro numbers are
   under NDA): Storage, PUB and model values are relative to a reference config
   (`NDA_REF`, or the smallest fit tile for the model). Set False for µm²/mW.
+- **Raw vs % change per x step, per figure** (2026-10-13): registry
+  `Entry.view` = "raw" | "pct" | "both" for the `@_viewable` sweep figures
+  (all "both" for now; the user picks per figure). Preview all three before
+  choosing: `python3 THESIS/generate_thesis_artifacts.py --only <ids>
+  --preview-views <dir>` (side-by-side `index.html`). Details:
+  `THESIS/PIPELINE.md` "Views".
 Placement + captions for main.tex (the Overleaf project "Thesis Rough Draft" is
 the live copy; local `main_thesis.tex` is stale):
 `THESIS/output/snippets/memtile_figures.tex` (EDIT 1–7).

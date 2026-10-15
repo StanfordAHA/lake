@@ -9,6 +9,8 @@ Each entry maps a stable ``id`` to:
   - ``status``: "real" | "bogus" | "manual" — see below
   - ``generator``: callable(ctx, outpath) or None
   - ``notes``: TODOs / open questions
+  - ``view``: for sweep figures (``tile_figures.VIEWABLE``), "raw" values,
+    "pct" = % change per x step, or "both" (raw on top, % change below)
 
 Status semantics:
   - real   → generator writes a real artifact from data. If it raises
@@ -45,6 +47,7 @@ class Entry:
     status: str
     generator: Optional[Generator] = None
     notes: str = ""
+    view: str = "raw"
 
 
 # ---------------------------------------------------------------------------
@@ -131,56 +134,68 @@ COMPONENT_CHARACTERIZATION = [
           "figures/port_characterization/PORT_EXP__synth_total_area_um2_vs_data_width.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs data_width, line per fw",
           "real", tf.port_area_vs_data_width,
-          notes="BOGUS while only 16-bit tile builds are usable (other widths have broken RTL)."),
+          notes="BOGUS while only 16-bit tile builds are usable (other widths have broken RTL).",
+          view="both"),
     Entry("port_power_vs_data_width", "fig:port_characterization_interface_width_power",
           "figures/port_characterization/PORT_EXP__synth_power_w_vs_data_width.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): Port (port_inst x4) synth power vs data_width, line per fw",
           "real", tf.port_power_vs_data_width,
-          notes="BOGUS while only 16-bit tile builds are usable (other widths have broken RTL)."),
+          notes="BOGUS while only 16-bit tile builds are usable (other widths have broken RTL).",
+          view="both"),
     Entry("port_area_vs_vc", "fig:port_characterization_vectorization_area",
           "figures/port_characterization/PORT_EXP__synth_total_area_um2_vs_vc.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs vc, line per fw",
-          "real", tf.port_area_vs_vc),
+          "real", tf.port_area_vs_vc,
+          view="both"),
     Entry("port_power_vs_vc", "fig:port_characterization_vectorization_power",
           "figures/port_characterization/PORT_EXP__synth_power_w_vs_vc.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): Port (port_inst x4) active/idle synth power vs vc, line per fw",
-          "real", tf.port_power_vs_vc),
+          "real", tf.port_power_vs_vc,
+          view="both"),
 
     # IterationDomain
     Entry("iter_dom_area_vs_dim", "fig:iteration_domain_characterization_dimensionality_area",
           "figures/iteration_domain_characterization_dimensionality_area.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs dim, line per max extent",
-          "real", tf.iter_dom_area_vs_dim),
+          "real", tf.iter_dom_area_vs_dim,
+          view="both"),
     Entry("iter_dom_power_vs_dim", "fig:iteration_domain_characterization_dimensionality_power",
           "figures/iteration_domain_characterization_dimensionality_power.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): IterationDomain (port_id x4) active/idle power vs dim, line per max extent",
-          "real", tf.iter_dom_power_vs_dim),
+          "real", tf.iter_dom_power_vs_dim,
+          view="both"),
     Entry("iter_dom_area_vs_max_extent", "fig:iteration_domain_characterization_max_extent_area",
           "figures/iteration_domain_characterization_max_extent_area.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs max extent, line per dim",
-          "real", tf.iter_dom_area_vs_max_extent),
+          "real", tf.iter_dom_area_vs_max_extent,
+          view="both"),
     Entry("iter_dom_power_vs_max_extent", "fig:iteration_domain_characterization_max_extent_power",
           "figures/iteration_domain_characterization_max_extent_power.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): IterationDomain active/idle power vs max extent, line per dim",
-          "real", tf.iter_dom_power_vs_max_extent),
+          "real", tf.iter_dom_power_vs_max_extent,
+          view="both"),
 
     # Affine Pattern Generator
     Entry("affine_area_vs_dim", "fig:affine_pattern_generator_characterization_dimensionality_area",
           "figures/affine_pattern_generator_characterization_dimensionality_area.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs dim, line per max sequence width",
-          "real", tf.affine_area_vs_dim),
+          "real", tf.affine_area_vs_dim,
+          view="both"),
     Entry("affine_power_vs_dim", "fig:affine_pattern_generator_characterization_dimensionality_power",
           "figures/affine_pattern_generator_characterization_dimensionality_power.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): AG+SG active/idle power vs dim, line per max sequence width",
-          "real", tf.affine_power_vs_dim),
+          "real", tf.affine_power_vs_dim,
+          view="both"),
     Entry("affine_area_vs_max_value", "fig:affine_pattern_generator_characterization_max_value_area",
           "figures/affine_pattern_generator_characterization_max_value_area.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs max sequence width, line per dim",
-          "real", tf.affine_area_vs_max_value),
+          "real", tf.affine_area_vs_max_value,
+          view="both"),
     Entry("affine_power_vs_max_value", "fig:affine_pattern_generator_characterization_max_value_power",
           "figures/affine_pattern_generator_characterization_max_value_power.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): AG+SG active/idle power vs max sequence width, line per dim",
-          "real", tf.affine_power_vs_max_value),
+          "real", tf.affine_power_vs_max_value,
+          view="both"),
     # Stride / offset sweeps are called out in tex but AFFINE_EXP doesn't
     # yet vary them independently — reuse msw as the width bound and
     # BOGUS until a dedicated sweep is added.
@@ -222,20 +237,24 @@ COMPONENT_CHARACTERIZATION = [
           "fig:memory_port_characterization_interface_width_area",
           "figures/memory_port_characterization_interface_width_area.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): MemCore logic vs SRAM interface width, SP vs DP (median over capacities)",
-          "real", tf.memory_port_area_vs_interface_width),
+          "real", tf.memory_port_area_vs_interface_width,
+          view="both"),
     Entry("memory_port_power_vs_interface_width",
           "fig:memory_port_characterization_interface_width_power",
           "figures/memory_port_characterization_interface_width_power.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): MemoryPort active/idle power vs SRAM interface width, SP vs DP",
-          "real", tf.memory_port_power_vs_interface_width),
+          "real", tf.memory_port_power_vs_interface_width,
+          view="both"),
     Entry("storage_area_vs_capacity", "fig:storage_characterization_capacity_area",
           "figures/storage_characterization_capacity_area.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): SRAM block area vs capacity, SP vs DP (relative under SRAM_NDA)",
-          "real", tf.storage_area_vs_capacity),
+          "real", tf.storage_area_vs_capacity,
+          view="both"),
     Entry("storage_power_vs_capacity", "fig:storage_characterization_capacity_power",
           "figures/storage_characterization_capacity_power.pdf",
           "figure", "Tile_MemCore sweep (dw16, static): SRAM block active/idle power vs capacity, SP vs DP (relative under SRAM_NDA)",
-          "real", tf.storage_power_vs_capacity),
+          "real", tf.storage_power_vs_capacity,
+          view="both"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -322,21 +341,25 @@ LI_CHARACTERIZATION = [
           "figure", "Tile_MemCore sweep (dw16, RV): comparison network + RV SGs area vs ports "
           "(dims 6, MEMORY/PORT sweeps, median + min-max)",
           "real", tf.li_sched_ports_area,
-          notes="tex also reuses this PDF as the Canal/PEak placeholders (fig:bg_end_to_end_system_*)."),
+          notes="tex also reuses this PDF as the Canal/PEak placeholders (fig:bg_end_to_end_system_*).",
+          view="both"),
     Entry("li_sched_ports_power", "fig:latency_insensitive_schedule_generator_characterization_ports_power",
           "figures/latency_insensitive_schedule_generator_characterization_ports_power.pdf",
           "figure", "Tile_MemCore sweep (dw16, RV): LI SG active power vs ports, idle tick",
-          "real", tf.li_sched_ports_power),
+          "real", tf.li_sched_ports_power,
+          view="both"),
     Entry("li_sched_loc_area", "fig:latency_insensitive_schedule_generator_characterization_loc_area",
           "figures/latency_insensitive_schedule_generator_characterization_loc_area.pdf",
           "figure", "Tile_MemCore sweep (dw16, RV): LI SG area vs levels of comparison (ID dims), "
           "line per max extent",
           "real", tf.li_sched_loc_area,
-          notes="Levels of comparison read as iteration-domain dims. Pre-8748240d RTL (dims 2/4) hollow."),
+          notes="Levels of comparison read as iteration-domain dims. Pre-8748240d RTL (dims 2/4) hollow.",
+          view="both"),
     Entry("li_sched_loc_power", "fig:latency_insensitive_schedule_generator_characterization_loc_power",
           "figures/latency_insensitive_schedule_generator_characterization_loc_power.pdf",
           "figure", "Tile_MemCore sweep (dw16, RV): LI SG active/idle power vs levels of comparison",
-          "real", tf.li_sched_loc_power),
+          "real", tf.li_sched_loc_power,
+          view="both"),
     Entry("interconnect_fork_ready_valid_data", "fig:interconnect_fork_ready_valid_data",
           "figures/cgra_interconnect_fork_ready_valid_data.pdf", "figure",
           "SB PPA before/after ready/valid forking logic", "bogus", None,
@@ -418,7 +441,8 @@ MEMTILE_CHARACTERIZATION = [
           "figures/memtile/memtile_interconnect_area.pdf", "figure",
           f"{MEMTILE_SWEEP_SRC}: CB/SB/top-level area vs ports and vs port data width",
           "real", tf.memtile_interconnect_area,
-          notes="subsec:tile_level_characterization. No track-count sweep exists (5 tracks fixed)."),
+          notes="subsec:tile_level_characterization. No track-count sweep exists (5 tracks fixed).",
+          view="both"),
     Entry("memtile_port_buffer_area", "fig:memtile_port_buffer_area",
           "figures/memtile/memtile_port_buffer_area.pdf", "figure",
           f"{MEMTILE_SWEEP_SRC}: PORT_EXP static, logic vs vectorization buffer bits",
@@ -441,7 +465,8 @@ MEMTILE_CHARACTERIZATION = [
           "figures/memtile/memtile_interconnect_power.pdf", "figure",
           f"{MEMTILE_SWEEP_SRC}: CB/SB/top-level active power vs ports, idle tick",
           "real", tf.memtile_interconnect_power,
-          notes="Power half of fig:memtile_characterization."),
+          notes="Power half of fig:memtile_characterization.",
+          view="both"),
     Entry("memtile_block_breakdown", "fig:memtile_block_breakdown",
           "figures/memtile/memtile_block_breakdown.pdf", "figure",
           f"{MEMTILE_SWEEP_SRC}: area / idle / active share per tile block, 3 sizes x static/RV",
@@ -450,19 +475,23 @@ MEMTILE_CHARACTERIZATION = [
     Entry("pub_capacity_area", "fig:pub_capacity_characterization_area",
           "figures/memtile/pub_capacity_area.pdf", "figure",
           f"{MEMTILE_SWEEP_SRC}: PUB (controller + SRAM) area vs capacity per organization",
-          "real", tf.pub_capacity_area),
+          "real", tf.pub_capacity_area,
+          view="both"),
     Entry("pub_capacity_power", "fig:pub_capacity_characterization_power",
           "figures/memtile/pub_capacity_power.pdf", "figure",
           f"{MEMTILE_SWEEP_SRC}: PUB active power vs capacity per organization",
-          "real", tf.pub_capacity_power),
+          "real", tf.pub_capacity_power,
+          view="both"),
     Entry("pub_bandwidth_area", "fig:pub_bandwidth_characterization_area",
           "figures/memtile/pub_bandwidth_area.pdf", "figure",
           f"{MEMTILE_SWEEP_SRC}: PUB @ 8 KB, SRAM vs controller, SP vs DP per bandwidth",
-          "real", tf.pub_bandwidth_area),
+          "real", tf.pub_bandwidth_area,
+          view="both"),
     Entry("pub_bandwidth_power", "fig:pub_bandwidth_characterization_power",
           "figures/memtile/pub_bandwidth_power.pdf", "figure",
           f"{MEMTILE_SWEEP_SRC}: PUB @ 8 KB active power split, idle tick",
-          "real", tf.pub_bandwidth_power),
+          "real", tf.pub_bandwidth_power,
+          view="both"),
     Entry("memtile_synth_vs_pnr_area", "fig:memtile_synth_vs_pnr_area",
           "figures/memtile/memtile_synth_vs_pnr_area.pdf", "figure",
           f"{MEMTILE_SWEEP_SRC}: synth->PnR total-area model, 8 fit builds (dots) vs 4 held out (stars)",
@@ -484,6 +513,12 @@ REGISTRY: list[Entry] = (
     + MEMTILE_CHARACTERIZATION
     + TABLES
 )
+
+for _e in REGISTRY:
+    if _e.view not in tf.VIEWS:
+        raise ValueError(f"{_e.id}: view {_e.view!r} is not one of {tf.VIEWS}")
+    if _e.view != "raw" and _e.generator not in tf.VIEWABLE:
+        raise ValueError(f"{_e.id}: view {_e.view!r} but its generator ignores ctx.view")
 
 
 def by_id(id_: str) -> Entry:

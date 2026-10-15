@@ -121,6 +121,15 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
   - LI ScheduleGenerator (RV builds): li_sched_{ports,loc}_{area,power}.
   - `tile_figures.SRAM_NDA` (default True): values that include the SRAM
     macros (Storage, PUB, model) are plotted relative to a reference config.
+  - **Views** (2026-10-13): every sweep figure above except the
+    memtile_{block,rv_*,synth_vs_pnr}* ones and the superseded four is
+    `@_viewable` and draws its registry `view`: "raw" values, "pct" = %
+    change from each x value to the next (drawn mid-step, with x's own change
+    as a gray "y ∝ x" reference: above it = faster than proportional), or
+    "both" (raw on top, % panel below). All are "both" for now; pick per
+    figure in `registry.py`. `--view {raw,pct,both}` overrides for a run;
+    `--preview-views DIR` writes every selected sweep figure in all three
+    views + a side-by-side `index.html` without touching `output/`.
   Placement and captions for the tex: `THESIS/output/snippets/memtile_figures.tex`.
 - **THESIS_BUILDS** (standalone lakespec) → the `tab:memtile_model_*` /
   `tab:ul_ppa_summary` tables. The standalone area/power generators remain in

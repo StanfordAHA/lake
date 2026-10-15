@@ -25,11 +25,20 @@ Usage:
     python3 THESIS/generate_thesis_artifacts.py --top /path/to/THESIS_BUILDS
     python3 THESIS/generate_thesis_artifacts.py --only port_area_vs_data_width
     python3 THESIS/generate_thesis_artifacts.py --list
+    python3 THESIS/generate_thesis_artifacts.py --only iter_dom_area_vs_dim --view pct
+    python3 THESIS/generate_thesis_artifacts.py --status real --preview-views /tmp/views
+
+Sweep figures (``tile_figures.VIEWABLE``) draw raw values, % change per x
+step, or both, per their registry ``view``. ``--view`` overrides it for the
+run; ``--preview-views DIR`` instead writes each selected sweep figure in all
+three views to DIR (PNGs + index.html side by side) without touching output/.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
+import dataclasses
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -43,6 +52,7 @@ from THESIS.pipeline.bogus import make_bogus_figure, make_bogus_table  # noqa: E
 from THESIS.pipeline.build_query import load_builds_df  # noqa: E402
 from THESIS.pipeline.generators import GenContext  # noqa: E402
 from THESIS.pipeline.registry import REGISTRY, Entry  # noqa: E402
+from THESIS.pipeline.tile_figures import VIEWABLE, VIEWS  # noqa: E402
 
 OUTPUT_ROOT = REPO_ROOT / "THESIS" / "output"
 LOG_DIR = OUTPUT_ROOT / "logs"
@@ -55,8 +65,9 @@ def _log(path: Path, msg: str) -> None:
         f.write(f"{datetime.now().isoformat(timespec='seconds')}  {msg}\n")
 
 
-def _handle_entry(e: Entry, ctx: GenContext | None) -> str:
-    """Produce ``e``'s output artifact. Returns a short status string."""
+def _handle_entry(e: Entry, ctx: GenContext | None, view: str | None = None) -> str:
+    """Produce ``e``'s output artifact (``view`` overrides ``e.view``). Returns
+    a short status string."""
     out = OUTPUT_ROOT / e.output
 
     if e.status == "manual":
@@ -78,7 +89,7 @@ def _handle_entry(e: Entry, ctx: GenContext | None) -> str:
         if ctx is None:
             raise RuntimeError("no build context — pass --top or ensure DEFAULT_TOP exists")
         try:
-            e.generator(ctx, out)
+            e.generator(dataclasses.replace(ctx, view=view or e.view), out)
             return "real"
         except MissingDataError as err:
             reason = f"MissingDataError: {err}"
@@ -90,6 +101,36 @@ def _handle_entry(e: Entry, ctx: GenContext | None) -> str:
             return "bogus (fallback)"
 
     raise RuntimeError(f"unknown status {e.status!r} for {e.id}")
+
+
+def _preview_views(entries: list[Entry], ctx: GenContext, outdir: Path) -> None:
+    """Every selected sweep figure in each view, as DIR/<id>__<view>.png, plus
+    DIR/index.html (self-contained) showing the views side by side."""
+    outdir.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for e in entries:
+        if e.status != "real" or e.generator not in VIEWABLE:
+            continue
+        cells = []
+        for v in VIEWS:
+            png = outdir / f"{e.id}__{v}.png"
+            try:
+                e.generator(dataclasses.replace(ctx, view=v), png)
+            except MissingDataError as err:
+                cells.append(f"<td class=miss>{v}: {err}</td>")
+                continue
+            b64 = base64.b64encode(png.read_bytes()).decode()
+            cells.append(f'<td><img src="data:image/png;base64,{b64}" alt="{e.id} {v}"></td>')
+        rows.append(f"<tr><th>{e.id}<br><small>registry view: {e.view}</small></th>{''.join(cells)}</tr>")
+        print(f"  {e.id:44s} → previewed", file=sys.stderr)
+    head = "".join(f"<th>{v}</th>" for v in VIEWS)
+    (outdir / "index.html").write_text(
+        "<!doctype html><meta charset=utf-8><title>Figure views</title><style>"
+        "body{font:13px system-ui;margin:16px;background:#fff;color:#111}"
+        "table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px;vertical-align:top}"
+        "th{text-align:left;font-weight:600}img{width:330px}.miss{color:#a33;width:330px}"
+        f"</style><table><tr><th>figure</th>{head}</tr>{''.join(rows)}</table>")
+    print(f"\nPreviews under: {outdir}", file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -106,6 +147,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="List registry entries and exit.")
     ap.add_argument("--refresh-cache", action="store_true",
                     help="Force re-walk of THESIS_BUILDS instead of using cached CSV.")
+    ap.add_argument("--view", choices=VIEWS,
+                    help="Draw every selected sweep figure in this view instead of its registry view.")
+    ap.add_argument("--preview-views", type=Path, metavar="DIR",
+                    help="Write each selected sweep figure in all views to DIR (+ index.html); "
+                         "output/ is left alone.")
     args = ap.parse_args(argv)
 
     entries = list(REGISTRY)
@@ -132,10 +178,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"warning: --top {args.top} not found; 'real' entries will BOGUS-fall-back", file=sys.stderr)
 
+    if args.preview_views:
+        if ctx is None:
+            print("error: --preview-views needs the build context (--top)", file=sys.stderr)
+            return 1
+        _preview_views(entries, ctx, args.preview_views)
+        return 0
+
     counts: dict[str, int] = {}
     for e in entries:
         try:
-            status = _handle_entry(e, ctx)
+            status = _handle_entry(e, ctx, args.view)
         except Exception as err:  # noqa: BLE001 — one bad generator shouldn't kill the run
             status = f"ERROR: {err}"
             _log(LOG_DIR / "errors.log", f"[{e.id}] {err}")

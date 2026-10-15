@@ -30,6 +30,9 @@ class GenContext:
 
     df: pd.DataFrame
     top_builds: Path
+    # "raw" | "pct" | "both" (registry Entry.view); only tile_figures.VIEWABLE
+    # generators read it
+    view: str = "raw"
 
 
 # ---- helpers ---------------------------------------------------------------
