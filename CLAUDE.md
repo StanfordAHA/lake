@@ -593,21 +593,49 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
     (port.py `external_count`), about 132 µW (RV tile).
   - Smaller items: the arbiter `grant_line` rotates every cycle (~12 µW); the
     static OUT delay lines (~9 µW per port).
-- **Per-port coarse gating removes nearly all of it in an idle tile.**
-  `Spec(clock_gate_ports=True)` is an uncommitted patch, pending a user decision
-  (OPEN_ISSUES `lake/port-clock-gating`; session 5b33d095 scratchpad
-  `cg2/lake_port_clock_gating.patch`). It gates each port's
-  Port/ID/AG/SG/rd_buf/memintfdec on a per-port `port_enable` bit in its ID.
-  - gf12 estimate from the same reports: port-logic modules draw 891 µW of the
-    tile's 1590 µW idle (static, ~56%) and 582 of 1410 µW (RV, ~41%). Almost
-    none of it is leakage.
-  - Measured locally with Genus auto-CG: port logic idle 0.56 → 0.28 mW
-    (leakage only), active unchanged.
+- **Two opt-in Spec options cover the biggest items (lake 9f9480c9,
+  2026-10-14). Both are off by default; off = byte-identical RTL and bitstreams.**
+  They are kwargs of `Spec`, `build_spec`, `build_spec_rv` and thesis_sweep's
+  `build_four_port_wide_fetch`, and flags of thesis_sweep.py and
+  gen_power_bitstreams.py. garnet passes them through `spec_config.json`.
+  - `share_clk_ctr`: one `shared_clk_ctr` at the spec top
+    (`Spec._build_shared_clk_ctr`). It is as wide as the widest static SG (39
+    bits on fw4 2×2: 292 flops → 39), and each static SG takes its low bits on
+    input `shared_clk_ctr`. That covers the port SGs and the SIPO/PISO SGs in
+    vectorized ports (`Port.use_shared_clk_ctr`). The values are the same: every
+    clk_ctr clears on flush and counts each clk_en cycle, and each wraps at
+    its own width. The bitstream is unchanged. Filter SGs (`external_count`)
+    keep their own counter. An RV spec has no free-running SG, so the option
+    changes nothing there.
+  - `clock_gate_ports`: each port's Port/ID/AG/SG/rd_buf/memintfdec runs on
+    `port_<i>_gclk` = clk AND (`port_<i>_active` captured on the falling edge).
+    `active` is a 1-bit `port_enable` config field in the port's ID, which
+    `IterationDomain.gen_bitstream` sets. So every port the app configures
+    runs, and the rest stop. Dimensionality can't serve as the enable: since
+    e4fabdc1, dimensionality 0 means run once. With both options on, the
+    shared counter also stops while no port is configured (enable = clk_en AND
+    any port_enable). A gated build needs bitstreams from the same gated spec.
+    garnet does that, since its power-test generator rebuilds from
+    spec_config.json; lake's power-test-gen takes `--clock_gate_ports`.
+  - Checked: thesis_sweep fw4 2×2 gold sim PASS in all four combinations.
+    The spec unit tests pass (342, 5 xfail) with each option forced on all 89
+    specs they build (scratchpad `sc/run_forced_pytest.py`). The garnet tile
+    memtile power tests pass idle + active, with SAIF port clocks at TC 0 in
+    idle and running in active (garnet mflowgen/CLAUDE.md "Clock-gating A/B").
+    Tests: `tests/spec_unit_tests/test_spec_power_options.py`.
+  - Measured so far for port gating:
+    - gf12 estimate from the dw16 reports: port-logic modules draw 891 µW of
+      the tile's 1590 µW idle (static, ~56%) and 582 of 1410 µW (RV, ~41%),
+      almost none of it leakage.
+    - Locally (freepdk45, fw4 SP 2×2 4 KB, ideal clocks) with Genus auto-CG,
+      port logic in idle drops from 0.56 to 0.28 mW (leakage only). Without
+      auto-CG the idle total drops from 17.8 to 16.7 mW (port logic 1.38 to
+      0.31). Active is unchanged.
+  - The gf12 A/B through PnR is garnet `sweep_specs.py --spec-set
+    clock_gating` (static base / shared counter / port gating / both, RV base /
+    gated). It was handed to the user on 2026-10-14.
 - **Other ideas, not implemented:**
-  - one shared cycle counter per spec instead of one per SG (the static ones
-    are identical: +1 per cycle, cleared on flush). This also saves active
-    power;
-  - stop `clk_ctr` once the port's ID is finished;
+  - stop the shared counter once every port's ID is finished;
   - AND the filter SG's `external_count` with its enable;
   - enable the OUT delay lines with `quali_step`;
   - rotate the arbiter only on a request.
