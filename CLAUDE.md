@@ -562,6 +562,14 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
   from `LAKE_COLLATERAL_JSON_MEM`'s `data_width`, so the spec is the single
   source for fabric and compiler. All other keys are unchanged. The thesis_sweep
   tests check individual keys, so they don't care.
+- **Test (2026-10-12):** `tests/spec_unit_tests/test_collateral_data_width.py` (29 tests, about
+  1 s).
+  - `data_width` at the `mem` level (static, static dual-port, RV) and the `regfile` level
+    (static and RV pond), for dw 8/16/32/64.
+  - It also runs `spec_config_to_collateral.generate` and `pond_collateral.generate`, the files
+    `aha map` uses.
+  - dw64 uses fw2, because dw64 × fw4 has no SRAM macro (`build_spec_rv` asserts "No valid
+    macros").
 
 ### 5.6 Clock gating: what synthesis gates and what it can't (audit 2026-10-12, session 5b33d095)
 
