@@ -4,7 +4,7 @@ Each entry maps a stable ``id`` to:
   - ``label``: the LaTeX ``\\label{...}`` string (fig: or tab: prefix)
   - ``output``: path *relative to* ``THESIS/output/`` that ``\\includegraphics``
     or ``\\input`` in the tex points at. Must match the tex exactly.
-  - ``kind``:  "figure" | "table"
+  - ``kind``:  "figure" | "table" | "listing" (a .tex snippet of code listings)
   - ``source``: one-line description of what data the artifact needs
   - ``status``: "real" | "bogus" | "manual" — see below
   - ``generator``: callable(ctx, outpath) or None
@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 from . import generators as g
+from . import halide_appendix as ha
 from . import tile_figures as tf
 
 Generator = Callable[["g.GenContext", "object"], None]
@@ -505,6 +506,18 @@ MEMTILE_CHARACTERIZATION = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Appendix: the Halide code of the tab:exploration_applications apps.
+# ---------------------------------------------------------------------------
+APPENDIX = [
+    Entry("halide_appendix", "app:halide_code",
+          "listings/halide_appendix.tex", "listing",
+          "Halide-to-Hardware generators at aha's pinned commit + aha application_parameters.json args",
+          "real", ha.halide_appendix,
+          notes="Pasted inline into the appendix of main.tex (Overleaf); one lstlisting per app."),
+]
+
+
 REGISTRY: list[Entry] = (
     BACKGROUND_MANUAL
     + COMPONENT_CHARACTERIZATION
@@ -512,6 +525,7 @@ REGISTRY: list[Entry] = (
     + LI_CHARACTERIZATION
     + MEMTILE_CHARACTERIZATION
     + TABLES
+    + APPENDIX
 )
 
 for _e in REGISTRY:

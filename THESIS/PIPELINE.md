@@ -131,6 +131,13 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
     `--preview-views DIR` writes every selected sweep figure in all three
     views + a side-by-side `index.html` without touching `output/`.
   Placement and captions for the tex: `THESIS/output/snippets/memtile_figures.tex`.
+- **Halide-to-Hardware + aha** → `halide_appendix` (kind `listing`,
+  `output/listings/halide_appendix.tex`): the appendix's Halide code, one
+  lstlisting per app, from the H2H commit aha pins and the generator args in
+  aha's `application_parameters.json`, keeping only the Clockwork schedule
+  those args select (`pipeline/halide_appendix.py`). Checkouts default to
+  `../aha` and `../Halide-to-Hardware`; override with `AHA_DIR` / `H2H_DIR`.
+  The snippet is pasted inline into the appendix of main.tex (Overleaf).
 - **THESIS_BUILDS** (standalone lakespec) → the `tab:memtile_model_*` /
   `tab:ul_ppa_summary` tables. The standalone area/power generators remain in
   `generators.py` but are no longer registered for the component figures.

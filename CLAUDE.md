@@ -200,6 +200,15 @@ As of 2026-09-28, Milestone 1 is wired end-to-end but has no data yet:
   PE-tile numbers.
 - Tests: `python3 -m pytest --confcutdir=tests/thesis tests/thesis/`.
 
+### 1.7b Appendix Halide code
+
+`python3 THESIS/generate_thesis_artifacts.py --only halide_appendix` writes
+`THESIS/output/listings/halide_appendix.tex`: the generator code of the six
+`tab:exploration_applications` apps at the Halide-to-Hardware commit aha pins,
+with only the Clockwork schedule aha's `application_parameters.json` args
+select. Paste it over the listings in the Overleaf appendix
+(`app:halide_code`). Details: `THESIS/PIPELINE.md` §4.
+
 ### 1.8 Memory-tile (Tile_MemCore) sweep figures
 
 The garnet lake-spec sweep (`garnet/mflowgen/sweep_specs.py --spec-set

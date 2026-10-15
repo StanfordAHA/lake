@@ -76,7 +76,7 @@ def _handle_entry(e: Entry, ctx: GenContext | None, view: str | None = None) -> 
 
     if e.status == "bogus":
         reason = e.notes or "data not yet available"
-        if e.kind == "table":
+        if e.kind in ("table", "listing"):
             make_bogus_table(out, title=e.label, reason=reason)
         else:
             make_bogus_figure(out, title=e.label, reason=reason)
@@ -93,7 +93,7 @@ def _handle_entry(e: Entry, ctx: GenContext | None, view: str | None = None) -> 
             return "real"
         except MissingDataError as err:
             reason = f"MissingDataError: {err}"
-            if e.kind == "table":
+            if e.kind in ("table", "listing"):
                 make_bogus_table(out, title=e.label, reason=reason)
             else:
                 make_bogus_figure(out, title=e.label, reason=reason)
@@ -139,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="THESIS_BUILDS root (only needed for 'real' generators).")
     ap.add_argument("--only", nargs="*", metavar="ID",
                     help="Only process these registry IDs.")
-    ap.add_argument("--kind", choices=["figure", "table"],
+    ap.add_argument("--kind", choices=["figure", "table", "listing"],
                     help="Filter by kind.")
     ap.add_argument("--status", choices=["real", "bogus", "manual"],
                     help="Filter by status.")
