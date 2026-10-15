@@ -104,3 +104,21 @@ def test_clock_gate_ports_enable_bit():
             assert (field, 1) in port_id.gen_bitstream(2, [4, 4])
         plain = built(builder)
         assert not plain.get_port_controllers(plain.get_in_ports()[0])[0].has_port_enable
+
+
+def test_clock_gate_ports_filter_enable_bit():
+    """RV in-ports' item filters get `filter_enable`, set only for an app filter."""
+    spec = built(build_spec_rv, clock_gate_ports=True)
+    filtered = [p for p in spec.get_in_ports() if p.get_filter()]
+    assert filtered
+    for port in filtered:
+        sg = port.filter_sg
+        assert sg.has_filter_enable
+        field = sg.get_cfg_map()["filter_enable"]
+        base = port.child_cfg_bases[sg]
+        enable_bit = ((field[0] + base, field[1] + base), 1)
+        dense = {"extents": [4, 4], "dimensionality": 2}
+        assert enable_bit not in port.gen_bitstream(id_map=dense)
+        assert enable_bit in port.gen_bitstream(id_map=dict(dense, offset=[2], strides=[1, 4]))
+    plain = built(build_spec_rv)
+    assert not any(p.filter_sg.has_filter_enable for p in plain.get_in_ports() if p.get_filter())

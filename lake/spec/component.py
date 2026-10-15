@@ -315,6 +315,13 @@ class Component(kratos.Generator):
     def get_cfg_map(self):
         return self.cfg_reg_to_range
 
+    def lifted_cfg_field(self, child, instance_name, field):
+        """Config field `field` of child `instance_name`, as a slice of this
+        component's lifted copy of the child's config memory (add_child)."""
+        lifted = self._name_to_var_cfg[f"{child.name}_{instance_name}_config_memory"]
+        hi, lo = child.get_cfg_map()[field]
+        return lifted[hi, lo]
+
     def gen_bitstream(self):
         return self.get_configuration()
 

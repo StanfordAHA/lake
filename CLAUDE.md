@@ -598,7 +598,8 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
     in idle AND active: 57% of lakespec idle, 35% of tile idle.
   - ICG cells see the clock every cycle: about 231 µW static, 347 µW RV.
   - RV in-ports' filter SG counts input valids even when unconfigured
-    (port.py `external_count`), about 132 µW (RV tile).
+    (port.py `external_count`), about 132 µW (RV tile). Gated under
+    `clock_gate_ports` (below), including configured ports the app doesn't filter.
   - Smaller items: the arbiter `grant_line` rotates every cycle (~12 µW); the
     static OUT delay lines (~9 µW per port).
 - **Two opt-in Spec options cover the biggest items (lake 9f9480c9,
@@ -625,6 +626,36 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
     any port_enable). A gated build needs bitstreams from the same gated spec.
     garnet does that, since its power-test generator rebuilds from
     spec_config.json; lake's power-test-gen takes `--clock_gate_ports`.
+  - `clock_gate_ports` also gates each RV in-port's **item filter** (2026-10-14,
+    user request). That SG counts tokens (`external_count`, 2 × 34-bit regs) on
+    every RV in-port, filtered or not: when the app gives a port no filter,
+    `Port.gen_bitstream` programs the dense pass-everything schedule (offset 0,
+    strides 1, e0, ...), which steps on every token.
+    - The filter SG gets a 1-bit `filter_enable` config field, set only when the
+      app gives the port a filter (`id_map` has offset/strides). Clear, the
+      external count is masked, so clk_ctr and the recurrence `current_cycle`
+      hold their flush values (0 and offset 0). Then `step = ~finished`
+      (& ~flush & enable): the same steps as the dense program. With dense
+      strides the recurrence deltas are all 1, so that program's counter and
+      schedule stay equal until the ID's `restart` (its last step), and its
+      `finished` latches the cycle after. Tokens after the domain are eaten
+      either way.
+    - Its clock is `filter_gclk` = clk AND (filter_enable | flush), captured on
+      the falling edge (`negedge_gated_clock` in lake/utils/util.py, also used
+      for the port gates). Flush is included so a flush still clears the SG.
+    - An unconfigured port is gated whole by `port_enable` anyway. The filter
+      gate is what saves power in configured ports the app doesn't filter: most
+      ports of real apps, and every port of the memtile `active` test.
+    - Checked (session 5b33d095):
+      - Flag off: byte-identical RTL; the static gated RTL is unchanged too.
+      - Spec unit tests pass with clock_gate_ports forced on all specs: RV
+        programs with and without filters, and the filter FIFO.
+      - garnet RV tile memtile power test: idle + active PASS, same output
+        activity as ungated; every `filter_gclk` TC 0.
+      - **RV conv_3_3 end to end (garnet `gen_app_bundle.py --config
+        fw4_dw16_sc4096_sp_in2_out2_vc2_portcg_rv`, 16×16): bit-accurate.** No
+        app filter, so every MEM in-port ran the bypass. This was also the first
+        real-app run with port gating.
   - Checked: thesis_sweep fw4 2×2 gold sim PASS in all four combinations.
     The spec unit tests pass (342, 5 xfail) with each option forced on all 89
     specs they build (scratchpad `sc/run_forced_pytest.py`). The garnet tile
@@ -644,7 +675,6 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
     gated). It was handed to the user on 2026-10-14.
 - **Other ideas, not implemented:**
   - stop the shared counter once every port's ID is finished;
-  - AND the filter SG's `external_count` with its enable;
   - enable the OUT delay lines with `quali_step`;
   - rotate the arbiter only on a request.
 - **Measuring gated designs before CTS: use ideal clocks.**

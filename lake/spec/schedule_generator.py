@@ -20,16 +20,24 @@ class ScheduleGenerator(Component):
         self.mod_name = name
         self.exploit_recurrence = recurrence
         self.external_count = external_count
+        self.has_filter_enable = False
 
     def get_rv(self):
         return self.rv
 
     def gen_hardware(self, id: IterationDomain = None, num_comparisons: int = 1, pos_reset=False,
-                     shared_clk_ctr=False):
+                     shared_clk_ctr=False, filter_enable=False):
         '''shared_clk_ctr: take the cycle count from input `shared_clk_ctr` (the
         low total_cycle_width bits of the Spec's one counter, share_clk_ctr)
         instead of a local clk_ctr. Same values: both clear on flush and count
         every clk_en cycle.
+
+        filter_enable (external_count SGs, i.e. a Port's item filter): a 1-bit
+        `filter_enable` config field gates the external count. Cleared, the
+        counter and the recurrence hold their flush values (0 and the offset),
+        which with offset 0 is the pass-everything filter: step = ~finished,
+        the same steps as the dense-stride program counting every token
+        (Port.gen_bitstream). The Port also gates this SG's clock on it.
         '''
         assert id is not None
         assert not (shared_clk_ctr and self.external_count), "an external_count SG keeps its own counter"
@@ -57,6 +65,12 @@ class ScheduleGenerator(Component):
         if self.external_count:
             self._external_count_pin = self.input("external_count", 1)
             increment_counter = self._external_count_pin
+            if filter_enable:
+                self.has_filter_enable = True
+                self._filter_enable = self.config_reg(name="filter_enable", width=1)
+                increment_counter = self._external_count_pin & self._filter_enable
+        else:
+            assert not filter_enable, "filter_enable gates an external count"
 
         self.increment_counter = increment_counter
 
@@ -117,7 +131,9 @@ class ScheduleGenerator(Component):
                 else:
                     self._current_cycle = self._current_cycle + self._strides[self._mux_sel]
 
-    def gen_bitstream(self, schedule_map, extents, dimensionality):
+    def gen_bitstream(self, schedule_map, extents, dimensionality, filter_enable=True):
+        '''filter_enable: value of the `filter_enable` field when this SG has one
+        (gen_hardware(filter_enable=True)); False = the pass-everything filter.'''
         assert 'strides' in schedule_map
         assert 'offset' in schedule_map
 
@@ -125,6 +141,8 @@ class ScheduleGenerator(Component):
 
         # Enable through the configuration
         self.configure(self._enable, 1)
+        if self.has_filter_enable and filter_enable:
+            self.configure(self._filter_enable, 1)
 
         self.configure(self._starting_cycle, schedule_map['offset'])
         if self.exploit_recurrence:

@@ -707,6 +707,26 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=Fa
 
 
 # Add a simple counter to a design and return the signal
+def negedge_gated_clock(generator, clk, enable, name, en_name):
+    """Glitch-free gated clock `name` = clk & `en_name`, where `en_name` is
+    `enable` captured on the falling edge of clk (cleared by rst_n): it only
+    changes while clk is low, so the AND cannot glitch. Returns the gated
+    clock, usable as a child's clk."""
+    en_l = generator.var(en_name, 1)
+
+    @always_ff((negedge, "clk"), (negedge, "rst_n"))
+    def capture_enable():
+        if ~generator._rst_n:
+            en_l = 0
+        else:
+            en_l = enable
+
+    generator.add_code(capture_enable)
+    gclk = generator.var(name, 1)
+    generator.wire(gclk, kts.util.clock(clk & en_l))
+    return kts.util.clock(gclk)
+
+
 def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=kts.const(0, 1), pos_reset=False, clk_en=kts.const(1, 1)):
 
     ctr = generator.var(name, bitwidth, packed=True)

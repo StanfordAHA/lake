@@ -534,7 +534,9 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
             register space already holds the config; False for a standalone spec.
         clock_gate_ports: Gate each port's clock off while the application
             leaves it unconfigured (Spec clock_gate_ports; adds a port_enable
-            config bit per port). Off by default.
+            config bit per port), and each RV in-port's item filter while the
+            application gives that port no filter (a filter_enable bit). Off by
+            default.
         share_clk_ctr: One cycle counter for every static schedule generator
             instead of a clk_ctr each (Spec share_clk_ctr; same RTL behavior and
             bitstream). Off by default.
@@ -683,7 +685,9 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
             (FIFOScheduleGenerator); no comparators, no dependence constraints.
         clock_gate_ports: Gate each port's clock off while the application
             leaves it unconfigured (Spec clock_gate_ports; adds a port_enable
-            config bit per port). Off by default.
+            config bit per port), and each RV in-port's item filter while the
+            application gives that port no filter (a filter_enable bit). Off by
+            default.
         share_clk_ctr: One cycle counter for every static schedule generator
             instead of a clk_ctr each (Spec share_clk_ctr). An RV spec has none
             (its filter SGs count input valids), so this changes nothing here.

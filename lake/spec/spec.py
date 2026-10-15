@@ -16,7 +16,7 @@ from typing import Tuple
 import os as os
 from lake.utils.spec_enum import Direction
 from lake.utils.util import connect_memoryport_storage, inline_multiplexer, shift_reg, round_up_to_power_of_2, lift_port, \
-    add_counter
+    add_counter, negedge_gated_clock
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
@@ -75,7 +75,9 @@ class Spec():
         # reader network, which is what silicon has.
         self.prune_rv_comparators = prune_rv_comparators
         # Gate the clock of every port whose iteration domain is unconfigured
-        # (see _port_gated_clock). Opt-in: off by default.
+        # (see _port_gated_clock), and of each RV in-port's item filter while
+        # the app gives it no filter (Port.use_filter_enable). Opt-in: off by
+        # default.
         self.clock_gate_ports = clock_gate_ports
         # One cycle counter for every static (free-running) SG instead of a
         # clk_ctr each (see _build_shared_clk_ctr). Opt-in: off by default.
@@ -434,6 +436,8 @@ class Spec():
 
             if self.share_clk_ctr and not self.any_rv_sg:
                 port.use_shared_clk_ctr()
+            if self.clock_gate_ports and port.get_filter():
+                port.use_filter_enable()
             port.gen_hardware(dimensionality=id_dims, external_id=port_id)
 
             # The port's own logic (Port, ID/AG/SG, read buffer, memory-interface
@@ -463,7 +467,7 @@ class Spec():
                                       clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             if port_active is not None:
                 self._final_gen.wire(port_active,
-                                     self._port_cfg_field(port_id, f"port_id_{i_}", "port_enable"))
+                                     self._final_gen.lifted_cfg_field(port_id, f"port_id_{i_}", "port_enable"))
                 port_actives.append(port_active)
             if getattr(port_sg, "shared_clk_ctr", False):
                 clk_ctr_sinks.append(port_sg.ports.shared_clk_ctr)
@@ -1392,19 +1396,9 @@ class Spec():
         """
         gen = self._final_gen
         active = gen.var(f"port_{i_}_active", 1)
-        active_l = gen.var(f"port_{i_}_active_l", 1)
-
-        @always_ff((negedge, "clk"), (negedge, "rst_n"))
-        def port_active_l():
-            if ~gen._rst_n:
-                active_l = 0
-            else:
-                active_l = active
-
-        gen.add_code(port_active_l)
-        gclk = gen.var(f"port_{i_}_gclk", 1)
-        gen.wire(gclk, kts.util.clock(self.hw_attr['clk'] & active_l))
-        return kts.util.clock(gclk), active
+        gclk = negedge_gated_clock(gen, self.hw_attr['clk'], active,
+                                   name=f"port_{i_}_gclk", en_name=f"port_{i_}_active_l")
+        return gclk, active
 
     def _build_shared_clk_ctr(self, sinks, port_actives):
         """One free-running cycle counter for every static SG (share_clk_ctr).
@@ -1430,13 +1424,6 @@ class Spec():
                           clear=self.hw_attr['flush'], clk_en=clk_en)
         for sink in sinks:
             self._final_gen.wire(sink, ctr[sink.width - 1, 0])
-
-    def _port_cfg_field(self, port_id, instance_name, field):
-        """A config field of a child IterationDomain, as a slice of the
-        parent's lifted copy of that child's config memory."""
-        lifted = self._final_gen._name_to_var_cfg[f"{port_id.name}_{instance_name}_config_memory"]
-        hi, lo = port_id.get_cfg_map()[field]
-        return lifted[hi, lo]
 
     def get_port_controllers(self, port) -> Tuple[IterationDomain, AddressGenerator, ScheduleGenerator]:
         # Assemble the ID,AG,SG (or at least their interfaces) on the port
