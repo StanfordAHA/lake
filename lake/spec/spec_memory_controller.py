@@ -512,7 +512,8 @@ if __name__ == "__main__":
 def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
                dims=6, in_ports=2, out_ports=2, dual_port=False,
                vec_capacity=2, max_extent=None, max_sequence_width=None,
-               physical=False, config_passthru=False):
+               physical=False, config_passthru=False,
+               clock_gate_ports=False, share_clk_ctr=False):
     """Factory function to build a lake Spec for any thesis configuration.
 
     Args:
@@ -531,6 +532,12 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
             through the hardened ConfigMemory register loaded on config_memory_wen
             (False). Use True inside a CGRA MemTile, whose own configuration
             register space already holds the config; False for a standalone spec.
+        clock_gate_ports: Gate each port's clock off while the application
+            leaves it unconfigured (Spec clock_gate_ports; adds a port_enable
+            config bit per port). Off by default.
+        share_clk_ctr: One cycle counter for every static schedule generator
+            instead of a clk_ctr each (Spec share_clk_ctr; same RTL behavior and
+            bitstream). Off by default.
 
     Returns:
         A lake Spec instance.
@@ -543,7 +550,8 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
         stride_width = max(1, math.ceil(math.log2(max(max_sequence_width, 2))))
 
     ls = Spec(name="lakespec", opt_rv=False, remote_storage=True,
-              config_passthru=config_passthru, comply_17=True)
+              config_passthru=config_passthru, comply_17=True,
+              clock_gate_ports=clock_gate_ports, share_clk_ctr=share_clk_ctr)
 
     vc = vec_capacity if vec_width > 1 else None
     int_dw = data_width * vec_width
@@ -637,7 +645,7 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
                   dims=6, in_ports=2, out_ports=2, dual_port=False,
                   vec_capacity=2, max_extent=None, max_sequence_width=None,
                   add_filter_path=True, physical=True, prune_rv_comparators=True,
-                  filter_fifo_depth=None):
+                  filter_fifo_depth=None, clock_gate_ports=False, share_clk_ctr=False):
     """Factory function to build an RV (ready-valid / dynamic) lake Spec.
 
     Mirrors build_four_port_wide_fetch_rv but accepts configurable params
@@ -673,6 +681,12 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
             the address is a wrapping pointer (LinearAddressGenerator, no
             config) and the schedule is fixed full/empty
             (FIFOScheduleGenerator); no comparators, no dependence constraints.
+        clock_gate_ports: Gate each port's clock off while the application
+            leaves it unconfigured (Spec clock_gate_ports; adds a port_enable
+            config bit per port). Off by default.
+        share_clk_ctr: One cycle counter for every static schedule generator
+            instead of a clk_ctr each (Spec share_clk_ctr). An RV spec has none
+            (its filter SGs count input valids), so this changes nothing here.
 
     Returns:
         A lake Spec instance configured for RV hardware generation.
@@ -692,7 +706,8 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
 
     ls = Spec(name="lakespec_mem", opt_rv=True, remote_storage=True,
               run_flush_pass=False, config_passthru=True, comply_17=True,
-              prune_rv_comparators=prune_rv_comparators)
+              prune_rv_comparators=prune_rv_comparators,
+              clock_gate_ports=clock_gate_ports, share_clk_ctr=share_clk_ctr)
 
     vc = vec_capacity if vec_width > 1 else None
     int_dw = data_width * vec_width

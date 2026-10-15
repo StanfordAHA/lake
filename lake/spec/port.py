@@ -56,6 +56,10 @@ class Port(Component):
         if dangling:
             assert direction == Direction.IN
         self.dangling = dangling
+        # Static vectorized ports: the internal SIPO/PISO SG takes the Spec's
+        # shared cycle counter through input `shared_clk_ctr` (Spec share_clk_ctr)
+        self.shared_clk_ctr = False
+        self._shared_clk_ctr_in = None
 
     def __str__(self):
         type_str = "Write"
@@ -83,6 +87,19 @@ class Port(Component):
 
     def get_filter(self):
         return self.filter
+
+    def use_shared_clk_ctr(self):
+        """Call before gen_hardware (Spec share_clk_ctr)."""
+        self.shared_clk_ctr = True
+
+    def get_shared_clk_ctr(self):
+        """The `shared_clk_ctr` input, or None when no internal SG needs it."""
+        return self._shared_clk_ctr_in
+
+    def _wire_shared_clk_ctr(self, sg):
+        """Feed the static internal SG `sg` from input `shared_clk_ctr`."""
+        self._shared_clk_ctr_in = self.input("shared_clk_ctr", sg.total_cycle_width)
+        self.wire(self._shared_clk_ctr_in, sg.ports.shared_clk_ctr)
 
     def gen_hardware(self, pos_reset=False, dimensionality=None, external_id=None):
 
@@ -590,7 +607,10 @@ class Port(Component):
                 # build the proper hardware within the port
                 # port.gen_hardware(dimensionality=id_dims)
                 self._id_sipo_in.gen_hardware()
-                self._sg_sipo_in.gen_hardware(self._id_sipo_in)
+                if self._runtime == Runtime.DYNAMIC:
+                    self._sg_sipo_in.gen_hardware(self._id_sipo_in)
+                else:
+                    self._sg_sipo_in.gen_hardware(self._id_sipo_in, shared_clk_ctr=self.shared_clk_ctr)
 
                 # Register all sgs with the rv comp network
                 if self._runtime == Runtime.DYNAMIC:
@@ -613,6 +633,8 @@ class Port(Component):
                 self.add_child(f"port_sg_sipo_in", self._sg_sipo_in,
                                clk=self._clk,
                                rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                if self._runtime != Runtime.DYNAMIC and self.shared_clk_ctr:
+                    self._wire_shared_clk_ctr(self._sg_sipo_in)
 
                 self.wire(self._id_sipo_in.ports.mux_sel, self._ag_sipo_in.ports.mux_sel)
                 self.wire(self._id_sipo_in.ports.iterators, self._ag_sipo_in.ports.iterators)
@@ -1195,7 +1217,10 @@ class Port(Component):
                 # build the proper hardware within the port
                 # port.gen_hardware(dimensionality=id_dims)
                 self._id_piso_out.gen_hardware()
-                self._sg_piso_out.gen_hardware(self._id_piso_out)
+                if self._runtime == Runtime.DYNAMIC:
+                    self._sg_piso_out.gen_hardware(self._id_piso_out)
+                else:
+                    self._sg_piso_out.gen_hardware(self._id_piso_out, shared_clk_ctr=self.shared_clk_ctr)
                 self._ag_piso_out.gen_hardware(memports=[self._piso_strg_mp_out], id=self._id_piso_out)
 
                 # Register all sgs with the rv comp network
@@ -1224,6 +1249,8 @@ class Port(Component):
                 self.add_child(f"port_sg_piso_out", self._sg_piso_out,
                                clk=self._clk,
                                rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                if self._runtime != Runtime.DYNAMIC and self.shared_clk_ctr:
+                    self._wire_shared_clk_ctr(self._sg_piso_out)
 
                 # Hook up the ID, SG, AG that are generated internal to the Port
                 self.wire(self._id_piso_out.ports.mux_sel, self._ag_piso_out.ports.mux_sel)

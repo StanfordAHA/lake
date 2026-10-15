@@ -16,6 +16,14 @@ class IterationDomain(Component):
         #  We want to handle flush and clk_en ourselves
         self.sync_reset_no_touch = True
         self.clk_en_no_touch = True
+        # A port's own ID can carry a 1-bit `port_enable` config field, set
+        # whenever the ID is configured. Spec(clock_gate_ports=True) gates the
+        # port's clock on it (dimensionality can't tell: 0 also means run once).
+        self.has_port_enable = False
+
+    def add_port_enable(self):
+        """Add the `port_enable` config field (call before gen_hardware)."""
+        self.has_port_enable = True
 
     def get_dimensionality(self):
         return self.dimensionality_support
@@ -34,6 +42,8 @@ class IterationDomain(Component):
         extents = list(extents[:dimensionality])
 
         self.clear_configuration()
+        if self.has_port_enable:
+            self.configure(self._port_enable, 1)
         # Actually add one if rv (to be safe) - only need to do this when
         # the comparison is at the top level, but let's just do this for now
         if rv:
@@ -92,6 +102,8 @@ class IterationDomain(Component):
                                         packed=True, explicit_array=True)
 
         self._dimensionality = self.config_reg(name="dimensionality", width=1 + kts.clog2(self.dimensionality_support))
+        if self.has_port_enable:
+            self._port_enable = self.config_reg(name="port_enable", width=1)
 
         self._step = self.input("step", 1)
         # OUTPUTS

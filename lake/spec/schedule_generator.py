@@ -24,8 +24,16 @@ class ScheduleGenerator(Component):
     def get_rv(self):
         return self.rv
 
-    def gen_hardware(self, id: IterationDomain = None, num_comparisons: int = 1, pos_reset=False):
+    def gen_hardware(self, id: IterationDomain = None, num_comparisons: int = 1, pos_reset=False,
+                     shared_clk_ctr=False):
+        '''shared_clk_ctr: take the cycle count from input `shared_clk_ctr` (the
+        low total_cycle_width bits of the Spec's one counter, share_clk_ctr)
+        instead of a local clk_ctr. Same values: both clear on flush and count
+        every clk_en cycle.
+        '''
         assert id is not None
+        assert not (shared_clk_ctr and self.external_count), "an external_count SG keeps its own counter"
+        self.shared_clk_ctr = shared_clk_ctr
         id_ext_width = id.get_extent_width()
         # Total cycle width right now is stride width + ext_width
         self.total_cycle_width = id_ext_width + self.stride_width + self.dimensionality_support + 1
@@ -52,8 +60,11 @@ class ScheduleGenerator(Component):
 
         self.increment_counter = increment_counter
 
-        self._clk_ctr = add_counter(self, "clk_ctr", bitwidth=self.total_cycle_width, increment=increment_counter,
-                                    clear=self._flush, clk_en=self._clk_en)
+        if shared_clk_ctr:
+            self._clk_ctr = self.input("shared_clk_ctr", self.total_cycle_width)
+        else:
+            self._clk_ctr = add_counter(self, "clk_ctr", bitwidth=self.total_cycle_width, increment=increment_counter,
+                                        clear=self._flush, clk_en=self._clk_en)
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
         self._restart = self.input("restart", 1)
         self._finished = self.input("finished", 1)

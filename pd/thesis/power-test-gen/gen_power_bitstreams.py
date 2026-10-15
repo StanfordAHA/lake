@@ -126,6 +126,12 @@ def main():
                    help="input data seed (the CGRA-tile flow uses the same streams "
                         "for the same seed)")
     p.add_argument("--outdir",           type=str, default="outputs")
+    p.add_argument("--clock_gate_ports", action="store_true",
+                   help="Build the spec with clock_gate_ports (its bitstreams carry "
+                        "each configured port's port_enable bit); must match the RTL")
+    p.add_argument("--share_clk_ctr", action="store_true",
+                   help="Build the spec with share_clk_ctr (same bitstreams; must "
+                        "match the RTL)")
     p.add_argument("--physical",         action="store_true",
                    help="Pass through to build_four_port_wide_fetch so the "
                         "spec ships a GF_Tech_Map that matches the rtl step.")
@@ -146,6 +152,8 @@ def main():
         max_extent=args.max_extent,
         max_sequence_width=args.max_sequence_width,
         physical=args.physical,
+        clock_gate_ports=args.clock_gate_ports,
+        share_clk_ctr=args.share_clk_ctr,
     )
     # generate_hardware() populates the internal generator so gen_bitstream,
     # get_total_config_size, get_num_ports and the port limits are valid.

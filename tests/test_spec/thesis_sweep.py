@@ -17,7 +17,8 @@ import os
 def build_four_port_wide_fetch(storage_capacity=4096, data_width=16, dims: int = 6, vec_width=4, physical=False,
                                   reg_file=False, vec_capacity=2, opt_rv=False, add_filter_path=False,
                                   in_ports=2, out_ports=2, dual_port=False,
-                                  max_extent=None, max_sequence_width=None) -> Spec:
+                                  max_extent=None, max_sequence_width=None,
+                                  clock_gate_ports=False, share_clk_ctr=False) -> Spec:
 
     opt_rv = False
 
@@ -31,7 +32,8 @@ def build_four_port_wide_fetch(storage_capacity=4096, data_width=16, dims: int =
     remote_storage = False
 
     ls = Spec(name="lakespec", opt_rv=opt_rv, remote_storage=remote_storage,
-              config_passthru=False, comply_17=True)
+              config_passthru=False, comply_17=True, clock_gate_ports=clock_gate_ports,
+              share_clk_ctr=share_clk_ctr)
 
     # Determine if vec_capacity is needed (only when vectorized)
     vc = vec_capacity if vec_width > 1 else None
@@ -1120,7 +1122,8 @@ def validate_generated_outputs(collateral_path, verilog_path,
 def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
                                     tp: TestPrepper = None, test='linear', reg_file=False, dimensionality=6, opt_rv=False,
                                     in_ports=2, out_ports=2, dual_port=False, vec_capacity=2,
-                                    max_extent=None, max_sequence_width=None):
+                                    max_extent=None, max_sequence_width=None, clock_gate_ports=False,
+                                    share_clk_ctr=False):
 
     assert tp is not None
 
@@ -1138,7 +1141,9 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
                                                        dims=dimensionality, opt_rv=opt_rv,
                                                        in_ports=in_ports, out_ports=out_ports,
                                                        dual_port=dual_port, vec_capacity=vec_capacity,
-                                                       max_extent=max_extent, max_sequence_width=max_sequence_width)
+                                                       max_extent=max_extent, max_sequence_width=max_sequence_width,
+                                                       clock_gate_ports=clock_gate_ports,
+                                                       share_clk_ctr=share_clk_ctr)
     simple_four_port_spec.visualize_graph()
     simple_four_port_spec.generate_hardware()
 
@@ -1255,6 +1260,10 @@ if __name__ == "__main__":
     parser.add_argument("--vec_capacity", type=int, default=2)
     parser.add_argument("--max_extent", type=int, default=None)
     parser.add_argument("--max_sequence_width", type=int, default=None)
+    parser.add_argument("--clock_gate_ports", action="store_true",
+                        help="Gate the clock of unconfigured ports (Spec clock_gate_ports)")
+    parser.add_argument("--share_clk_ctr", action="store_true",
+                        help="One cycle counter for every static SG (Spec share_clk_ctr)")
     args = parser.parse_args()
 
     print("Preparing hardware test")
@@ -1272,4 +1281,6 @@ if __name__ == "__main__":
                                     reg_file=args.reg_file, dimensionality=args.dimensionality,
                                     opt_rv=args.opt_rv, in_ports=in_ports, out_ports=out_ports,
                                     dual_port=args.dual_port, vec_capacity=args.vec_capacity,
-                                    max_extent=args.max_extent, max_sequence_width=args.max_sequence_width)
+                                    max_extent=args.max_extent, max_sequence_width=args.max_sequence_width,
+                                    clock_gate_ports=args.clock_gate_ports,
+                                    share_clk_ctr=args.share_clk_ctr)

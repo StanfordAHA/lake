@@ -11,11 +11,12 @@ from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGe
 from lake.spec.port import Port
 from lake.modules.memory_interface_decoder import MemoryInterfaceDecoder
 import kratos as kts
-from kratos import clog2
+from kratos import clog2, always_ff, negedge
 from typing import Tuple
 import os as os
 from lake.utils.spec_enum import Direction
-from lake.utils.util import connect_memoryport_storage, inline_multiplexer, shift_reg, round_up_to_power_of_2, lift_port
+from lake.utils.util import connect_memoryport_storage, inline_multiplexer, shift_reg, round_up_to_power_of_2, lift_port, \
+    add_counter
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
@@ -34,7 +35,9 @@ class Spec():
                  opt_rv=False, remote_storage=False,
                  run_flush_pass=True,
                  comply_17=False,
-                 prune_rv_comparators=False) -> None:
+                 prune_rv_comparators=False,
+                 clock_gate_ports=False,
+                 share_clk_ctr=False) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
         self._name = name
@@ -71,6 +74,12 @@ class Spec():
         # (RVComparisonNetwork prune_cross_group). Off keeps the full writer x
         # reader network, which is what silicon has.
         self.prune_rv_comparators = prune_rv_comparators
+        # Gate the clock of every port whose iteration domain is unconfigured
+        # (see _port_gated_clock). Opt-in: off by default.
+        self.clock_gate_ports = clock_gate_ports
+        # One cycle counter for every static (free-running) SG instead of a
+        # clk_ctr each (see _build_shared_clk_ctr). Opt-in: off by default.
+        self.share_clk_ctr = share_clk_ctr
 
     def set_name(self, name):
         self._name = name
@@ -370,6 +379,8 @@ class Spec():
         self._fifo_ports = [p for p in port_nodes if self._is_fifo_port(p)]
         net_in = [p for p in self.get_in_ports() if p not in self._fifo_ports]
         net_out = [p for p in self.get_out_ports() if p not in self._fifo_ports]
+        clk_ctr_sinks = []  # share_clk_ctr: child inputs fed by the shared counter
+        port_actives = []  # clock_gate_ports: each port's `port_enable` bit
         for i_, port in enumerate(port_nodes):
             port: Port
 
@@ -388,6 +399,8 @@ class Spec():
             memports_ = self.get_memory_ports(port=port)
             # Port needs to know about the dimensionality in case of a vectorized port to
             # build the proper hardware within the port
+            if self.clock_gate_ports:
+                port_id.add_port_enable()
             port_id.gen_hardware()
 
             # If we are using the optimized implementation, it is crucial
@@ -410,7 +423,7 @@ class Spec():
                 else:
                     raise NotImplementedError()
             else:
-                port_sg.gen_hardware(port_id)
+                port_sg.gen_hardware(port_id, shared_clk_ctr=self.share_clk_ctr and not port_sg.external_count)
 
             if self.any_rv_sg and port not in self._fifo_ports:
                 # Just add the Port Direction and SG to the RVComparisonNetwork
@@ -419,25 +432,43 @@ class Spec():
                     direction=port_direction, sg=port_sg,
                     group=None if port_stg is None else storage_nodes.index(port_stg))
 
+            if self.share_clk_ctr and not self.any_rv_sg:
+                port.use_shared_clk_ctr()
             port.gen_hardware(dimensionality=id_dims, external_id=port_id)
 
+            # The port's own logic (Port, ID/AG/SG, read buffer, memory-interface
+            # decoder) runs on port_clk: clk itself, or clk gated off while the
+            # port is unconfigured (clock_gate_ports).
+            port_clk = self.hw_attr['clk']
+            port_active = None
+            if self.clock_gate_ports:
+                port_clk, port_active = self._port_gated_clock(i_)
+
             self._final_gen.add_child(f"port_inst_{i_}", port,
-                                      clk=self.hw_attr['clk'],
+                                      clk=port_clk,
                                       rst_n=self.hw_attr['rst_n'],
                                       clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             # Connect the ag/sg/id together
             self._final_gen.add_child(f"port_id_{i_}", port_id,
-                                      clk=self.hw_attr['clk'],
+                                      clk=port_clk,
                                       rst_n=self.hw_attr['rst_n'],
                                       clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             self._final_gen.add_child(f"port_ag_{i_}", port_ag,
-                                      clk=self.hw_attr['clk'],
+                                      clk=port_clk,
                                       rst_n=self.hw_attr['rst_n'],
                                       clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             self._final_gen.add_child(f"port_sg_{i_}", port_sg,
-                                      clk=self.hw_attr['clk'],
+                                      clk=port_clk,
                                       rst_n=self.hw_attr['rst_n'],
                                       clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
+            if port_active is not None:
+                self._final_gen.wire(port_active,
+                                     self._port_cfg_field(port_id, f"port_id_{i_}", "port_enable"))
+                port_actives.append(port_active)
+            if getattr(port_sg, "shared_clk_ctr", False):
+                clk_ctr_sinks.append(port_sg.ports.shared_clk_ctr)
+            if port.get_shared_clk_ctr() is not None:
+                clk_ctr_sinks.append(port.ports.shared_clk_ctr)
 
             self._final_gen.wire(port_id.ports.mux_sel, port_ag.ports.mux_sel)
             self._final_gen.wire(port_id.ports.restart, port_ag.ports.restart)
@@ -494,7 +525,7 @@ class Spec():
             memintf_dec.gen_hardware()
 
             self._final_gen.add_child(f"memintfdec_inst_{i_}", memintf_dec,
-                                      clk=self.hw_attr['clk'],
+                                      clk=port_clk,
                                       rst_n=self.hw_attr['rst_n'],
                                       clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             # After this, need to connect the decoded ports to the actual memports
@@ -536,7 +567,7 @@ class Spec():
                     sg_step = port_sg.ports.step
                     if rd_buf is not None:
                         self._final_gen.add_child(f"port_{i_}_rd_buf", rd_buf,
-                                                  clk=self.hw_attr['clk'],
+                                                  clk=port_clk,
                                                   rst_n=self.hw_attr['rst_n'],
                                                   clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
                         rd_arrive = memintf_dec.ports.data_valid
@@ -800,6 +831,8 @@ class Spec():
                 raise NotImplementedError
 
             # self._final_gen.wire(p_temp, ub_intf['data'])
+
+        self._build_shared_clk_ctr(clk_ctr_sinks, port_actives)
 
         # Now can build all the muxing in between the memintf and the mps
         self.build_mp_p()
@@ -1342,6 +1375,68 @@ class Spec():
         """
         with open(filepath, 'r') as f:
             return json.load(f)
+
+    def _port_gated_clock(self, i_):
+        """Gated clock for port i_ (clock_gate_ports).
+
+        A port the application doesn't configure never steps: its registers
+        hold their reset/flush values whatever the clock does, so clocking them
+        only burns power. `active` is the port ID's `port_enable` config bit,
+        which IterationDomain.gen_bitstream sets for every configured port.
+        (dimensionality 0 can't be the test: an all-ones domain is encoded as
+        dimensionality 0 and runs once.) Returns (gclk, active): gclk = clk &
+        active_l, where active_l is `active` captured on the falling edge of
+        clk (and cleared by rst_n), so it only changes while clk is low and
+        the gate cannot glitch. The caller drives `active` once the port's ID
+        is a child.
+        """
+        gen = self._final_gen
+        active = gen.var(f"port_{i_}_active", 1)
+        active_l = gen.var(f"port_{i_}_active_l", 1)
+
+        @always_ff((negedge, "clk"), (negedge, "rst_n"))
+        def port_active_l():
+            if ~gen._rst_n:
+                active_l = 0
+            else:
+                active_l = active
+
+        gen.add_code(port_active_l)
+        gclk = gen.var(f"port_{i_}_gclk", 1)
+        gen.wire(gclk, kts.util.clock(self.hw_attr['clk'] & active_l))
+        return kts.util.clock(gclk), active
+
+    def _build_shared_clk_ctr(self, sinks, port_actives):
+        """One free-running cycle counter for every static SG (share_clk_ctr).
+
+        Each static SG (the ports' and the SIPO/PISO ones inside vectorized
+        ports) otherwise counts clk_en cycles in its own clk_ctr, cleared on
+        flush. They all see the same clk_en and flush, so they hold the same
+        count, each wrapping at its own width; one counter as wide as the
+        widest gives every SG that value in its low bits. With
+        clock_gate_ports it also stops while no port is configured, since it
+        only drives the ports' SGs.
+        """
+        if not sinks:
+            return
+        clk_en = self.hw_attr['clk_en']
+        if port_actives:
+            any_active = port_actives[0]
+            for active in port_actives[1:]:
+                any_active = any_active | active
+            clk_en = clk_en & any_active
+        width = max(sink.width for sink in sinks)
+        ctr = add_counter(self._final_gen, "shared_clk_ctr", bitwidth=width,
+                          clear=self.hw_attr['flush'], clk_en=clk_en)
+        for sink in sinks:
+            self._final_gen.wire(sink, ctr[sink.width - 1, 0])
+
+    def _port_cfg_field(self, port_id, instance_name, field):
+        """A config field of a child IterationDomain, as a slice of the
+        parent's lifted copy of that child's config memory."""
+        lifted = self._final_gen._name_to_var_cfg[f"{port_id.name}_{instance_name}_config_memory"]
+        hi, lo = port_id.get_cfg_map()[field]
+        return lifted[hi, lo]
 
     def get_port_controllers(self, port) -> Tuple[IterationDomain, AddressGenerator, ScheduleGenerator]:
         # Assemble the ID,AG,SG (or at least their interfaces) on the port
