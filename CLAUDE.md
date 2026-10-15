@@ -808,6 +808,14 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   `/aha/sweep_out/rv_prune_20261011/RESULTS.md`. After this lands, an RV
   lake-spec garnet.v built from older lake no longer matches bitstreams from newer
   lake: rebuild garnet.v.
+  **Five-way tile comparison (2026-10-14, same flow, fw4 sc8192 2×2 Tile_MemCore):**
+  RV as first built 69,437 µm², per-storage network 63,067, FIFO-8 filter path
+  57,755, no filter path 50,346, static 58,689. Static is 17% larger than RV without
+  a filter path: its cycle-counter SGs are 6.6× RV's, its port buffers carry their
+  own schedules, and it needs 69 config words to RV's 40. A 2×2 needs 6 of the 8
+  remaining data comparators (never a WAR on W1; R1<-W1 is only ever a barrier).
+  Per-comparator dependency table and trimming estimates:
+  `/aha/sweep_out/tile_area_20261014/RESULTS.md`.
 - **The filter path (`build_spec_rv(add_filter_path=True)`) is never used by compiled
   apps (checked 2026-10-11).** It is an extra in/out port pair with its own ID/AG/SG
   and a small local buffer (8–32 words). No clockwork code targets the collateral's
