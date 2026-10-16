@@ -12,6 +12,8 @@ matplotlib.use("Agg")  # headless — CI-safe
 import pandas as pd  # noqa: E402 (after matplotlib.use)
 import pytest  # noqa: E402 (after matplotlib.use)
 
+pytest.importorskip("sklearn")  # THESIS.pipeline.regression (the generators) needs it
+
 from THESIS.pipeline import apps_query, generators  # noqa: E402 (after matplotlib.use)
 from THESIS.pipeline.errors import MissingDataError  # noqa: E402 (after matplotlib.use)
 

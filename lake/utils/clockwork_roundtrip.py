@@ -13,7 +13,7 @@ This is the lake-side half of the lake → compiler → lake round trip.
 import json
 import os
 
-from aha.util.sweep_thesis_collateral import build_spec
+from lake.spec.spec_memory_controller import build_spec
 from lake.utils.util import get_data_sizes
 
 

@@ -1,6 +1,9 @@
 name: CI Test
 
-on: [push]
+on:
+  push:
+  # When requested manually
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,5 +31,7 @@ jobs:
         docker cp ../lake lakebox:/aha/lake
         # Tests require installation of verilator
         docker exec -i lakebox bash -c 'yes | apt-get install verilator'
+        # Style (setup.cfg), as .github/scripts/run.sh does
+        docker exec -i lakebox bash -c 'source /aha/bin/activate; pip install pycodestyle; cd lake; python3 -m pycodestyle lake/ tests/'
         # Run the tests
         docker exec -i lakebox bash -c 'source /aha/bin/activate; cd lake; pytest -v tests/'
