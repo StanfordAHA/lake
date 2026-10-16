@@ -960,7 +960,11 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   `get_vec_accum_pond` + RTL), spec RV programs (stream / row-lag / barrier /
   sweep on fw1 dp, fw2 sp, fw2 dp, fw4 sp, garnet default; free + stress).
   As of 2026-10-13: 342 pass + 5 xfail; `python -m pycodestyle lake/ tests/` (lake CI,
-  setup.cfg) is clean with pycodestyle 2.12. Since 2026-10-11,
+  setup.cfg) is clean with pycodestyle 2.12. GitHub "CI Test" (linux.yml, stock container)
+  runs that pycodestyle step and `pytest -v tests/` FROM THE REPO ROOT: green since 5772c785
+  (358 passed, 280 skipped; xrun tests skip there). New tests must collect from the root
+  (`tests/spec_unit_tests/conftest.py` puts rtl_harness/spec_rtl on sys.path) and must not
+  import aha (CI's aha is master). Since 2026-10-11,
   `test_extract_compiler_information.py` passes too (59). Its 13–16 failures were stale
   expectations, not extraction bugs; see "Compiler collateral facts" below. Remaining
   xfails = latent bugs on paths no builder uses:
