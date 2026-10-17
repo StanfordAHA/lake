@@ -153,12 +153,12 @@ manual (block diagram / curated table). Full breakdown: run
 | Blocker | What it unblocks | Status |
 | --- | --- | --- |
 | Power flow (`ptpx-synth`) hasn't been run for the sweep experiments | Every `*_power` characterization figure + memtile power fit | open |
-| No dedicated per-stride / per-offset AFFINE sweep | `affine_{area,power}_vs_{stride,offset}` | open |
+| No dedicated per-stride / per-offset AFFINE sweep | `affine_{area,power}_vs_{stride,offset}` | **dropped** (2026-10-17): not separate hardware parameters (SG: `max_sequence_width`, AG: address width); figures removed from the tex and the registry |
 | No dedicated ScheduleGenerator sweep | `sched_gen_{dim,max_extent}` | open |
 | No LI ScheduleGenerator sweep in THESIS_BUILDS | `li_sched_{ports,loc}_{area,power}` | open |
 | No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf`, `tab:ul_ppa_summary` | **harness wired (2026-07-13), not yet run** — `single_level_*` generators are real but draw BOGUS until `THESIS/data/apps/` fills; see `THESIS/apps/README.md` |
 | No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — area + delay fits landed 2026-07-13; power drops in automatically once ptpx flow runs |
-| No pre/post SB PPA numbers | `fig:interconnect_fork_ready_valid_data` | open |
+| No pre/post SB PPA numbers | `fig:interconnect_fork_ready_valid_data`, `fig:interconnect_fifo_replace_ff` | **build command exists, not run** (2026-10-17): garnet `sweep_specs.py --recipe fabric_mem` + `pe_tile` (static vs ready-valid fabric, hierarchy kept; garnet mflowgen/CLAUDE.md "Thesis data recipe"). No lake ingest for those zips yet |
 
 Each TODO is also captured in the corresponding `Entry.notes` in
 `registry.py` so `grep -n "TODO:" pipeline/registry.py` gives you the

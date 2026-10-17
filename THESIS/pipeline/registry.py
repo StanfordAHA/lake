@@ -197,29 +197,10 @@ COMPONENT_CHARACTERIZATION = [
           "figure", "Tile_MemCore sweep (dw16, static): AG+SG active/idle power vs max sequence width, line per dim",
           "real", tf.affine_power_vs_max_value,
           view="both"),
-    # Stride / offset sweeps are called out in tex but AFFINE_EXP doesn't
-    # yet vary them independently — reuse msw as the width bound and
-    # BOGUS until a dedicated sweep is added.
-    Entry("affine_area_vs_stride", "fig:affine_pattern_generator_characterization_stride_area",
-          "figures/affine_pattern_generator_characterization_stride_area.pdf",
-          "figure", "AFFINE_PATTERN_GENERATOR_EXP: area vs max stride",
-          "bogus", None,
-          notes="TODO: add a per-stride sweep (currently msw bounds both stride+offset)."),
-    Entry("affine_power_vs_stride", "fig:affine_pattern_generator_characterization_stride_power",
-          "figures/affine_pattern_generator_characterization_stride_power.pdf",
-          "figure", "AFFINE_PATTERN_GENERATOR_EXP: power vs max stride",
-          "bogus", None,
-          notes="TODO: per-stride sweep + power flow."),
-    Entry("affine_area_vs_offset", "fig:affine_pattern_generator_characterization_offset_area",
-          "figures/affine_pattern_generator_characterization_offset_area.pdf",
-          "figure", "AFFINE_PATTERN_GENERATOR_EXP: area vs max offset",
-          "bogus", None,
-          notes="TODO: add per-offset sweep."),
-    Entry("affine_power_vs_offset", "fig:affine_pattern_generator_characterization_offset_power",
-          "figures/affine_pattern_generator_characterization_offset_power.pdf",
-          "figure", "AFFINE_PATTERN_GENERATOR_EXP: power vs max offset",
-          "bogus", None,
-          notes="TODO: per-offset sweep + power flow."),
+    # No stride / offset figures (dropped from the tex 2026-10-17): they are not
+    # separate hardware parameters. The ScheduleGenerator sizes both from
+    # max_sequence_width (the max_value figures above), the AddressGenerator from
+    # the storage's address width.
 
     # Schedule Generator (commented out in tex — kept in registry for future).
     Entry("sched_gen_dim", "fig:schedule_generator_characterization_dimensionality",

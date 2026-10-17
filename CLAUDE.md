@@ -222,6 +222,11 @@ As of 2026-10-09 the figures come from the **dw16 hierarchy-kept sweep**
 synth level for all and PnR level for the 12. Its build-side handoff and the
 analysis (model checks, per-block breakdown, RV overhead) sit next to the
 extracted zip in the user's workspace: `HANDOFF.md`, `<sweep>/analysis/ANALYSIS.md`.
+One command rebuilds the whole thesis data set (2026-10-17): garnet
+`sweep_specs.py --recipe thesis`. This sweep is its `memtile` part, now at every
+data width; the other parts are the switch-box A/B, PE tiles and app power. See
+garnet `mflowgen/CLAUDE.md` "Thesis data recipe". Only the `memtile` zip has a lake
+ingest so far.
 
 ```bash
 # Ingest a sweep zip (or extracted dir) -> THESIS/data/tile_sweep/{<sweep>,latest}.csv
