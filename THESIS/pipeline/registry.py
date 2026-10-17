@@ -334,6 +334,22 @@ EXPLORATION_APPS = [
 ]
 
 # ---------------------------------------------------------------------------
+# Ch. 5 evaluation setup: the prototype CGRA the exploration assumes.
+# ---------------------------------------------------------------------------
+EVALUATION_SETUP = [
+    Entry("pe_tile_pitch", "fig:pe_tile_height",
+          "figures/pe_tile_height.pdf", "figure",
+          "PE tile physical-design area -> unit tile pitch; MEM tile as 1-4 unit heights "
+          "(aspect ratio <= 1.5)", "bogus", None,
+          notes="TODO: needs PE tile PnR results. main.tex has an inline \\fbox placeholder "
+                "under this label until then."),
+    Entry("evaluation_cgra_layout", "fig:evaluation_cgra_layout",
+          "figures/evaluation_cgra_layout.pdf", "figure",
+          "hand-drawn 8x16 CGRA, every fourth column MEM (3:1 PE:MEM), global buffer on top",
+          "manual"),
+]
+
+# ---------------------------------------------------------------------------
 # LI ScheduleGenerator + interconnect characterization — BOGUS until sweeps run.
 # ---------------------------------------------------------------------------
 LI_CHARACTERIZATION = [
@@ -522,6 +538,7 @@ REGISTRY: list[Entry] = (
     BACKGROUND_MANUAL
     + COMPONENT_CHARACTERIZATION
     + EXPLORATION_APPS
+    + EVALUATION_SETUP
     + LI_CHARACTERIZATION
     + MEMTILE_CHARACTERIZATION
     + TABLES
