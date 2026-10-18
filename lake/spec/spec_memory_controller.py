@@ -158,12 +158,15 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 
 def build_pond_rv(storage_capacity: int = 64, data_width=16,
                   dims: int = 6, physical=False, reg_file=True,
-                  remote_storage=True, opt_rv=True, filter=False, max_extent=None) -> Spec:
+                  remote_storage=True, opt_rv=True, filter=False, max_extent=None,
+                  comply_17=True) -> Spec:
     """Ready-valid pond. filter=True gives the data input lake's filter
     (item-drop) hardware, so a broadcast-banked writer (one stream feeding
     several ponds, e.g. weight banks) keeps only its own items.
     max_extent sizes the iteration-domain counters like build_pond's
-    (default: 11 bits, extents up to 2048)."""
+    (default: 11 bits, extents up to 2048).
+    comply_17: data ports one bit wider than data_width (top bit 0), for a fabric
+    whose data tracks carry the sparse end-of-stream bit (default)."""
 
     id_width = 11
     if max_extent is not None:
@@ -172,7 +175,7 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     read_delay = 0
 
     ls = Spec(name="lakespec_pond", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
-              config_passthru=True, comply_17=True)
+              config_passthru=True, comply_17=comply_17)
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width, runtime=Runtime.DYNAMIC,
                    direction=Direction.IN, opt_rv=opt_rv, filter=filter)
@@ -408,7 +411,8 @@ def build_cgra_pond(params=None, rv=False, comply_17=True) -> Spec:
     if rv:
         return build_pond_rv(storage_capacity=p["storage_capacity"], data_width=p["data_width"],
                              dims=p["dims"], physical=False, reg_file=True, opt_rv=True,
-                             filter=p["filter"], max_extent=p.get("max_extent"))
+                             filter=p["filter"], max_extent=p.get("max_extent"),
+                             comply_17=comply_17)
     return build_pond(storage_capacity=p["storage_capacity"], data_width=p["data_width"], dims=p["dims"],
                       max_extent=p.get("max_extent"), max_sequence_width=p.get("max_sequence_width"),
                       physical=False, reg_file=True, remote_storage=True, config_passthru=True,
@@ -513,7 +517,7 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
                dims=6, in_ports=2, out_ports=2, dual_port=False,
                vec_capacity=2, max_extent=None, max_sequence_width=None,
                physical=False, config_passthru=False,
-               clock_gate_ports=False, share_clk_ctr=False):
+               clock_gate_ports=False, share_clk_ctr=False, comply_17=True):
     """Factory function to build a lake Spec for any thesis configuration.
 
     Args:
@@ -540,6 +544,9 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
         share_clk_ctr: One cycle counter for every static schedule generator
             instead of a clk_ctr each (Spec share_clk_ctr; same RTL behavior and
             bitstream). Off by default.
+        comply_17: Data ports one bit wider than data_width, the extra (top) bit
+            driven 0 (Spec comply_17), to match a fabric whose data tracks carry
+            the sparse end-of-stream bit. False: data_width-bit ports.
 
     Returns:
         A lake Spec instance.
@@ -552,7 +559,7 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
         stride_width = max(1, math.ceil(math.log2(max(max_sequence_width, 2))))
 
     ls = Spec(name="lakespec", opt_rv=False, remote_storage=True,
-              config_passthru=config_passthru, comply_17=True,
+              config_passthru=config_passthru, comply_17=comply_17,
               clock_gate_ports=clock_gate_ports, share_clk_ctr=share_clk_ctr)
 
     vc = vec_capacity if vec_width > 1 else None
@@ -647,7 +654,8 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
                   dims=6, in_ports=2, out_ports=2, dual_port=False,
                   vec_capacity=2, max_extent=None, max_sequence_width=None,
                   add_filter_path=True, physical=True, prune_rv_comparators=True,
-                  filter_fifo_depth=None, clock_gate_ports=False, share_clk_ctr=False):
+                  filter_fifo_depth=None, clock_gate_ports=False, share_clk_ctr=False,
+                  comply_17=True):
     """Factory function to build an RV (ready-valid / dynamic) lake Spec.
 
     Mirrors build_four_port_wide_fetch_rv but accepts configurable params
@@ -691,6 +699,9 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
         share_clk_ctr: One cycle counter for every static schedule generator
             instead of a clk_ctr each (Spec share_clk_ctr). An RV spec has none
             (its filter SGs count input valids), so this changes nothing here.
+        comply_17: Data ports one bit wider than data_width (top bit 0), for a
+            fabric whose data tracks carry the sparse end-of-stream bit (default).
+            False: data_width-bit ports.
 
     Returns:
         A lake Spec instance configured for RV hardware generation.
@@ -709,7 +720,7 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
         stride_width = max(1, math.ceil(math.log2(max(max_sequence_width, 2))))
 
     ls = Spec(name="lakespec_mem", opt_rv=True, remote_storage=True,
-              run_flush_pass=False, config_passthru=True, comply_17=True,
+              run_flush_pass=False, config_passthru=True, comply_17=comply_17,
               prune_rv_comparators=prune_rv_comparators,
               clock_gate_ports=clock_gate_ports, share_clk_ctr=share_clk_ctr)
 

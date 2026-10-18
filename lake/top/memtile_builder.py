@@ -32,9 +32,19 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     def __init__(self, name, debug, memory_interface: MemoryInterface = None,
                  memory_banks=1, controllers=None,
                  ready_valid=True, fifo_depth=8,
-                 io_prefix=None, data_width=16):
+                 io_prefix=None, data_width=16, hybrid_policy="bypass"):
 
         super().__init__(name, debug)
+
+        # What a controller's hybrid port (HybridPortAddr: a ready-valid port that can
+        # also run static) becomes in the tile:
+        #   "bypass": a tile fifo plus *_bypass_rv / *_fine_grain_fifo_bypass config regs
+        #             that pick static or ready-valid at configuration time (default)
+        #   "rv":     a plain ready-valid port: the tile fifo, no bypass regs
+        #   "static": a plain static port: no fifo and no tile valid/ready; the
+        #             controller's valid (in) / ready (out) is tied high
+        assert hybrid_policy in ("bypass", "rv", "static"), hybrid_policy
+        self.hybrid_policy = hybrid_policy
 
         # Tile data width: ports of width data_width (+1 on a ready-valid fabric) are
         # lifted whole; any other width is split into 1-bit ports.
@@ -112,6 +122,32 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
     def get_async_reset(self):
         return self._rst_n
+
+    def _rv_1bit_ports(self, flat_ctrl):
+        '''
+        Does this (flattened) controller connect its 1-bit data ports, not only its
+        wide ones, to the ready-valid interconnect? reduce_pe_cluster does; a controller
+        opts in with the class attribute rv_1bit_ports = True.
+        '''
+        if flat_ctrl.name == "reduce_pe_cluster_flat":
+            return True
+        ctrl = self.controllers_dict[self.flat_to_c[flat_ctrl.name]]
+        return getattr(ctrl, "rv_1bit_ports", False)
+
+    def _classify_rv_port(self, ctrl_name, port, is_hybrid):
+        '''
+        Record a controller data port that has its own valid/ready, per hybrid_policy.
+        Returns True if the port gets a tile fifo and tile valid/ready.
+        '''
+        if is_hybrid and self.hybrid_policy == "static":
+            # Plain static port: the realize_* functions tie the controller's valid/ready
+            self.dense.append((ctrl_name, port, True))
+            return False
+        if self.hybrid_policy == "static":
+            raise ValueError(f"hybrid_policy static: {ctrl_name}.{port.name} is a ready-valid "
+                             "port that cannot run static (not a HybridPortAddr port)")
+        self.rv.append((ctrl_name, port, is_hybrid and self.hybrid_policy == "bypass"))
+        return True
 
     def add_clock_gate(self):
         # Check if clk_en has already been defined...
@@ -284,7 +320,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             actual_data_signals_out = []
 
             # Reduce_pe_cluster handled differenlty here. Connect its 1b signals to RV interconnect.
-            if mem_ctrl.name == "reduce_pe_cluster_flat":
+            if self._rv_1bit_ports(mem_ctrl):
                 actual_data_signals_in = [(inp, width) for (inp, width) in ctrl_ins if not ("ready" in inp.name or "valid" in inp.name)]
                 actual_data_signals_out = [(inp, width) for (inp, width) in ctrl_outs if not ("ready" in inp.name or "valid" in inp.name)]
             else:
@@ -301,7 +337,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if has_rv:
                     hpa = mem_ctrl.get_port_attributes(inp.name, HybridPortAddr)
                     is_hybrid = len(hpa) > 0
-                    self.rv.append((mem_ctrl.name, inp, is_hybrid))
+                    self._classify_rv_port(mem_ctrl.name, inp, is_hybrid)
                     valid_p = mem_ctrl.get_port(f"{stripped_name}_valid_f_")
                     # If this port has rv, remove the rv from the ctrl_ins
                     ctrl_ins = [(inp_, width) for (inp_, width) in ctrl_ins if not (inp_.name == valid_p.name and width == 1)]
@@ -349,7 +385,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             actual_data_signals_out = []
 
             #  Reduce_pe_cluster handled differenlty here. Connect its 1b signals to RV interconnect.
-            if mem_ctrl.name == "reduce_pe_cluster_flat":
+            if self._rv_1bit_ports(mem_ctrl):
                 actual_data_signals_in = [(outp, width) for (outp, width) in ctrl_ins if not ("ready" in outp.name or "valid" in outp.name)]
                 actual_data_signals_out = [(outp, width) for (outp, width) in ctrl_outs if not ("ready" in outp.name or "valid" in outp.name)]
             else:
@@ -365,7 +401,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if has_rv:
                     hpa = mem_ctrl.get_port_attributes(outp.name, HybridPortAddr)
                     is_hybrid = len(hpa) > 0
-                    self.rv.append((mem_ctrl.name, outp, is_hybrid))
+                    self._classify_rv_port(mem_ctrl.name, outp, is_hybrid)
                     valid_p = mem_ctrl.get_port(f"{stripped_name}_valid_f_")
                     # If this port has rv, remove the rv from the ctrl_ins
                     ctrl_outs = [(inp_, width) for (inp_, width) in ctrl_outs if not (inp_.name == valid_p.name and width == 1)]
@@ -829,6 +865,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 any_dense = len(dense) > 0
                 # assert any_rvs or any_dense
 
+                # hybrid_policy "static": the controller's valid in is held high
+                for (ctrl_name, port, _, tie_rv) in dense:
+                    if tie_rv:
+                        self.wire(self.controllers_flat_dict[ctrl_name].ports[f"{port.rstrip('_f_')}_valid_f_"], kts.const(1, 1))
+
                 hybrid_bypass = None
                 output_ready_map = []
 
@@ -1007,6 +1048,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 any_rvs = len(rvs) > 0
                 dense = [(ctrl_, port_.name, self.ctrl_to_mode[self.flat_to_c[ctrl_]], hybrid_) for ctrl_, port_, hybrid_ in self.dense if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]
                 any_dense = len(dense) > 0
+
+                # hybrid_policy "static": the controller's ready in is held high
+                for (ctrl_name, port, _, tie_rv) in dense:
+                    if tie_rv:
+                        self.wire(self.controllers_flat_dict[ctrl_name].ports[f"{port.rstrip('_f_')}_ready_f_"], kts.const(1, 1))
 
                 hybrid_bypass = None
                 output_valid_map = []

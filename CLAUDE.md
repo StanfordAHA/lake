@@ -689,6 +689,33 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
   ideal clocks on both builds. Genus netlists also vary ±0.5 mW between small
   RTL changes, so compare by block (port logic vs the rest), not total only.
 
+### 5.7 Hybrid-port policy and the dense RV PE (thesis fabrics, 2026-10-17, session cfc4174c)
+
+garnet `--thesis static|rv` (garnet `mflowgen/CLAUDE.md` "Thesis fabrics") builds a
+static-dense and a ready-valid-dense CGRA that carry only their own mode's hardware.
+Lake pieces (all default off: the default/Zircon tiles are unchanged):
+
+- `MemoryTileBuilder(hybrid_policy=)` / `CoreCombiner(hybrid_policy=)`: what a
+  controller's hybrid port (`HybridPortAddr`: an RV port that can also run static)
+  becomes. `"bypass"` (default) = the tile FIFO plus `*_bypass_rv` /
+  `*_fine_grain_fifo_bypass` config regs; `"rv"` = the tile FIFO, no bypass regs;
+  `"static"` = no FIFO and no tile valid/ready, the controller's valid (in) / ready
+  (out) tied 1 (a static spec port ignores valid; its ready is the schedule step).
+  `"static"` raises on a true RV port (one without `HybridPortAddr`).
+- Controller class attribute `rv_1bit_ports = True`: its 1-bit data ports go on the
+  RV interconnect too (as `reduce_pe_cluster_flat` always did).
+- `build_spec` / `build_spec_rv` / `build_pond_rv` (and `build_cgra_pond(rv=True)`)
+  take `comply_17` (default True = the extra always-0 top bit for a fabric whose
+  data tracks carry the sparse end-of-stream bit). The thesis fabrics use False.
+- `lake/modules/onyx_dense_rv_pe.py` `OnyxDenseRVPE`: OnyxPE for dense RV only --
+  dw-bit data ports (no EOS bit), no static mode (`bypass_rv_mode`), no sparse
+  maybe/EOS logic, ports not hybrid; keeps the RV synchronization (active
+  encodings, constant PE), the primitive output FIFO with `bypass_prim_outfifo`,
+  and the 1-bit output FIFO. Config mode "alu", same `get_bitstream` keys as OnyxPE
+  (`bypass_rv=True` asserts). In a PE tile alone: 8 ports, each with its tile FIFO
+  (`cfg_reg_fifo`, bogus-init pre-fill).
+- Test: `tests/test_hybrid_policy.py` (4 tests, about 5 s).
+
 ## 6. Ready-valid (RV) bitstreams from clockwork (2026-09-28/29)
 
 Path: clockwork `DENSE_READY_VALID=1` tile config (static keys + RV program:

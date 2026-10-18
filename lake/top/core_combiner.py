@@ -45,10 +45,13 @@ class CoreCombiner(Generator):
                  fifo_depth=2,
                  sram_columns=2,
                  ready_valid=True,
-                 new_pond=False):
+                 new_pond=False,
+                 hybrid_policy="bypass"):
         super().__init__(name, debug=True)
 
         self.ready_valid = ready_valid
+        # MemoryTileBuilder hybrid_policy: what the controllers' hybrid ports become
+        self.hybrid_policy = hybrid_policy
         self.data_width = data_width
         self.mem_width = mem_width
         self.mem_depth = mem_depth
@@ -83,7 +86,7 @@ class CoreCombiner(Generator):
 
         # Create a MemoryTileBuilder
         MTB = MemoryTileBuilder(name, True, io_prefix=self.io_prefix, fifo_depth=self.fifo_depth, ready_valid=self.ready_valid,
-                                data_width=self.data_width)
+                                data_width=self.data_width, hybrid_policy=self.hybrid_policy)
 
         # For our current implementation, we are just using 1 bank of SRAM
         MTB.set_banks(self.banks)
