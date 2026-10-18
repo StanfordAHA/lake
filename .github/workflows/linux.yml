@@ -29,6 +29,8 @@ jobs:
         # Remove docker lake and insert our version that we want to test
         docker exec -i lakebox /bin/bash -c "rm -rf /aha/lake"
         docker cp ../lake lakebox:/aha/lake
+        # THESIS needs aha mek's lassen (gen_Inst_fc); the image's lassen is aha master's
+        docker exec -i lakebox bash /aha/lake/.github/scripts/aha_mek_deps.sh
         # Tests require installation of verilator
         docker exec -i lakebox bash -c 'yes | apt-get install verilator'
         # Style (setup.cfg), as .github/scripts/run.sh does

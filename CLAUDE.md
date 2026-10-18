@@ -996,7 +996,10 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   runs that pycodestyle step and `pytest -v tests/` FROM THE REPO ROOT: green since 5772c785
   (358 passed, 280 skipped; xrun tests skip there). New tests must collect from the root
   (`tests/spec_unit_tests/conftest.py` puts rtl_harness/spec_rtl on sys.path) and must not
-  import aha (CI's aha is master). Since 2026-10-11,
+  import aha (CI's aha is master). CI first checks out aha mek's pinned lassen in the
+  container (`.github/scripts/aha_mek_deps.sh`, 2026-10-18): `lake/modules/onyx_pe_intf.py`
+  imports lassen thesis's `gen_Inst_fc`, which master's lassen lacks (d37dee6c's
+  test_hybrid_policy.py failed to collect without it). Since 2026-10-11,
   `test_extract_compiler_information.py` passes too (59). Its 13–16 failures were stale
   expectations, not extraction bugs; see "Compiler collateral facts" below. Remaining
   xfails = latent bugs on paths no builder uses:
