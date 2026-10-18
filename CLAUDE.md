@@ -622,8 +622,11 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
     keep their own counter. An RV spec has no free-running SG, so the option
     changes nothing there.
   - `clock_gate_ports`: each port's Port/ID/AG/SG/rd_buf/memintfdec runs on
-    `port_<i>_gclk` = clk AND (`port_<i>_active` captured on the falling edge).
-    `active` is a 1-bit `port_enable` config field in the port's ID, which
+    `port_<i>_gclk` = clk OR ~`port_<i>_active` (`gated_clock` in
+    lake/utils/util.py). Held high while the port is off. `active` comes
+    straight from a config flop, so it changes only while clk is high, when an
+    OR gate cannot glitch. There is no falling-edge logic (see "Gate design"
+    below). `active` is a 1-bit `port_enable` config field in the port's ID, which
     `IterationDomain.gen_bitstream` sets. So every port the app configures
     runs, and the rest stop. Dimensionality can't serve as the enable: since
     e4fabdc1, dimensionality 0 means run once. With both options on, the
@@ -637,17 +640,16 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
     `Port.gen_bitstream` programs the dense pass-everything schedule (offset 0,
     strides 1, e0, ...), which steps on every token.
     - The filter SG gets a 1-bit `filter_enable` config field, set only when the
-      app gives the port a filter (`id_map` has offset/strides). Clear, the
-      external count is masked, so clk_ctr and the recurrence `current_cycle`
-      hold their flush values (0 and offset 0). Then `step = ~finished`
-      (& ~flush & enable): the same steps as the dense program. With dense
-      strides the recurrence deltas are all 1, so that program's counter and
-      schedule stay equal until the ID's `restart` (its last step), and its
-      `finished` latches the cycle after. Tokens after the domain are eaten
-      either way.
-    - Its clock is `filter_gclk` = clk AND (filter_enable | flush), captured on
-      the falling edge (`negedge_gated_clock` in lake/utils/util.py, also used
-      for the port gates). Flush is included so a flush still clears the SG.
+      app gives the port a filter (`id_map` has offset/strides). Clear, its
+      step is forced to `~finished` (& ~flush & enable) whatever its frozen
+      registers hold: the same steps as the dense program. With dense strides
+      the recurrence deltas are all 1, so that program's counter and schedule
+      stay equal until the ID's `restart` (its last step), and its `finished`
+      latches the cycle after. Tokens after the domain are eaten either way.
+      The external count is masked too.
+    - Its clock is `filter_gclk` = clk OR ~filter_enable (same gate as the
+      ports). Flush isn't needed: with the bit clear, the SG's registers don't
+      matter.
     - An unconfigured port is gated whole by `port_enable` anyway. The filter
       gate is what saves power in configured ports the app doesn't filter: most
       ports of real apps, and every port of the memtile `active` test.
@@ -661,6 +663,9 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
         fw4_dw16_sc4096_sp_in2_out2_vc2_portcg_rv`, 16×16): bit-accurate.** No
         app filter, so every MEM in-port ran the bypass. This was also the first
         real-app run with port gating.
+      - Re-run 2026-10-18 on the OR gate, all the same: gold sims 4/4,
+        suites, the three gated tile tests (gated clocks TC 0 in idle, 1999 on
+        configured ports in active), and RV conv_3_3 bit-accurate.
   - Checked: thesis_sweep fw4 2×2 gold sim PASS in all four combinations.
     The spec unit tests pass (342, 5 xfail) with each option forced on all 89
     specs they build (scratchpad `sc/run_forced_pytest.py`). The garnet tile
@@ -675,9 +680,46 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
       port logic in idle drops from 0.56 to 0.28 mW (leakage only). Without
       auto-CG the idle total drops from 17.8 to 16.7 mW (port logic 1.38 to
       0.31). Active is unchanged.
-  - The gf12 A/B through PnR is garnet `sweep_specs.py --spec-set
-    clock_gating` (static base / shared counter / port gating / both, RV base /
-    gated). It was handed to the user on 2026-10-14.
+  - **Gate design (2026-10-18).** The first gate captured the enable on the
+    falling edge (half a cycle of budget) and ANDed it with clk. The first gf12
+    A/B (below) failed timing on those flops, from the tile's `reset` (async
+    recovery) and `flush` (filter gate) inputs. Both arrive at `pt_i_delay`
+    0.7 ns into the 1.333 ns cycle, after the 0.667 ns falling edge:
+    - RV gated: synth -99 ps, PT -82 ps;
+    - static gated: PT -1 ps on reset.
+    A rising-edge register in front of an OR gate fixed the timing but opened
+    the gate a cycle late. lake's standalone gold test writes config at one
+    rising edge and drops flush after the next, so its ports missed the flush:
+    the schedules kept their reset values and the test failed. The current
+    gate is the OR fed straight from the config flop: no falling-edge logic,
+    and the gate opens at the edge after the config write, as the falling-edge
+    version did.
+  - **gf12 A/B through PnR** (garnet `sweep_specs.py --spec-set
+    clock_gating`, 750 MHz, fw4 4 KB 2×2; zip
+    `/aha/clock_gating_ab_20261017_r8cad-gf12_20261018-022542.zip`, extracted
+    in `/aha/sweep_out/clock_gating_ab_20261017/`). This run had the
+    falling-edge gate. The static numbers below hold for the OR gate, which
+    gates the same flops. The RV configs are being re-run: the RV base was
+    OOM-killed in Innovus postroute with six PnR builds at once, and the RV
+    gated config failed timing. Tile power in mW, total / port logic:
+
+    | static | synth idle | synth active | PnR idle | PnR active | PnR logic µm² |
+    |---|---|---|---|---|---|
+    | base | 1.59 / 0.89 | 10.5 / 2.26 | 2.09 / 0.81 | 11.6 / 2.26 | 9340 |
+    | share_clk_ctr | 1.02 / 0.31 | 9.95 / 1.68 | 1.52 / 0.25 | 11.0 / 1.71 | 9002 |
+    | clock_gate_ports | 0.70 / 0.11 | 10.5 / 2.20 | 1.16 / 0.11 | 11.7 / 2.27 | 9405 |
+    | both | 0.70 / 0.11 | 9.90 / 1.62 | 1.21 / 0.11 | 11.1 / 1.72 | 9024 |
+
+    - Shared counter: -36% idle, -5% active at synth (-27% / -5% at PnR);
+      -3.6% logic area.
+    - Port gating: -56% idle at synth (-44% at PnR), active unchanged.
+      +0.7% PnR logic area, and +0.2 mW at PnR in active: the clock-tree cells
+      after the gates sit at lakespec's top.
+    - Both: -56% / -42% idle (synth / PnR), -6% / -4% active.
+    - The leftover 0.11 mW in gated port logic is leakage plus the ungated
+      config path.
+    Per-block split: scratchpad `ana/hier_split.py` (session 5b33d095) on each
+    `*-memtile-power-*/outputs/power.hier`.
 - **Other ideas, not implemented:**
   - stop the shared counter once every port's ID is finished;
   - enable the OUT delay lines with `quali_step`;

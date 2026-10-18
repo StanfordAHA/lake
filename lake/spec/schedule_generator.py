@@ -33,11 +33,11 @@ class ScheduleGenerator(Component):
         every clk_en cycle.
 
         filter_enable (external_count SGs, i.e. a Port's item filter): a 1-bit
-        `filter_enable` config field gates the external count. Cleared, the
-        counter and the recurrence hold their flush values (0 and the offset),
-        which with offset 0 is the pass-everything filter: step = ~finished,
-        the same steps as the dense-stride program counting every token
-        (Port.gen_bitstream). The Port also gates this SG's clock on it.
+        `filter_enable` config field. Cleared, the SG is the pass-everything
+        filter: step = ~finished whatever its registers hold, the same steps
+        as the dense-stride program counting every token (Port.gen_bitstream).
+        The external count is masked and the Port gates this SG's clock on the
+        bit, so the counter and the recurrence don't move.
         '''
         assert id is not None
         assert not (shared_clk_ctr and self.external_count), "an external_count SG keeps its own counter"
@@ -101,7 +101,12 @@ class ScheduleGenerator(Component):
 
         # step is high when the current cycle matches the counter
         # self.wire(self._step, self._clk_ctr == self._current_cycle)
-        self.wire(self._step, (self._clk_ctr == self._current_cycle) & ~self._finished)
+        if self.has_filter_enable:
+            # filter_enable clear: pass every item; the counters are frozen
+            # (clock gated) and may hold anything
+            self.wire(self._step, ((self._clk_ctr == self._current_cycle) | ~self._filter_enable) & ~self._finished)
+        else:
+            self.wire(self._step, (self._clk_ctr == self._current_cycle) & ~self._finished)
 
         if self.exploit_recurrence:
             self.add_code(self.calculate_cycle_delta)

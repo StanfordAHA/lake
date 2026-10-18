@@ -707,23 +707,20 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=Fa
 
 
 # Add a simple counter to a design and return the signal
-def negedge_gated_clock(generator, clk, enable, name, en_name):
-    """Glitch-free gated clock `name` = clk & `en_name`, where `en_name` is
-    `enable` captured on the falling edge of clk (cleared by rst_n): it only
-    changes while clk is low, so the AND cannot glitch. Returns the gated
+def gated_clock(generator, clk, enable, name):
+    """Gated clock `name` = clk | ~enable. `enable` must come from registers
+    clocked on clk's rising edge (config bits), so it only changes while clk
+    is high, when the OR cannot glitch. Disabled, the gated clock stays high:
+    its last rising edge is the one at which `enable` fell. Enabled, its next
+    rising edge is clk's next one, so a port whose config is written at one
+    rising edge sees a flush at the next (lake's standalone testbenches flush
+    right after config). There is no falling-edge logic and so no half-cycle
+    path: an earlier version captured the enable on the falling edge and ANDed
+    it with clk, and on gf12 failed timing from the tile's reset and flush
+    inputs (they arrive 0.7 ns into the 1.333 ns cycle). Returns the gated
     clock, usable as a child's clk."""
-    en_l = generator.var(en_name, 1)
-
-    @always_ff((negedge, "clk"), (negedge, "rst_n"))
-    def capture_enable():
-        if ~generator._rst_n:
-            en_l = 0
-        else:
-            en_l = enable
-
-    generator.add_code(capture_enable)
     gclk = generator.var(name, 1)
-    generator.wire(gclk, kts.util.clock(clk & en_l))
+    generator.wire(gclk, kts.util.clock(clk | ~enable))
     return kts.util.clock(gclk)
 
 

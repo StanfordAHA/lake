@@ -16,7 +16,7 @@ from typing import Tuple
 import os as os
 from lake.utils.spec_enum import Direction
 from lake.utils.util import connect_memoryport_storage, inline_multiplexer, shift_reg, round_up_to_power_of_2, lift_port, \
-    add_counter, negedge_gated_clock
+    add_counter, gated_clock
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
@@ -1388,16 +1388,14 @@ class Spec():
         only burns power. `active` is the port ID's `port_enable` config bit,
         which IterationDomain.gen_bitstream sets for every configured port.
         (dimensionality 0 can't be the test: an all-ones domain is encoded as
-        dimensionality 0 and runs once.) Returns (gclk, active): gclk = clk &
-        active_l, where active_l is `active` captured on the falling edge of
-        clk (and cleared by rst_n), so it only changes while clk is low and
-        the gate cannot glitch. The caller drives `active` once the port's ID
-        is a child.
+        dimensionality 0 and runs once.) Returns (gclk, active): gclk = clk |
+        ~active (lake.utils.util.gated_clock; `active` is a config bit, so it
+        changes only while clk is high). The caller drives `active` once the
+        port's ID is a child.
         """
         gen = self._final_gen
         active = gen.var(f"port_{i_}_active", 1)
-        gclk = negedge_gated_clock(gen, self.hw_attr['clk'], active,
-                                   name=f"port_{i_}_gclk", en_name=f"port_{i_}_active_l")
+        gclk = gated_clock(gen, self.hw_attr['clk'], active, name=f"port_{i_}_gclk")
         return gclk, active
 
     def _build_shared_clk_ctr(self, sinks, port_actives):

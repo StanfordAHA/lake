@@ -8,7 +8,7 @@ from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGe
 from lake.spec.storage import SingleBankStorage, Storage
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.reg_fifo import RegFIFO
-from lake.utils.util import connect_memoryport_storage, add_counter, register, sticky_flag, negedge_gated_clock
+from lake.utils.util import connect_memoryport_storage, add_counter, register, sticky_flag, gated_clock
 import kratos as kts
 from kratos import *
 
@@ -106,17 +106,15 @@ class Port(Component):
 
     def _add_filter_sg(self, filter_sg, external_id):
         """Build the item filter's SG and add it as `filter_sg_inst`. With
-        filter_enable, its clock is clk gated by (filter_enable | flush): off
-        while the app gives this port no filter (the SG then passes every item,
-        see ScheduleGenerator.gen_hardware), on during flush so it still
-        clears."""
+        filter_enable, its clock is gated on that config bit: off while the app
+        gives this port no filter. The SG then passes every item whatever its
+        frozen registers hold (see ScheduleGenerator.gen_hardware)."""
         filter_sg.gen_hardware(id=external_id, filter_enable=self.filter_enable)
         filter_clk = self._clk
         filter_active = None
         if self.filter_enable:
             filter_active = self.var("filter_active", 1)
-            filter_clk = negedge_gated_clock(self, self._clk, filter_active,
-                                             name="filter_gclk", en_name="filter_active_l")
+            filter_clk = gated_clock(self, self._clk, filter_active, name="filter_gclk")
         self.add_child("filter_sg_inst",
                        filter_sg,
                        clk=filter_clk,
@@ -124,8 +122,7 @@ class Port(Component):
                        clk_en=self._clk_en,
                        flush=self._flush)
         if filter_active is not None:
-            self.wire(filter_active,
-                      self.lifted_cfg_field(filter_sg, "filter_sg_inst", "filter_enable") | self._flush)
+            self.wire(filter_active, self.lifted_cfg_field(filter_sg, "filter_sg_inst", "filter_enable"))
 
     def _wire_shared_clk_ctr(self, sg):
         """Feed the static internal SG `sg` from input `shared_clk_ctr`."""
