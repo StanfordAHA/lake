@@ -720,6 +720,32 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
       config path.
     Per-block split: scratchpad `ana/hier_split.py` (session 5b33d095) on each
     `*-memtile-power-*/outputs/power.hier`.
+  - **Second gf12 run (2026-10-18/19, all six fresh; the reference numbers).**
+    Lake 2660629d (OR gate) and garnet with working `--no-pd`, so no power-domain
+    logic: compare only within this run. Zip
+    `/aha/clock_gating_ab_20261018_r8cad-gf12_20261019-041557_slim.zip`, extracted in
+    `/aha/sweep_out/clock_gating_ab_20261018/`. All six built through PT signoff.
+    - Synth WNS is 0 everywhere, the RV gated tile included (it was -99 ps with the
+      falling-edge gate).
+    - PT WNS is -6 to -23 ps, all on the tile's pass-through feedthroughs
+      (config_*/flush -> *_out), as in the base. No gate logic is in any top-100
+      path.
+    - The RV power steps failed: `/sim/docker` was full again at
+      memtile-power-test-gen. They are a power-only re-run on the existing builds.
+
+    | static | synth idle | synth active | PnR idle | PnR active | PnR logic µm² |
+    |---|---|---|---|---|---|
+    | base | 1.58 / 0.89 | 10.5 / 2.26 | 1.98 / 0.81 | 11.5 / 2.26 | 9335 |
+    | share_clk_ctr | 1.02 / 0.31 | 9.94 / 1.66 | 1.46 / 0.25 | 10.9 / 1.70 | 8982 |
+    | clock_gate_ports | 0.65 / 0.07 | 10.5 / 2.21 | 1.03 / 0.07 | 11.5 / 2.25 | 9345 |
+    | both | 0.65 / 0.07 | 9.89 / 1.61 | 1.07 / 0.07 | 11.0 / 1.72 | 8952 |
+
+    (mW, tile total / port logic.)
+    - Shared counter: idle -35% / -26% (synth / PnR), active -5% / -5%, PnR
+      logic area -3.8%.
+    - Port gating: idle -59% / -48%, active 0% / 0%, area +0.1%.
+    - Both: idle -59% / -46%, active -6% / -4%, area -4.1%.
+    - RV logic area: base 10263, gated 10270 µm² (+0.07%).
 - **Other ideas, not implemented:**
   - stop the shared counter once every port's ID is finished;
   - enable the OUT delay lines with `quali_step`;
