@@ -746,6 +746,20 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
     - Port gating: idle -59% / -48%, active 0% / 0%, area +0.1%.
     - Both: idle -59% / -46%, active -6% / -4%, area -4.1%.
     - RV logic area: base 10263, gated 10270 µm² (+0.07%).
+  - **Thesis CGRAs (2026-10-21; user: thesis results come from `garnet.py --thesis
+    static|rv`).** Both options reach a thesis MEM tile unchanged: `cgra/util_thesis.py`
+    builds it with `build_spec` / `build_spec_rv(**spec_config.json, comply_17=False)`.
+    garnet's `--spec-set thesis_fabric_opt` / `--recipe thesis_opt` (session cfc4174c)
+    builds the gated tiles on gf12.
+    - Bit-accurate end to end on 8×8 thesis CGRAs (fw4 dw16 4 KB 2×2; current RV
+      flow, no EXHAUSTIVE_PIPE): conv_3_3 and gaussian on static with
+      share_clk_ctr + clock_gate_ports (4 port gates + 1 shared counter), and on RV
+      with clock_gate_ports + filter_fifo_depth 8 (9 gates: 6 ports + 3 item
+      filters); conv_3_3 also on RV with clock_gate_ports and add_filter_path=False
+      (6 gates).
+    - Harness: scratchpad `thesis_cg/run_app.sh` (session 5b33d095), adapted from
+      cfc4174c's `thesis/run_app.sh`.
+    - Not gated: the PE tile's pond. `build_cgra_pond` doesn't take the options.
 - **Other ideas, not implemented:**
   - stop the shared counter once every port's ID is finished;
   - enable the OUT delay lines with `quali_step`;
