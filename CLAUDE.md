@@ -575,6 +575,15 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
     `aha map` uses.
   - dw64 uses fw2, because dw64 × fw4 has no SRAM macro (`build_spec_rv` asserts "No valid
     macros").
+- **Spec storage check splits the word like CoreCombiner (2026-10-22, session a16b3973).**
+  `build_spec` / `build_spec_rv` check their remote storage against the GF library with
+  `GF_Tech_Map_any_columns` (`lake/top/tech_maps.py`): the full-width macro when one exists (as
+  before), else the first 2-, 3-, ...-column split that does, else the old AssertionError. The
+  remote storage's tech map builds no hardware; the tile's `CoreCombiner._select_gf_tech_map`
+  picks the macro (cols=2 first). Before, RV fw2 dw64 dual-port (128-bit word: no single SDPB
+  column, but 2 x `W00512B064` SDPB) asserted "No valid macros" although the tile builds; now it
+  builds with 2 columns. A thesis RV fw4 dw16 4 KB garnet.v is byte-identical before and after.
+  Test: `tests/spec_unit_tests/test_spec_tech_map_columns.py`.
 
 ### 5.6 Clock gating: what synthesis gates and what it can't (audit 2026-10-12, session 5b33d095)
 

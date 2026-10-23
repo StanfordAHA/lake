@@ -101,6 +101,26 @@ def get_gf_macro_options(valid_options, depth, width):
     return options_
 
 
+def GF_Tech_Map_any_columns(depth, width, dual_port=False):
+    """GF_Tech_Map for one full-width column when the library has that macro, else for
+    the first column count (2, 3, ...) whose width/cols-bit columns exist, the way
+    CoreCombiner._select_gf_tech_map lays a word over several macros (address broadcast,
+    data split). The spec builders use it for remote storage, whose macro the tile's
+    CoreCombiner picks: a dual-port 128-bit word (dw64 fw2) has no single SDPB column
+    but two 64-bit ones. Raises the full-width AssertionError if no split exists either."""
+    try:
+        return GF_Tech_Map(depth=depth, width=width, dual_port=dual_port)
+    except AssertionError as err:
+        for cols in range(2, width + 1):
+            if width % cols:
+                continue
+            try:
+                return GF_Tech_Map(depth=depth, width=width // cols, dual_port=dual_port)
+            except AssertionError:
+                pass
+        raise err
+
+
 def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
                 mux_val=8, s_val=2, hl_feat="H", pd="D") -> dict:
     '''

@@ -616,11 +616,11 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
     # Create storage and memory ports
     tech_map = None
     if physical:
-        from lake.top.tech_maps import GF_Tech_Map
+        from lake.top.tech_maps import GF_Tech_Map_any_columns
         data_bytes = (data_width * vec_width) // 8
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes,
-                               width=data_width * vec_width,
-                               dual_port=dual_port)
+        tech_map = GF_Tech_Map_any_columns(depth=storage_capacity // data_bytes,
+                                           width=data_width * vec_width,
+                                           dual_port=dual_port)
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map, remote=True)
     if dual_port:
         write_mp = MemoryPort(data_width=data_width * vec_width,
@@ -813,13 +813,15 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
         ls.register(out_id_filter, out_ag_filter, out_sg_filter)
 
     # Create storage and memory ports
-    from lake.top.tech_maps import GF_Tech_Map
+    from lake.top.tech_maps import GF_Tech_Map_any_columns
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
     if physical:
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes,
-                               width=data_width * vec_width,
-                               dual_port=dual_port)
+        # Remote storage: the tile's CoreCombiner picks the macro and may split the word
+        # over several columns, so only fail when no column count has one
+        tech_map = GF_Tech_Map_any_columns(depth=storage_capacity // data_bytes,
+                                           width=data_width * vec_width,
+                                           dual_port=dual_port)
 
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map, remote=True)
     if dual_port:
