@@ -759,7 +759,25 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
       (6 gates).
     - Harness: scratchpad `thesis_cg/run_app.sh` (session 5b33d095), adapted from
       cfc4174c's `thesis/run_app.sh`.
-    - Not gated: the PE tile's pond. `build_cgra_pond` doesn't take the options.
+  - **Every lake spec, the PE-tile pond included (2026-10-22, user: "the pond (and any
+    lake-based spec) should see the clock gating").** Both options are kwargs of every
+    builder: `build_spec`, `build_spec_rv`, `build_pond`, `build_pond_rv`,
+    `build_four_port_wide_fetch_rv` (garnet's built-in MEM spec) and thesis_sweep's
+    builder.
+    - `build_cgra_pond` / `resolve_cgra_pond_params` accept them as pond-spec keys
+      (`CGRA_POND_POWER_KEYS`). The pond collateral is byte-identical with or without
+      them.
+    - garnet's PE-tile pond inherits them from the MEM spec config unless its own
+      JSON sets them (garnet `with_mem_power_options`, stock and thesis fabrics), so
+      one spec config gates every lake spec in a CGRA. The legacy PondCore (static
+      fabric without `--lake-pond-spec-config`) is not a lake spec and stays ungated.
+    - Options off: byte-identical RTL from every builder.
+    - Gated static pond: 4 port gates + 1 shared counter. Gated RV pond: 5 gates
+      (4 ports + the item filter).
+    - Bit-accurate end to end (16×16 thesis CGRAs, scratchpad
+      `thesis_cg/run_app.sh`): matmul_rvtry3 (pond packed into a PE, used for the
+      accumulation) on static (MEM share_clk_ctr + clock_gate_ports, inherited by the
+      pond) and on RV (MEM clock_gate_ports + ff8, pond 128 B / 6 dims, inherited).
 - **Other ideas, not implemented:**
   - stop the shared counter once every port's ID is finished;
   - enable the OUT delay lines with `quali_step`;

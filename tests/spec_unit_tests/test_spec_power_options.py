@@ -122,3 +122,24 @@ def test_clock_gate_ports_filter_enable_bit():
         assert enable_bit in port.gen_bitstream(id_map=dict(dense, offset=[2], strides=[1, 4]))
     plain = built(build_spec_rv)
     assert not any(p.filter_sg.has_filter_enable for p in plain.get_in_ports() if p.get_filter())
+
+
+def test_cgra_pond_power_options():
+    """The PE-tile pond (build_cgra_pond, both modes) takes the options from its
+    spec JSON; resolve_cgra_pond_params accepts them."""
+    from lake.spec.spec_memory_controller import build_cgra_pond, resolve_cgra_pond_params
+    for rv in (False, True):
+        params = {"clock_gate_ports": True, "share_clk_ctr": True}
+        assert resolve_cgra_pond_params(params, rv=rv)["clock_gate_ports"] is True
+        with contextlib.redirect_stdout(io.StringIO()):
+            spec = build_cgra_pond(params, rv=rv)
+            spec.generate_hardware()
+            plain = build_cgra_pond({}, rv=rv)
+            plain.generate_hardware()
+        ports = spec.get_in_ports() + spec.get_out_ports()
+        assert all(spec.get_port_controllers(p)[0].has_port_enable for p in ports)
+        assert not any(plain.get_port_controllers(p)[0].has_port_enable
+                       for p in plain.get_in_ports() + plain.get_out_ports())
+        if not rv:
+            sgs = static_sgs(spec)
+            assert sgs and all(sg.shared_clk_ctr for sg in sgs)
