@@ -58,7 +58,7 @@ def test_tables_render():
     df = sweep()
     coef = r.render_tile_coef_table(r.fit_tile_models(r.tile_model_frame(df)))
     assert r"\multicolumn{3}{c}{Static}" in coef and r"\multicolumn{3}{c}{RV}" in coef
-    assert "Ports (in + out)" in coef and coef.count(r"\\") == 2 + len(r.TILE_FEATURES) + 3
+    assert "Ports (in + out)" in coef and coef.count(r"\\") == 3 + len(r.TILE_FEATURES) + 3
     rows = r.tile_holdout_errors(r.tile_model_frame(df))
     assert {x["test"] for x in rows} >= {"Held-out builds", "Capacity 32\\,KB (extrapolated)"}
     held = [x for x in rows if x["test"] == "Held-out builds"]

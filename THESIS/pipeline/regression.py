@@ -323,8 +323,8 @@ TILE_FEATURES = {
 # target -> (label, unit)
 TILE_TARGETS = {
     "area": ("Area", r"\textmu m$^2$"),
-    "idle": ("Idle power", r"\textmu W"),
-    "active": ("Active power", r"\textmu W"),
+    "idle": ("Idle", r"\textmu W"),
+    "active": ("Active", r"\textmu W"),
 }
 TILE_MODES = {"static": "Static", "rv": "RV"}
 # lake build_spec defaults when a spec leaves them out: 11-bit iteration
@@ -458,8 +458,8 @@ def render_tile_coef_table(fits: dict[tuple[str, str], TileFit]) -> str:
         rules.append(rf"\cmidrule(lr){{{start}-{start + k - 1}}}")
         start += k
     lines += [" & ".join(head) + r" \\", " ".join(rules)]
-    lines.append(" & ".join(["Parameter"] + [f"{TILE_TARGETS[t][0]} ({TILE_TARGETS[t][1]})"
-                                             for _, t in cols]) + r" \\")
+    lines.append(" & ".join(["Parameter"] + [TILE_TARGETS[t][0] for _, t in cols]) + r" \\")
+    lines.append(" & ".join([""] + [f"({TILE_TARGETS[t][1]})" for _, t in cols]) + r" \\")
     lines.append(r"\midrule")
     for feat, label in TILE_FEATURES.items():
         lines.append(" & ".join([label] + [_num(fits[c].coef[feat]) for c in cols]) + r" \\")
