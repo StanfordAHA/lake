@@ -321,9 +321,10 @@ EVALUATION_SETUP = [
     Entry("pe_tile_pitch", "fig:pe_tile_height",
           "figures/pe_tile_height.pdf", "figure",
           "PE tile physical-design area -> unit tile pitch; MEM tile as 1-4 unit heights "
-          "(aspect ratio <= 1.5)", "bogus", None,
-          notes="TODO: needs PE tile PnR results. main.tex has an inline \\fbox placeholder "
-                "under this label until then."),
+          "(width <= 1.5 unit tiles)", "real", tf.pe_tile_pitch,
+          notes="Reads THESIS/data/pe_tile/thesis_tiles.csv (PnR areas copied by hand from garnet "
+                "mflowgen/CLAUDE.md, the 2026-10-22 400 MHz thesis tile set). Refresh from the "
+                "newest thesis_tiles run (each fabric at its own clock)."),
     Entry("evaluation_cgra_layout", "fig:evaluation_cgra_layout",
           "figures/evaluation_cgra_layout.pdf", "figure",
           "hand-drawn 8x16 CGRA, every fourth column MEM (3:1 PE:MEM), global buffer on top",
@@ -387,15 +388,17 @@ TABLES = [
           "PE ALU supported operations", "manual"),
     Entry("memtile_model_coeff", "tab:memtile_model_coeff",
           "tables/memtile_model_coeff.tex", "table",
-          "Memory Tile regression: Lasso on logic_area (Kahng-hybrid) + power + delay",
+          "Memory Tile non-SRAM area / idle / active power vs spec parameters, per runtime "
+          "mode (LassoCV), fit on the tile sweep (tile_sweep.load())",
           "real", g.memtile_model_coeff,
-          notes="Power fit falls back to MissingDataError until ptpx-synth lands. "
-                "Delay fit uses unsaturated points only (>99% clock ceiling dropped)."),
+          notes="Pasted inline into main.tex (Overleaf). Fit on the stock-fabric dw16 sweep "
+                "(2026-10-24): regenerate from the thesis-fabric design-space sweep "
+                "(garnet --recipe thesis_dse) once it is ingested."),
     Entry("memtile_model_verif", "tab:memtile_model_verif",
           "tables/memtile_model_verif.tex", "table",
-          "Memtile PPA model: leave-one-experiment-out predicted vs actual",
+          "Memory Tile model: error on held-out configs (held-out PnR builds + 3 extrapolations)",
           "real", g.memtile_model_verif,
-          notes="Same fit as memtile_model_coeff; verif table is LOEO residuals."),
+          notes="Same model as memtile_model_coeff, refit without each held-out set."),
     Entry("exploration_applications", "tab:exploration_applications",
           "tables/exploration_applications.tex", "table",
           "app suite × memory-usage summary (rendered from THESIS/apps/registry.py)",

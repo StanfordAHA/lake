@@ -1356,3 +1356,58 @@ def li_sched_loc_power(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
                "Levels of comparison (dimensionality)", ["c_rvnet", "c_sg"],
                "LI SG", mode="rv", metric="power", view=_view(ctx))
+
+
+# ---- PE tile pitch (fig:pe_tile_height) ----------------------------------------
+# PnR area of each fabric's PE and Memory Tile (THESIS/data/pe_tile/thesis_tiles.csv:
+# fabric, tile = pe|mem, area_um2, ...). The PE tile is the square unit tile; a Memory
+# Tile spans k unit heights, the fewest whose width (area / k) stays within
+# MEM_MAX_WIDTH unit tiles.
+PE_TILE_CSV = Path(__file__).resolve().parents[1] / "data" / "pe_tile" / "thesis_tiles.csv"
+MEM_MAX_WIDTH = 1.5
+MAX_HEIGHT = 4
+
+
+def mem_tile_height(rel_area: float) -> int:
+    """Unit heights a Memory Tile of `rel_area` PE tiles spans."""
+    return max(1, int(np.ceil(rel_area / MEM_MAX_WIDTH - 1e-9)))
+
+
+def pe_tile_pitch(ctx, outpath: Path) -> None:
+    if not PE_TILE_CSV.is_file():
+        raise MissingDataError(f"no PE/Memory Tile PnR areas at {PE_TILE_CSV}")
+    d = pd.read_csv(PE_TILE_CSV)
+    fabrics = [f for f in ("static", "rv") if {"pe", "mem"} <= set(d.loc[d["fabric"] == f, "tile"])]
+    if not fabrics:
+        raise MissingDataError(f"{PE_TILE_CSV}: no fabric with both a PE and a Memory Tile")
+    fig, ax = plt.subplots(figsize=(FULL_W, 2.5))
+    x, gap = 0.0, 0.5
+    for f in fabrics:
+        color = _MODE_STYLE[f][0]
+        pe = float(d.loc[(d["fabric"] == f) & (d["tile"] == "pe"), "area_um2"].iloc[0])
+        mem = float(d.loc[(d["fabric"] == f) & (d["tile"] == "mem"), "area_um2"].iloc[0])
+        rel = mem / pe
+        k = mem_tile_height(rel)
+        if k > MAX_HEIGHT:
+            raise MissingDataError(f"{f} Memory Tile is {rel:.2f} PE tiles: more than {MAX_HEIGHT} unit heights")
+        w = rel / k
+        ax.add_patch(plt.Rectangle((x, 0), 1, 1, facecolor=color, alpha=0.35, edgecolor=color, lw=1.2))
+        ax.text(x + 0.5, 0.5, "PE\n1.00", ha="center", va="center", fontsize=8)
+        mx = x + 1 + gap
+        ax.add_patch(plt.Rectangle((mx, 0), MEM_MAX_WIDTH, k, fill=False, edgecolor=MUTED, lw=0.8, ls=(0, (3, 2))))
+        ax.add_patch(plt.Rectangle((mx, 0), w, k, facecolor=color, alpha=0.6, edgecolor=color, lw=1.2))
+        ax.text(mx + w / 2, k / 2, f"Memory\nTile\n{rel:.2f}", ha="center", va="center", fontsize=8)
+        ax.text(mx + MEM_MAX_WIDTH, k + 0.08, f"{k}x height", ha="right", va="bottom", fontsize=7.5, color=INK2)
+        ax.text(x + (1 + gap + MEM_MAX_WIDTH) / 2, -0.32, _MODE_STYLE[f][1] + " fabric",
+                ha="center", va="top", fontsize=9)
+        x = mx + MEM_MAX_WIDTH + 1.2
+    top = max(2, int(np.ceil(ax.dataLim.y1)))
+    for y in range(1, top + 1):
+        ax.axhline(y, color=GRID, lw=0.6, zorder=0)
+    ax.set_xlim(-0.2, x - 1.0)
+    ax.set_ylim(-0.75, top + 0.45)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    ax.text(x - 1.0, -0.62, f"Areas in PE tiles (PnR). Dashed: the slot a Memory Tile may fill, "
+            f"{MEM_MAX_WIDTH:g} unit tiles wide.", ha="right", va="top", fontsize=7, color=MUTED)
+    _save(fig, outpath)

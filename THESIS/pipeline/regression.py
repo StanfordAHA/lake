@@ -296,3 +296,215 @@ def emit_verif_table(df: pd.DataFrame, outpath: Path) -> None:
     if errors:
         body = "% partial fit — skipped: " + "; ".join(errors) + "\n" + body
     outpath.write_text(body)
+
+
+# ---- Tile-sweep model (garnet sweep_specs.py Tile_MemCore sweeps) -----------
+#
+# A Memory Tile's non-SRAM cost as a linear function of its spec parameters,
+# one model per runtime mode, fit on the tile sweep (tile_sweep.load(): every
+# config's Genus std-cell area and PrimeTime synth-level idle/active power).
+# The SRAM macro is left out of both: it is a lookup by geometry, and the
+# macro numbers are under NDA. Powers of two are log2-encoded (cost per
+# doubling); in and out ports move together in the sweeps, so they are one
+# feature. Parameters a sweep does not vary get no coefficient ("--").
+
+# column -> table label
+TILE_FEATURES = {
+    "dims": "Dimensionality",
+    "log2_fw": r"$\log_2$ fetch width",
+    "vc": "Vectorization capacity",
+    "ports": "Ports (in + out)",
+    "dual_port": "Dual-port SRAM",
+    "log2_me": r"$\log_2$ maximum extent",
+    "log2_msw": r"$\log_2$ maximum sequence width",
+    "log2_cap": r"$\log_2$ capacity (bytes)",
+    "log2_dw": r"$\log_2$ data width",
+}
+# target -> (label, unit)
+TILE_TARGETS = {
+    "area": ("Area", r"\textmu m$^2$"),
+    "idle": ("Idle power", r"\textmu W"),
+    "active": ("Active power", r"\textmu W"),
+}
+TILE_MODES = {"static": "Static", "rv": "RV"}
+# lake build_spec defaults when a spec leaves them out: 11-bit iteration
+# domains, 16-bit schedule strides.
+_DEFAULT_LOG2_ME = 11
+_DEFAULT_LOG2_MSW = 16
+# Held-out tests for tab:memtile_model_verif: (label, rows held out). Each test
+# fits on every other config of the mode and predicts the held-out ones.
+TILE_HOLDOUTS = [
+    ("Held-out builds", lambda f: f["role"].eq("validate")),
+    ("Capacity 32\\,KB (extrapolated)", lambda f: f["storage_capacity"] >= 32768),
+    ("4 in / 4 out (extrapolated)", lambda f: f["ports"] >= 8),
+    ("Maximum extent 4096 (extrapolated)", lambda f: f["max_extent"] >= 4096),
+]
+
+
+@dataclass
+class TileFit:
+    mode: str
+    target: str
+    coef: pd.Series
+    intercept: float
+    n: int
+    mape: float
+    scaler: StandardScaler
+    model: LassoCV
+
+    def predict(self, frame: pd.DataFrame) -> np.ndarray:
+        return self.model.predict(self.scaler.transform(frame[list(TILE_FEATURES)].values))
+
+
+def tile_model_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Features and non-SRAM targets (area um2, idle/active power uW) of a
+    tile sweep DataFrame (tile_sweep.load())."""
+    out = pd.DataFrame(index=df.index)
+    out["config"] = df["config"]
+    out["mode"] = df["mode"]
+    out["dims"] = df["dims"].astype(float)
+    out["log2_fw"] = np.log2(df["vec_width"].astype(float))
+    out["vc"] = df["vec_capacity"].astype(float)
+    out["ports"] = (df["in_ports"] + df["out_ports"]).astype(float)
+    out["dual_port"] = df["dual_port"].astype(str).str.lower().eq("true").astype(float)
+    out["log2_me"] = np.log2(df["max_extent"].astype(float)).fillna(_DEFAULT_LOG2_ME)
+    out["log2_msw"] = np.log2(df["max_sequence_width"].astype(float)).fillna(_DEFAULT_LOG2_MSW)
+    out["log2_cap"] = np.log2(df["storage_capacity"].astype(float))
+    out["log2_dw"] = np.log2(df["data_width"].astype(float))
+    out["area"] = df["syn_std"].astype(float)
+    for v in ("idle", "active"):
+        tot, sram = f"pw_synth_{v}_total", f"pw_synth_{v}_sram"
+        out[v] = (df[tot] - df[sram]) * 1e6 if tot in df and sram in df else np.nan
+    out["role"] = df["pnr_role"] if "pnr_role" in df else ""
+    out["storage_capacity"] = df["storage_capacity"]
+    out["max_extent"] = df["max_extent"]
+    return out
+
+
+def fit_tile(frame: pd.DataFrame, mode: str, target: str,
+             train: pd.Series | None = None) -> TileFit:
+    """LassoCV of `target` on TILE_FEATURES over one mode's configs (and,
+    with `train`, only the rows it marks)."""
+    d = frame[(frame["mode"] == mode) & frame[target].notna()]
+    if train is not None:
+        d = d[train.reindex(d.index, fill_value=False)]
+    if len(d) < len(TILE_FEATURES) + 2:
+        raise MissingDataError(f"{mode} {target}: {len(d)} configs, too few to fit")
+    X, y = d[list(TILE_FEATURES)].values, d[target].values
+    scaler = StandardScaler().fit(X)
+    model = LassoCV(cv=5, max_iter=50000).fit(scaler.transform(X), y)
+    coef = model.coef_ / scaler.scale_
+    intercept = float(model.intercept_ - np.dot(coef, scaler.mean_))
+    pred = model.predict(scaler.transform(X))
+    return TileFit(mode, target, pd.Series(coef, index=list(TILE_FEATURES)), intercept,
+                   len(d), float(mean_absolute_percentage_error(y, pred)), scaler, model)
+
+
+def fit_tile_models(frame: pd.DataFrame) -> dict[tuple[str, str], TileFit]:
+    fits = {(m, t): fit_tile(frame, m, t) for m in TILE_MODES for t in TILE_TARGETS
+            if frame[(frame["mode"] == m)][t].notna().any()}
+    if not fits:
+        raise MissingDataError("tile sweep has no fittable configs")
+    return fits
+
+
+def tile_holdout_errors(frame: pd.DataFrame) -> list[dict]:
+    """Per (held-out test, mode): n and mean/max |error| per target, the
+    model fit without the held-out rows."""
+    rows = []
+    for label, pick in TILE_HOLDOUTS:
+        held = pick(frame).fillna(False).astype(bool)
+        for mode in TILE_MODES:
+            test = frame[held & (frame["mode"] == mode)]
+            if test.empty:
+                continue
+            row = {"test": label, "mode": mode, "n": len(test)}
+            for t in TILE_TARGETS:
+                tt = test[test[t].notna()]
+                try:
+                    fit = fit_tile(frame, mode, t, train=~held)
+                except MissingDataError:
+                    fit = None
+                if fit is None or tt.empty:
+                    row[t] = None
+                    continue
+                err = np.abs(fit.predict(tt) - tt[t].values) / tt[t].values
+                row[t] = (float(err.mean()), float(err.max()))
+            rows.append(row)
+    if not rows:
+        raise MissingDataError("no held-out configs in the tile sweep")
+    return rows
+
+
+def _num(v: float) -> str:
+    if v == 0:
+        return "--"
+    if abs(v) >= 100:
+        return f"{v:.0f}"
+    if abs(v) >= 10:
+        return f"{v:.1f}"
+    return f"{v:.2f}"
+
+
+def render_tile_coef_table(fits: dict[tuple[str, str], TileFit]) -> str:
+    r"""\begin{tabular}: one column per (mode, target), one row per feature."""
+    cols = [(m, t) for m in TILE_MODES for t in TILE_TARGETS if (m, t) in fits]
+    modes = [m for m in TILE_MODES if any(c[0] == m for c in cols)]
+    lines = [r"\begin{tabular}{l" + "r" * len(cols) + "}", r"\toprule"]
+    head, rules, start = [""], [], 2
+    for m in modes:
+        k = sum(1 for c in cols if c[0] == m)
+        head.append(rf"\multicolumn{{{k}}}{{c}}{{{TILE_MODES[m]}}}")
+        rules.append(rf"\cmidrule(lr){{{start}-{start + k - 1}}}")
+        start += k
+    lines += [" & ".join(head) + r" \\", " ".join(rules)]
+    lines.append(" & ".join(["Parameter"] + [f"{TILE_TARGETS[t][0]} ({TILE_TARGETS[t][1]})"
+                                             for _, t in cols]) + r" \\")
+    lines.append(r"\midrule")
+    for feat, label in TILE_FEATURES.items():
+        lines.append(" & ".join([label] + [_num(fits[c].coef[feat]) for c in cols]) + r" \\")
+    lines.append(r"\midrule")
+    lines.append(" & ".join(["Intercept"] + [_num(fits[c].intercept) for c in cols]) + r" \\")
+    lines.append(" & ".join(["Configs fit"] + [str(fits[c].n) for c in cols]) + r" \\")
+    errs = [f"{100 * fits[c].mape:.1f}\\%" for c in cols]
+    lines.append(" & ".join(["Mean $|$error$|$ (fit set)"] + errs) + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    return "\n".join(lines) + "\n"
+
+
+def render_tile_verif_table(rows: list[dict]) -> str:
+    r"""\begin{tabular}: per held-out test and mode, mean / max |error|."""
+    lines = [r"\begin{tabular}{llr" + "c" * len(TILE_TARGETS) + "}", r"\toprule",
+             " & ".join(["Held-out configs", "Mode", "$n$"] + [v[0] for v in TILE_TARGETS.values()]) + r" \\",
+             rf" & & & \multicolumn{{{len(TILE_TARGETS)}}}{{c}}{{mean / max $|$error$|$}} \\",
+             r"\midrule"]
+    last = None
+    for r in rows:
+        cells = [r["test"] if r["test"] != last else "", TILE_MODES[r["mode"]], str(r["n"])]
+        for t in TILE_TARGETS:
+            v = r[t]
+            cells.append("--" if v is None else f"{100 * v[0]:.1f}\\% / {100 * v[1]:.1f}\\%")
+        if last is not None and r["test"] != last:
+            lines.append(r"\addlinespace")
+        lines.append(" & ".join(cells) + r" \\")
+        last = r["test"]
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    return "\n".join(lines) + "\n"
+
+
+def emit_tile_coef_table(df: pd.DataFrame, outpath: Path) -> None:
+    frame = tile_model_frame(df)
+    body = render_tile_coef_table(fit_tile_models(frame))
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    outpath.write_text(_tile_source_comment(df) + body)
+
+
+def emit_tile_verif_table(df: pd.DataFrame, outpath: Path) -> None:
+    body = render_tile_verif_table(tile_holdout_errors(tile_model_frame(df)))
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    outpath.write_text(_tile_source_comment(df) + body)
+
+
+def _tile_source_comment(df: pd.DataFrame) -> str:
+    sweeps = sorted(df["sweep"].dropna().unique()) if "sweep" in df else []
+    return f"% tile-sweep model (non-SRAM), source: {', '.join(sweeps) or 'unknown'}\n"

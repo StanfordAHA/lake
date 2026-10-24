@@ -138,8 +138,13 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
   those args select (`pipeline/halide_appendix.py`). Checkouts default to
   `../aha` and `../Halide-to-Hardware`; override with `AHA_DIR` / `H2H_DIR`.
   The snippet is pasted inline into the appendix of main.tex (Overleaf).
-- **THESIS_BUILDS** (standalone lakespec) → the `tab:memtile_model_*` /
-  `tab:ul_ppa_summary` tables. The standalone area/power generators remain in
+- **THESIS_BUILDS** (standalone lakespec) → the `tab:ul_ppa_summary` table.
+  (`tab:memtile_model_*` fit the tile sweep since 2026-10-24: §7.)
+- **PE tile pitch** → `fig:pe_tile_height` (`tile_figures.pe_tile_pitch`): each
+  fabric's PE and Memory Tile PnR area from `data/pe_tile/thesis_tiles.csv`
+  (copied by hand from garnet mflowgen/CLAUDE.md, the 2026-10-22 thesis tile set at
+  400 MHz; refresh from the newest `thesis_tiles` run). A Memory Tile spans the
+  fewest unit heights k with width area/k <= `MEM_MAX_WIDTH` (1.5) PE tiles. The standalone area/power generators remain in
   `generators.py` but are no longer registered for the component figures.
 
 Everything else in `main_thesis.tex` is either BOGUS (data pending) or
@@ -157,7 +162,7 @@ manual (block diagram / curated table). Full breakdown: run
 | No dedicated ScheduleGenerator sweep | `sched_gen_{dim,max_extent}` | open |
 | No LI ScheduleGenerator sweep in THESIS_BUILDS | `li_sched_{ports,loc}_{area,power}` | open |
 | No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf`, `tab:ul_ppa_summary` | **harness wired (2026-07-13), not yet run** — `single_level_*` generators are real but draw BOGUS until `THESIS/data/apps/` fills; see `THESIS/apps/README.md` |
-| No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — area + delay fits landed 2026-07-13; power drops in automatically once ptpx flow runs |
+| No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — tile-sweep model (2026-10-24, §7); refit on the thesis-fabric design-space sweep once ingested |
 | No pre/post SB PPA numbers | `fig:interconnect_fork_ready_valid_data`, `fig:interconnect_fifo_replace_ff` | **build command exists, not run** (2026-10-17): garnet `sweep_specs.py --recipe fabric_mem` + `pe_tile` (static vs ready-valid fabric, hierarchy kept; garnet mflowgen/CLAUDE.md "Thesis data recipe"). No lake ingest for those zips yet |
 
 Each TODO is also captured in the corresponding `Entry.notes` in
@@ -168,24 +173,24 @@ same list from the source of truth.
 
 ## 7. Memtile regression module
 
-`pipeline/regression.py` fits the two `tab:memtile_model_*` tables using
-the Kahng-hybrid recipe (Kahng et al., DATE 2015 / SLIP 2013 / TCAD):
+`pipeline/regression.py` fits the two `tab:memtile_model_*` tables on the tile
+sweep (`tile_sweep.load()`, i.e. `data/tile_sweep/latest.csv`; since 2026-10-24,
+before that on THESIS_BUILDS):
 
-- **SRAM split.** Total area minus the SRAM sub-block area (added to the
-  extractor as `synth_storage_area_um2`). Lasso only fits the
-  surrounding logic — the macro stays a piecewise lookup.
-- **Features.** `dim, fw, vc, inp, outp, me, log2(msw),
-  log2(storage_cap), log2(data_width)`. Powers-of-two are log-encoded
-  so coefficients are interpretable as "cost per doubling."
-- **Regularization.** `LassoCV` with 5-fold inside the training set.
-- **Cross-validation.** Leave-one-experiment-out. Random k-fold silently
-  leaks because features co-vary within each per-component sweep.
-- **Delay.** Fit only on unsaturated points
-  (`crit_delay < 0.99 × clock_period`); the clock ceiling is reported
-  as a scoped constant. PORT_EXP drops out (all pegged at 700 MHz),
-  which is the correct signal not a bug.
-- **Power.** Same recipe. Raises `MissingDataError` until `ptpx-synth`
-  lands; then the fit picks up automatically.
+- **Targets.** Non-SRAM cost per config: Genus std-cell area (`syn_std`) and
+  PrimeTime synth-level idle / active power minus the SRAM macros' (`pw_synth_*`).
+  The macro is a lookup by geometry and its numbers are under NDA, so it is
+  left out (Kahng-hybrid split).
+- **Features** (`TILE_FEATURES`): dims, log2 fetch width, vec_capacity, ports
+  (in + out: they move together in the sweeps), dual-port, log2 max extent
+  (default 2^11), log2 max sequence width (default 2^16), log2 capacity, log2
+  data width. A feature the sweep does not vary gets no coefficient ("--").
+- **Fit.** One `LassoCV` per runtime mode and target (static/RV x area/idle/active).
+- **Verification** (`TILE_HOLDOUTS`): refit without, then predict: the sweep's
+  held-out PnR builds (`pnr_role == validate`) and three extrapolations
+  (32 KB capacity, 4 in / 4 out, max extent 4096). Mean / max |error| per mode.
+- The old THESIS_BUILDS functions (`fit_area_logic`, LOEO, delay) are still in the
+  module, unregistered.
 
 Regenerate the two tables in isolation:
 

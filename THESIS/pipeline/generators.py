@@ -352,13 +352,17 @@ def storage_power_vs_capacity(ctx: GenContext, outpath: Path) -> None:
 
 
 def memtile_model_coeff(ctx: GenContext, outpath: Path) -> None:
-    """Lasso-fit coefficient table (Kahng-hybrid area + power + delay)."""
-    regression.emit_coef_table(ctx.df, outpath)
+    """Memory Tile non-SRAM cost model (per runtime mode, LassoCV on the spec
+    parameters) fit on the tile sweep: coefficient table."""
+    from . import tile_sweep
+    regression.emit_tile_coef_table(tile_sweep.load(), outpath)
 
 
 def memtile_model_verif(ctx: GenContext, outpath: Path) -> None:
-    """Leave-one-experiment-out predicted-vs-actual residuals table."""
-    regression.emit_verif_table(ctx.df, outpath)
+    """The same model's error on held-out configs: the sweep's held-out PnR
+    builds and three extrapolations (32 KB, 4 in / 4 out, extent 4096)."""
+    from . import tile_sweep
+    regression.emit_tile_verif_table(tile_sweep.load(), outpath)
 
 
 # ---- Exploration & compiler tables (populated / skeletons) -----------------

@@ -133,28 +133,16 @@ If a new `THESIS_BUILDS/<EXP>/` directory shows up:
 3. Add generators + registry entries for whatever figures the new
    experiment feeds.
 
-### 1.6 Memtile PPA regression (Kahng-hybrid)
+### 1.6 Memory Tile model tables (`tab:memtile_model_*`)
 
-`THESIS/pipeline/regression.py` fits area/power/delay for the two
-memtile-model tables using the Kahng-hybrid recipe (Kahng et al., DATE
-2015 / SLIP 2013). Key design decisions live in the module docstring;
-the short version:
+`THESIS/pipeline/regression.py` (tile-sweep part, 2026-10-24) fits a Memory Tile's
+non-SRAM area and idle/active power to its spec parameters, one LassoCV per runtime
+mode, on `THESIS/data/tile_sweep/latest.csv`, and checks it on held-out configs.
+Design notes: `THESIS/PIPELINE.md` §7. The tables are pasted inline into main.tex
+(Overleaf), so regenerate and re-paste after a new sweep is ingested. They currently
+come from the stock-fabric dw16 sweep; refit them from the thesis-fabric
+design-space sweep once lake ingests it.
 
-- **SRAM split:** total area minus `synth_storage_area_um2` (added to
-  the extractor for this purpose). Lasso fits only the surrounding
-  logic — SRAM stays a piecewise lookup.
-- **Features:** `dim, fw, vc, inp, outp, me, log2(msw),
-  log2(storage_cap), log2(data_width)`. Powers-of-two are log-encoded
-  so coefficients read as "cost per doubling."
-- **CV:** leave-one-experiment-out. Random k-fold silently leaks
-  because features co-vary within each per-component sweep.
-- **Delay:** censored — only unsaturated points (crit_delay < 99% of
-  clock target). PORT_EXP drops out entirely (all pegged at 700 MHz),
-  which is the correct signal not a bug.
-- **Power:** same fit, but raises `MissingDataError` until `ptpx-synth`
-  lands and drops in automatically when it does.
-
-Regenerate the tables in isolation:
 ```bash
 python3 THESIS/generate_thesis_artifacts.py --only memtile_model_coeff memtile_model_verif
 ```
