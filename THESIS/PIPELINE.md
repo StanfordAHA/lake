@@ -161,7 +161,7 @@ manual (block diagram / curated table). Full breakdown: run
 | No dedicated per-stride / per-offset AFFINE sweep | `affine_{area,power}_vs_{stride,offset}` | **dropped** (2026-10-17): not separate hardware parameters (SG: `max_sequence_width`, AG: address width); figures removed from the tex and the registry |
 | No dedicated ScheduleGenerator sweep | `sched_gen_{dim,max_extent}` | open |
 | No LI ScheduleGenerator sweep in THESIS_BUILDS | `li_sched_{ports,loc}_{area,power}` | open |
-| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf`, `tab:ul_ppa_summary` | **harness wired (2026-07-13), not yet run** — `single_level_*` generators are real but draw BOGUS until `THESIS/data/apps/` fills; see `THESIS/apps/README.md` |
+| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf`, `tab:ul_ppa_summary` | **ingest written (2026-10-25), no data yet**: garnet `cgra_app_power.py` → `THESIS.apps.cgra_power_ingest` → `results.json`; `single_level_*` and `single_level_*_LI` are real but draw BOGUS until thesis-fabric bundles for the design points are recorded and powered. Commands: `THESIS/apps/CGRA_APP_POWER.md` |
 | No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — tile-sweep model (2026-10-24, §7); refit on the thesis-fabric design-space sweep once ingested |
 | No pre/post SB PPA numbers | `fig:interconnect_fork_ready_valid_data`, `fig:interconnect_fifo_replace_ff` | **build command exists, not run** (2026-10-17): garnet `sweep_specs.py --recipe fabric_mem` + `pe_tile` (static vs ready-valid fabric, hierarchy kept; garnet mflowgen/CLAUDE.md "Thesis data recipe"). No lake ingest for those zips yet |
 
@@ -209,13 +209,19 @@ LaTeX comment so it's obvious in-file.
 
 Peer directory `THESIS/apps/` — scope + milestone plan in
 [`THESIS/apps/README.md`](apps/README.md), which also has the run commands.
-`python3 -m THESIS.apps.run_matrix` writes one result per cell to
-`THESIS/data/apps/<design_id>/<app_id>/results.json` (schema in the
-`run_matrix.py` docstring). `pipeline/apps_query.py` loads that tree into a
-DataFrame, keeping only `sim_status == "PASS"` rows by default. The 5
-`single_level_*` generators in `pipeline/generators.py` read from it, and
-raise `MissingDataError` (drawing BOGUS) while the tree is empty.
-`two_level_*` and `*_LI` are still `bogus`.
+Two writers fill `THESIS/data/apps/<cell>/<app_id>/results.json`:
+- `python3 -m THESIS.apps.cgra_power_ingest` (2026-10-25): garnet's whole-CGRA app power
+  (`cgra_app_power.py`), one cell per (design, mode, fabric, pond). This is the path the
+  thesis uses. Commands and field meanings: [`THESIS/apps/CGRA_APP_POWER.md`](apps/CGRA_APP_POWER.md).
+- `python3 -m THESIS.apps.run_matrix`: the older one-memory-tile round trip, never run
+  (schema in the `run_matrix.py` docstring).
+
+`pipeline/apps_query.py` loads the tree into a DataFrame, keeping only
+`sim_status == "PASS"` rows by default; `select()` / its keyword filters pick one
+`mode` / `fabric` / `pond_id`. The 5 `single_level_*` generators plot static
+thesis-fabric rows, the 5 `single_level_*_LI` the RV ones (`generators.APP_FABRIC`),
+and raise `MissingDataError` (drawing BOGUS) while there are none.
+`two_level_*` are still `bogus`.
 
 `THESIS/apps/design_points.py` is the source of truth for the
 single-level design axis; `tab:ul_ppa_summary` and `tab:ul_design_points`

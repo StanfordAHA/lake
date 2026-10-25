@@ -166,10 +166,31 @@ still needs authoring.
 
 ### 1.7 App-mapping harness (Ch. 5)
 
-The exploration figures (`single_level_*`, `two_level_*`,
-`tab:ul_perf`, `tab:ul_ppa_summary`) are fed by `THESIS/apps/` — see
-[`THESIS/apps/README.md`](THESIS/apps/README.md) for the milestone plan.
-As of 2026-09-28, Milestone 1 is wired end-to-end but has no data yet:
+The exploration figures (`single_level_*`, `single_level_*_LI`, `two_level_*`,
+`tab:ul_perf`, `tab:ul_ppa_summary`) are fed by `THESIS/apps/`.
+
+**Source since 2026-10-25: garnet's whole-CGRA app power.** Bundles are recorded on
+/aha (`gen_app_bundle.py`, thesis fabrics), `cgra_app_power.py` runs on the build
+machine, and lake ingests its zip:
+
+```bash
+python3 -m THESIS.apps.garnet_configs            # design point <-> garnet config names
+python3 -m THESIS.apps.garnet_configs --commands  # /aha bundle script + build-machine command
+python3 -m THESIS.apps.cgra_power_ingest <cgra_app_power zip> --kernel-stats ks.json [--dry-run]
+```
+
+The full command sequence, field meanings and caveats (power window vs kernel, SRAM
+area) are in [`THESIS/apps/CGRA_APP_POWER.md`](THESIS/apps/CGRA_APP_POWER.md), along with
+what garnet still has to add (kernel cycles in the manifest, a kernel-only power window,
+SRAM busy fraction for utilization). Results land in
+`THESIS/data/apps/<design>__<mode>__<fabric>[__pond-<id>]/<app>/results.json`.
+`single_level_*` plot static thesis-fabric rows, `_LI` the RV ones
+(`generators.APP_FABRIC`, `apps_query.select`). No data yet: the existing thesis-fabric
+bundles are all on the design point `fw4_dw16_sc4096`, which `DESIGNS_SINGLE_LEVEL` lacks
+(user decision pending).
+
+The older single-memory-tile harness ([`THESIS/apps/README.md`](THESIS/apps/README.md),
+never run; Milestone 1 wired as of 2026-09-28):
 
 - `THESIS/apps/registry.py` — 6 `AppSpec` entries; the `??` markers
   (Halide app dirs) still need verifying against the AHA
@@ -412,6 +433,9 @@ Known quirks of the dw16 dataset:
   pipeline (indexed above in §1).
 - [`THESIS/apps/README.md`](THESIS/apps/README.md) — app-mapping
   harness scope + milestone plan (Ch. 5 exploration figures).
+- [`THESIS/apps/CGRA_APP_POWER.md`](THESIS/apps/CGRA_APP_POWER.md) — whole-CGRA app
+  power → Ch. 5 app figures: config-name map, /aha + build-machine + ingest commands,
+  what garnet must add.
 - [`THESIS/REPLICATION.md`](THESIS/REPLICATION.md) — mflowgen synth
   flow (indexed above in §2).
 - [`THESIS_ROUNDTRIP_PROGRESS.md`](THESIS_ROUNDTRIP_PROGRESS.md) —

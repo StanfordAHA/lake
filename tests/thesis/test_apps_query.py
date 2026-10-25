@@ -107,3 +107,24 @@ def test_default_root_used_when_none_passed(tmp_path, monkeypatch):
                                          "sim_status": "PASS"})
     df = apps_query.load_app_results_df()  # no arg
     assert len(df) == 1
+
+
+def test_select_by_mode_fabric_and_pond(tmp_path):
+    """cgra_power_ingest cells carry mode/fabric/pond_id; run_matrix cells lack
+    them and read as static, single level, any fabric."""
+    _write_result(tmp_path, "old", "a", {"design_id": "d", "app_id": "a", "sim_status": "PASS"})
+    for cell, fields in (("s", {"mode": "static", "fabric": "thesis", "pond_id": "default"}),
+                         ("r", {"mode": "rv", "fabric": "thesis", "pond_id": "default"}),
+                         ("k", {"mode": "static", "fabric": "stock", "pond_id": "builtin"}),
+                         ("p", {"mode": "static", "fabric": "thesis", "pond_id": "dims6"})):
+        _write_result(tmp_path, cell, "a", {"design_id": "d", "app_id": "a", "sim_status": "PASS",
+                                            "cell": cell, **fields})
+
+    def cells(**want):
+        return sorted(apps_query.load_app_results_df(tmp_path, **want)["_source"].str[0])
+    assert cells() == ["k", "o", "p", "r", "s"]
+    assert cells(mode="rv") == ["r"]
+    assert cells(mode="static") == ["k", "o", "p", "s"]
+    assert cells(mode="static", fabric="thesis") == ["o", "p", "s"]
+    assert cells(mode="static", fabric="thesis", pond_id=apps_query.SINGLE_LEVEL_PONDS) == ["o", "s"]
+    assert cells(mode="static", fabric=None, pond_id="dims6") == ["p"]

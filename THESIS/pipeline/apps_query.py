@@ -13,6 +13,12 @@ Schema written by ``THESIS/apps/run_matrix.py`` (per-cell results.json):
 
 Only rows with ``sim_status == "PASS"`` are returned by default — a
 failed sim's utilization/perf numbers aren't meaningful.
+
+``THESIS/apps/cgra_power_ingest.py`` writes the same schema from garnet's
+whole-CGRA app power, plus ``mode`` (static | rv), ``fabric`` (thesis |
+stock) and ``pond_id``, one cell directory per combination. ``select`` /
+the keyword filters of ``load_app_results_df`` pick one combination, so
+static and RV rows of a design are never averaged together.
 """
 
 from __future__ import annotations
@@ -24,14 +30,37 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RESULTS_ROOT = REPO_ROOT / "THESIS" / "data" / "apps"
+# What a results.json without the field means (run_matrix's cells: static,
+# single level). A field with no default here (fabric) matches any value when
+# a row lacks it.
+FIELD_DEFAULTS = {"mode": "static", "pond_id": "default"}
+SINGLE_LEVEL_PONDS = ("default", "builtin")  # cgra_power_ingest.pond_id of an unchanged pond
+
+
+def select(df: pd.DataFrame, **want) -> pd.DataFrame:
+    """Rows whose field equals ``want[field]`` (a tuple: is one of); value None =
+    any. A missing field reads as FIELD_DEFAULTS, or matches if it has none."""
+    for field, value in want.items():
+        if value is None or df.empty:
+            continue
+        values = value if isinstance(value, tuple) else (value,)
+        col = df[field] if field in df.columns else pd.Series(None, index=df.index, dtype=object)
+        if field in FIELD_DEFAULTS:
+            col = col.where(col.notna(), FIELD_DEFAULTS[field])
+            df = df[col.isin(values)]
+        else:
+            df = df[col.isna() | col.isin(values)]
+    return df.copy()
 
 
 def load_app_results_df(
     results_root: Path | str | None = None,
     *,
     pass_only: bool = True,
+    **want,
 ) -> pd.DataFrame:
-    """Walk ``<root>/<design_id>/<app_id>/results.json`` and return a DataFrame.
+    """Walk ``<root>/<cell>/<app_id>/results.json`` and return a DataFrame,
+    filtered by ``select(df, **want)`` (e.g. ``mode="rv"``).
 
     Returns an empty DataFrame if the tree doesn't exist yet — generators
     should treat that as ``MissingDataError`` upstream.
@@ -55,4 +84,4 @@ def load_app_results_df(
     df = pd.DataFrame(rows)
     if pass_only and not df.empty and "sim_status" in df.columns:
         df = df[df["sim_status"] == "PASS"].copy()
-    return df
+    return select(df, **want)

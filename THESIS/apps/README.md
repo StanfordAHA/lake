@@ -5,6 +5,13 @@ collects the results behind the `single_level_*` / `two_level_*` entries in
 `THESIS/pipeline/registry.py`. Scoped in the "app-mapping harness scoping" research pass;
 see `../PIPELINE.md` for the pipeline docs it plugs into.
 
+**2026-10-25: the figures now come from garnet's whole-CGRA app power, not from
+`run_matrix.py`.** `cgra_power_ingest.py` turns `cgra_app_power.py` output into
+`results.json`, and `garnet_configs.py` maps design points to garnet config names.
+The commands from /aha through the build machine to the figures, plus what garnet
+still has to add, are in [`CGRA_APP_POWER.md`](CGRA_APP_POWER.md). The rest of this
+file describes the older single-memory-tile harness.
+
 **Status (2026-09-28):** Milestone 1 is wired end-to-end and unit-tested
 (`tests/thesis/`), but no cells have run yet. What remains is checking the
 Halide app dirs (step 1 below) and running the matrix on the cluster. Until
@@ -51,6 +58,8 @@ written, with `sim_status=FAIL` or null PPA fields.
 | `design_points.py`| `DesignPoint` per single-level config | 8 round-trip-validated configs |
 | `run_matrix.py`   | CLI that iterates designs × apps and dispatches the round-trip flow per cell | implemented (§0) |
 | `compose.py`      | Turns per-memtile PPA into per-app CGRA-level PPA (weighted by tile counts + 3:1 PE:Mem) | skeleton with placeholder PE-tile PPA |
+| `garnet_configs.py` | Design point <-> garnet sweep config name; `--commands` prints the /aha bundle script + the build-machine power command | implemented (2026-10-25) |
+| `cgra_power_ingest.py` | garnet `cgra_app_power.py` zip/out-dir -> `results.json` (mode, fabric, pond, kernel cycles, outputs, CGRA area) | implemented (2026-10-25), no real data yet |
 
 Result files land at `THESIS/data/apps/<design_id>/<app_id>/results.json`
 with a stable schema (see `run_matrix.py` docstring). Downstream

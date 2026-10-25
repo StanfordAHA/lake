@@ -176,3 +176,42 @@ def test_grouped_bar_raises_when_all_rows_null(tmp_path, empty_ctx):
             df, x="app_id", hue="design_id", y="x_val",
             title="t", xlabel="x", ylabel="y", outpath=tmp_path / "x.pdf",
         )
+
+
+# ---------- static vs RV (LI) and fabrics stay apart ----------------------
+
+
+LI_GENERATORS = [f"{n}_LI" for n in ALL_GENERATORS]
+
+
+def _write_cell(root: Path, cell: str, app_id: str, **fields) -> None:
+    """A cgra_power_ingest-style cell: directory <design>__<mode>__<fabric>."""
+    d = root / cell / app_id
+    d.mkdir(parents=True, exist_ok=True)
+    row = {"design_id": cell.split("__")[0], "app_id": app_id, "sim_status": "PASS", **fields}
+    (d / "results.json").write_text(json.dumps(row))
+
+
+@pytest.mark.parametrize("name", LI_GENERATORS)
+def test_li_generators_read_only_rv_rows(apps_root, empty_ctx, name, tmp_path):
+    _seed_full_matrix(apps_root)  # static (no mode field)
+    with pytest.raises(MissingDataError, match="rv"):
+        getattr(generators, name)(empty_ctx, tmp_path / "x.pdf")
+    for cell in ("port_baseline__rv__thesis", "mem_small_sp__rv__thesis"):
+        _write_cell(apps_root, cell, "gaussian_agg", mode="rv",
+                         fabric="thesis", total_cycles=900, utilization=0.4, synth_power_w=0.02,
+                         synth_total_area_um2=1e4, synth_logic_area_um2=6e3,
+                         synth_storage_area_um2=4e3, clock_period_ps=1754.0)
+    out = tmp_path / f"{name}.pdf"
+    getattr(generators, name)(empty_ctx, out)
+    assert out.is_file() and out.stat().st_size > 1000
+
+
+def test_static_figures_skip_rv_and_stock_rows(apps_root, empty_ctx, tmp_path, monkeypatch):
+    _write_cell(apps_root, "d__static__thesis", "a", mode="static", fabric="thesis", total_cycles=100)
+    _write_cell(apps_root, "d__rv__thesis", "a", mode="rv", fabric="thesis", total_cycles=10_000)
+    _write_cell(apps_root, "d__static__stock", "a", mode="static", fabric="stock", total_cycles=20_000)
+    seen = {}
+    monkeypatch.setattr(generators, "_grouped_bar", lambda df, **kw: seen.update(df=df))
+    generators.single_level_performance(empty_ctx, tmp_path / "x.pdf")
+    assert list(seen["df"]["total_cycles"]) == [100]

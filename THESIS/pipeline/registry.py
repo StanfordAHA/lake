@@ -298,20 +298,22 @@ EXPLORATION_APPS = [
     # Latency-insensitive variants
     Entry("single_level_power_LI", "fig:single_level_power_LI",
           "figures/single_level_power_LI.pdf", "figure",
-          "per-app power on single-level LI designs", "bogus", None,
-          notes="TODO: LI variant requires ready/valid overlay app runs."),
+          "per-app power on single-level LI designs", "real", g.single_level_power_LI,
+          notes="single_level_power on the mode=rv results (THESIS.apps.cgra_power_ingest "
+                "of RV-fabric app bundles)."),
     Entry("single_level_performance_LI", "fig:single_level_performance_LI",
           "figures/single_level_performance_LI.pdf", "figure",
-          "per-app perf on single-level LI designs", "bogus", None),
+          "per-app perf on single-level LI designs", "real", g.single_level_performance_LI),
     Entry("single_level_area_LI", "fig:single_level_area_LI",
           "figures/single_level_area_LI.pdf", "figure",
-          "per-app area on single-level LI designs", "bogus", None),
+          "per-app area on single-level LI designs", "real", g.single_level_area_LI),
     Entry("single_level_utilization_LI", "fig:single_level_utilization_LI",
           "figures/single_level_utilization_LI.pdf", "figure",
-          "per-app utilization on single-level LI designs", "bogus", None),
+          "per-app utilization on single-level LI designs", "real", g.single_level_utilization_LI),
     Entry("single_level_energy_efficiency_LI", "fig:single_level_energy_efficiency_LI",
           "figures/single_level_energy_efficiency_LI.pdf", "figure",
-          "per-app energy efficiency on single-level LI designs", "bogus", None),
+          "per-app energy efficiency on single-level LI designs", "real",
+          g.single_level_energy_efficiency_LI),
 ]
 
 # ---------------------------------------------------------------------------

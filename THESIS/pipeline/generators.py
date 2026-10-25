@@ -399,12 +399,20 @@ def compiler_info(ctx: GenContext, outpath: Path) -> None:
 # that tree is populated, so the orchestrator swaps in a BOGUS placeholder.
 
 
-def _load_apps_or_miss(required_col: str | None = None) -> pd.DataFrame:
-    df = apps_query.load_app_results_df()
+# The fabric the app figures plot (user 2026-10-20: thesis results come from the
+# thesis fabrics); results without a fabric field (run_matrix) also count.
+APP_FABRIC = "thesis"
+_MODE_TITLE = {"static": "Single-level", "rv": "Single-level LI"}
+
+
+def _load_apps_or_miss(required_col: str | None = None, mode: str = "static") -> pd.DataFrame:
+    df = apps_query.load_app_results_df(mode=mode, fabric=APP_FABRIC,
+                                        pond_id=apps_query.SINGLE_LEVEL_PONDS)
     if df.empty:
         raise MissingDataError(
-            "no PASS rows in THESIS/data/apps — run THESIS.apps.run_matrix "
-            "on the cluster to populate results.json per (design, app) cell"
+            f"no PASS {mode} {APP_FABRIC}-fabric rows in THESIS/data/apps — ingest garnet "
+            "cgra_app_power.py output (python3 -m THESIS.apps.cgra_power_ingest) or run "
+            "THESIS.apps.run_matrix to populate results.json per (design, app) cell"
         )
     if required_col is not None:
         if required_col not in df.columns or df[required_col].dropna().empty:
@@ -456,33 +464,34 @@ def _grouped_bar(
     plt.close(fig)
 
 
-def single_level_power(ctx: GenContext, outpath: Path) -> None:
+def single_level_power(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
     """Per-app synth power on each single-level design point."""
-    df = _load_apps_or_miss(required_col="synth_power_w")
+    df = _load_apps_or_miss(required_col="synth_power_w", mode=mode)
     df = df.assign(power_mw=df["synth_power_w"] * 1000.0)
     _grouped_bar(
         df, x="app_id", hue="design_id", y="power_mw",
-        title="Single-level: per-app power",
+        title=f"{_MODE_TITLE[mode]}: per-app power",
         xlabel="App", ylabel="Synth power (mW)",
         outpath=outpath,
     )
 
 
-def single_level_performance(ctx: GenContext, outpath: Path) -> None:
+def single_level_performance(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
     """Per-app cycles-to-complete on each single-level design point."""
-    df = _load_apps_or_miss(required_col="total_cycles")
+    df = _load_apps_or_miss(required_col="total_cycles", mode=mode)
     _grouped_bar(
         df, x="app_id", hue="design_id", y="total_cycles",
-        title="Single-level: per-app cycles to complete",
+        title=f"{_MODE_TITLE[mode]}: per-app cycles to complete",
         xlabel="App", ylabel="Total cycles",
         outpath=outpath,
     )
 
 
-def single_level_area(ctx: GenContext, outpath: Path) -> None:
-    """Per-design synth area (design-level, not per-app). Averaged across apps
-    to collapse the per-cell duplicates — area doesn't vary with app."""
-    df = _load_apps_or_miss(required_col="synth_total_area_um2")
+def single_level_area(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
+    """Per-design synth area, averaged across apps. A run_matrix cell carries
+    the design's own area (the same for every app); a cgra_power_ingest cell
+    the CGRA area its app touches, so this is the mean over the apps."""
+    df = _load_apps_or_miss(required_col="synth_total_area_um2", mode=mode)
     per_design = (
         df.groupby("design_id", as_index=False)[["synth_total_area_um2",
                                                  "synth_logic_area_um2",
@@ -501,7 +510,7 @@ def single_level_area(ctx: GenContext, outpath: Path) -> None:
     ax.set_xticklabels(per_design["design_id"], rotation=30, ha="right", fontsize=8)
     ax.set_xlabel("Design point")
     ax.set_ylabel("Synth area (µm²)")
-    ax.set_title("Single-level: synth area by design point")
+    ax.set_title(f"{_MODE_TITLE[mode]}: synth area by design point")
     ax.legend(fontsize=8, loc="best")
     ax.grid(True, axis="y", alpha=0.3)
     outpath.parent.mkdir(parents=True, exist_ok=True)
@@ -510,22 +519,22 @@ def single_level_area(ctx: GenContext, outpath: Path) -> None:
     plt.close(fig)
 
 
-def single_level_utilization(ctx: GenContext, outpath: Path) -> None:
+def single_level_utilization(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
     """Per-app memory-tile utilization (active handshake cycles / total)."""
-    df = _load_apps_or_miss(required_col="utilization")
+    df = _load_apps_or_miss(required_col="utilization", mode=mode)
     df = df.assign(utilization_pct=df["utilization"] * 100.0)
     _grouped_bar(
         df, x="app_id", hue="design_id", y="utilization_pct",
-        title="Single-level: memtile utilization per app",
+        title=f"{_MODE_TITLE[mode]}: memtile utilization per app",
         xlabel="App", ylabel="Utilization (%)",
         outpath=outpath,
     )
 
 
-def single_level_energy_efficiency(ctx: GenContext, outpath: Path) -> None:
+def single_level_energy_efficiency(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
     """Per-app energy-per-op (lower is better). Requires both power and
     total_cycles; raises MissingDataError until ptpx-synth data lands."""
-    df = _load_apps_or_miss(required_col="synth_power_w")
+    df = _load_apps_or_miss(required_col="synth_power_w", mode=mode)
     if "total_cycles" not in df.columns or df["total_cycles"].dropna().empty:
         raise MissingDataError("total_cycles missing — sim hasn't populated util.txt yet")
     if "clock_period_ps" not in df.columns or df["clock_period_ps"].dropna().empty:
@@ -537,7 +546,23 @@ def single_level_energy_efficiency(ctx: GenContext, outpath: Path) -> None:
     df = df.assign(energy_uj=df["synth_power_w"] * df["runtime_s"] * 1e6)
     _grouped_bar(
         df, x="app_id", hue="design_id", y="energy_uj",
-        title="Single-level: energy per app run (lower is better)",
+        title=f"{_MODE_TITLE[mode]}: energy per app run (lower is better)",
         xlabel="App", ylabel="Energy (µJ)",
         outpath=outpath,
     )
+
+
+def _li(gen):
+    """gen on the RV (latency-insensitive) results."""
+    def li(ctx: GenContext, outpath: Path) -> None:
+        gen(ctx, outpath, mode="rv")
+    li.__name__ = li.__qualname__ = f"{gen.__name__}_LI"
+    li.__doc__ = f"{gen.__doc__.splitlines()[0]} RV (latency-insensitive) results."
+    return li
+
+
+single_level_power_LI = _li(single_level_power)
+single_level_performance_LI = _li(single_level_performance)
+single_level_area_LI = _li(single_level_area)
+single_level_utilization_LI = _li(single_level_utilization)
+single_level_energy_efficiency_LI = _li(single_level_energy_efficiency)
