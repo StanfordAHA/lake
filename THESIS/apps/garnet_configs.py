@@ -166,10 +166,18 @@ def app_basename(app: str) -> str:
 
 
 def app_map(extra: dict[str, str] | None = None) -> dict[str, str]:
-    """{Halide app basename: lake app id} from registry.APPS, plus extra
-    (keys may be full paths; they are reduced to basenames)."""
-    out = {app_basename(a.halide_app_dir): a.id for a in APPS}
-    out.update({app_basename(k): v for k, v in (extra or {}).items()})
+    """{name: lake app id} for matching a cgra_app_power row to an app: every
+    registry.APPS id (the variant / bundle-dir names ``--commands`` uses), the
+    Halide app basename of each app no other app shares (bundles may run a
+    private copy), and extra (e.g. another set's variant name ``mmpond``; a
+    path key also counts as its basename)."""
+    out = {a.id: a.id for a in APPS}
+    base: dict[str, list[str]] = {}
+    for a in APPS:
+        base.setdefault(app_basename(a.halide_app_dir), []).append(a.id)
+    out.update({b: ids[0] for b, ids in base.items() if len(ids) == 1 and b not in out})
+    for k, v in (extra or {}).items():
+        out[k] = out[app_basename(k)] = v
     return out
 
 
@@ -200,10 +208,12 @@ MAKE_TREE = r"""make_tree() {  # make_tree <tree>
 
 
 def bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_spec):
-    """{app: [gen_app_bundle.py line per config]} and comment lines for the skipped
-    (design, mode) pairs. Each app records in its own private aha tree
-    (<tree_root>/<app>), one config after another, so no two runs share an app
-    dir and aha still finds the app's application_parameters.json entry."""
+    """({job: [gen_app_bundle.py line per app x config]}, comment lines for the
+    skipped (design, mode) pairs). apps are registry AppSpecs; each records into
+    <bundle_root>/<app id>. Apps that share a Halide app dir (the two matmuls) share
+    a job, so no two runs use one app dir at once; each job has its own private aha
+    tree (<tree_root>/<job>) and runs its lines one after another. A bundle_blocked
+    app's lines are commented out."""
     configs, notes = [], []
     for dp in designs:
         for mode in modes:
@@ -214,24 +224,27 @@ def bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_s
                 notes.append(f"# {dp.id} {mode}: same config as an earlier design point ({cfg})")
             else:
                 configs.append((cfg, mode))
-    cmds = {}
+    jobs: dict[str, list[str]] = {}
     for app in apps:
-        slug = app_basename(app)
-        tree = f"{tree_root}/{slug}"
-        cmds[app] = []
+        job = app_basename(app.halide_app_dir)
+        tree = f"{tree_root}/{job}"
+        env = "".join(f" --env {kv}" for kv in app.bundle_env.split())
+        lines = jobs.setdefault(job, [])
+        if app.bundle_blocked:
+            lines.append(f"# {app.id} BLOCKED: {app.bundle_blocked}")
         for cfg, mode in configs:
             cmd = (f"python3 {tree}/garnet/mflowgen/common/application/gen_app_bundle.py "
-                   f"--config {cfg} --app {app} --bundle-dir {bundle_root}/{slug} "
-                   f"--aha-dir {tree} --cgra-tiles --pond-spec {pond_spec}")
+                   f"--config {cfg} --app {app.halide_app_dir} --bundle-dir {bundle_root}/{app.id} "
+                   f"--aha-dir {tree} --cgra-tiles --pond-spec {pond_spec}{env}")
             if fabric == "stock" and mode == "rv":
                 cmd += " --rv-balance 8"
-            cmds[app].append(cmd)
-    return cmds, notes
+            lines.append(f"# {cmd}" if app.bundle_blocked else cmd)
+    return jobs, notes
 
 
 def bundle_script(designs, apps, modes, fabric, bundle_root, tree_root, pond_spec):
-    """The /aha part as a bash script: one background job per app."""
-    cmds, notes = bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_spec)
+    """The /aha part as a bash script: one background job per Halide app dir."""
+    jobs, notes = bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_spec)
     lines = ["#!/bin/bash",
              "# /aha: aha venv active, xrun on PATH (module load xcelium).",
              "# Set LAKE (a lake checkout at the commit the build machine's tiles will use; it",
@@ -242,16 +255,20 @@ def bundle_script(designs, apps, modes, fabric, bundle_root, tree_root, pond_spe
              'export PYTHONPATH="$LAKE${PYTHONPATH:+:$PYTHONPATH}"',
              MAKE_TREE,
              f"mkdir -p {bundle_root} && echo '{{}}' > {pond_spec}", *notes]
-    for app, app_cmds in cmds.items():
-        slug = app_basename(app)
-        lines.append(f"make_tree {tree_root}/{slug}")
-        lines.append("(\n  " + " ;\n  ".join(app_cmds) + f"\n) > {bundle_root}/{slug}.log 2>&1 &")
+    for job, job_lines in jobs.items():
+        if all(c.startswith("#") for c in job_lines):
+            lines += job_lines  # every app of this job is blocked
+            continue
+        lines.append(f"make_tree {tree_root}/{job}")
+        body = [c if c.startswith("#") else c + " ;" for c in job_lines]
+        lines.append("(\n  " + "\n  ".join(body) + f"\n) > {bundle_root}/{job}.log 2>&1 &")
     lines.append("wait")
     return lines
 
 
 def power_command(apps, bundle_root, out_dir, fabric, clocks_from):
-    variants = ",".join(f"{app_basename(a)}={bundle_root}/{app_basename(a)}" for a in apps)
+    """cgra_app_power.py over every app that can be recorded, one variant per app id."""
+    variants = ",".join(f"{a.id}={bundle_root}/{a.id}" for a in apps if not a.bundle_blocked)
     clock = f"--clocks-from {clocks_from}" if fabric == "thesis" else "--clock-mhz 400"
     return (f"./mflowgen/cgra_app_power.py --any-config --variants {variants} {clock} "
             f"--replay-jobs 4 --out-dir {out_dir} --zip")
@@ -264,8 +281,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--fabric", choices=FABRICS, default="thesis")
     ap.add_argument("--modes", default="static,rv")
     ap.add_argument("--designs", nargs="+", default=["all"], help="design ids (default all)")
-    ap.add_argument("--apps", nargs="+", default=None,
-                    help="Halide app paths for gen_app_bundle --app (default: registry.APPS dirs)")
+    ap.add_argument("--apps", nargs="+", default=["all"], help="registry.APPS ids (default all)")
     ap.add_argument("--bundle-root", default="/aha/sweep_out/app_bundles_thesis_dp")
     ap.add_argument("--tree-root", default="/aha/sweep_out/app_bundles_thesis_dp_trees",
                     help="private aha trees, one per app (keep them out of --bundle-root)")
@@ -281,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
                else [d for d in DESIGNS_SINGLE_LEVEL if d.id in set(args.designs)])
     modes = [m for m in args.modes.split(",") if m]
     if args.commands:
-        apps = args.apps or [a.halide_app_dir for a in APPS]
+        apps = APPS if args.apps == ["all"] else [a for a in APPS if a.id in set(args.apps)]
         print("\n".join(bundle_script(designs, apps, modes, args.fabric, args.bundle_root,
                                       args.tree_root, args.pond_spec)))
         print("\n# build machine, from /sim/mstrange/BUILD_CGRA/garnet at GARNET_REV, after copying the "

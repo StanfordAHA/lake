@@ -16,7 +16,8 @@ failed sim's utilization/perf numbers aren't meaningful.
 
 ``THESIS/apps/cgra_power_ingest.py`` writes the same schema from garnet's
 whole-CGRA app power, plus ``mode`` (static | rv), ``fabric`` (thesis |
-stock) and ``pond_id``, one cell directory per combination. ``select`` /
+stock), ``pond_id`` and the app's ``level`` (single | two), one cell
+directory per (design, mode, fabric, pond). ``select`` /
 the keyword filters of ``load_app_results_df`` pick one combination, so
 static and RV rows of a design are never averaged together.
 """
@@ -33,7 +34,7 @@ DEFAULT_RESULTS_ROOT = REPO_ROOT / "THESIS" / "data" / "apps"
 # What a results.json without the field means (run_matrix's cells: static,
 # single level). A field with no default here (fabric) matches any value when
 # a row lacks it.
-FIELD_DEFAULTS = {"mode": "static", "pond_id": "default"}
+FIELD_DEFAULTS = {"mode": "static", "pond_id": "default", "level": "single"}
 SINGLE_LEVEL_PONDS = ("default", "builtin")  # cgra_power_ingest.pond_id of an unchanged pond
 
 

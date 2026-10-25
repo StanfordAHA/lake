@@ -60,15 +60,38 @@ Every name above is in garnet's `thesis_dse` or `thesis_mem_widths` spec set, so
 
 The text's other axes (dims, ScheduleGenerator duration) have no design points.
 
-Apps map by the Halide app's basename (bundles may run a private copy), from
-`registry.APPS`. That covers gaussian, unsharp, harris_color and camera_pipeline_2x2.
-The registry's `apps/matmul` and `apps/resnet_stage` are not the dirs anything ran:
+**Apps** (`registry.APPS`; matmul in both hierarchies, user 2026-10-25):
 
-- the appendix uses `apps/matrix_multiplication` and `apps/resnet_output_stationary`;
-- the bundles use `tests/matmul_rvtry3` (pond matmul) and a resnet copy.
+| app id | Halide app (`--app`) | level | bundle env |
+|---|---|---|---|
+| gaussian_agg | apps/gaussian | single | |
+| unsharp_agg | apps/unsharp | single | |
+| harris_agg | apps/harris_color | single | |
+| camera_pipeline_agg | apps/camera_pipeline_2x2 | single | |
+| matmul_agg | tests/matmul_rvtry3 | single | HL_TARGET=host-x86-64 HALIDE_GEN_ARGS=sched=1 |
+| matmul_pond_agg | tests/matmul_rvtry3 | two | HL_TARGET=host-x86-64-enable_ponds |
+| resnet_agg | pondspec_e2e/resnet | single | EXT=mat |
 
-Add a mapping with `--app-map matmul_rvtry3=matmul_agg` once the user picks one.
-`tests/conv_3_3` is not a thesis app and is skipped.
+- **matmul** is the n=16 matmul the garnet bundles run. Single level unrolls the
+  reduction into a PE adder tree, so only MEM tiles hold data; two level accumulates in
+  the PE-tile pond.
+  - The single-level matmul is **blocked** (`bundle_blocked`; `--commands` prints its
+    lines commented out). On 16×16 the static compile hits clockwork's
+    `garnet_single_port_ram_schedule` assert, and RV (23 PEs) does not route (garnet
+    mflowgen/CLAUDE.md "No-pond matmul").
+  - Its `HALIDE_GEN_ARGS=sched=1` also replaces the app Makefile's other default args;
+    check them before unblocking it.
+- **resnet** is the copy that ran on both thesis fabrics: `apps/resnet` with the output
+  channel innermost, run with `EXT=mat`. Stock `apps/resnet` stops in `parse_design_meta`.
+  No bundle of it exists yet. The stock app's `HL_TARGET` has no `enable_ponds`, so it's
+  listed as single level; check the copy's `design.place` for pond blocks after recording.
+- A cgra_app_power row maps to an app by its variant name (the app id, as `--commands`
+  names variants and bundle dirs), else by the Halide app's basename when only one app
+  has it. `matmul_rvtry3` is shared by both matmuls, so older sets need `--app-map`
+  (e.g. `mmpond=matmul_pond_agg`).
+- `single_level_*` plot only `level == "single"` apps; matmul_pond_agg waits for the
+  two-level figures, which still need `DESIGNS_TWO_LEVEL` (pond design points).
+- `tests/conv_3_3` is not a thesis app and is skipped.
 
 ## 2. Commands
 
@@ -76,26 +99,27 @@ Add a mapping with `--app-map matmul_rvtry3=matmul_agg` once the user picks one.
 
 ```bash
 cd ~/lake   # THESIS checkout
-python3 -m THESIS.apps.garnet_configs --commands \
-    --apps apps/gaussian apps/unsharp apps/harris_color apps/camera_pipeline_2x2 > record.sh
+python3 -m THESIS.apps.garnet_configs --commands > record.sh   # every design point and app
 # on /aha, with LAKE = a lake checkout at origin/THESIS (what the build machine's rtl step
 # checks out) and GARNET_REV = the build machine's garnet commit (fetch it into /aha/garnet):
 LAKE=/aha/sweep_out/lake_snapshot GARNET_REV=<sha> bash record.sh
 ```
 
-`record.sh` runs one background job per app. Each job has its own private aha tree
-(`make_tree`, following garnet `mflowgen/CLAUDE.md` "App bundles") and records that app
-on every config in turn:
+`record.sh` runs one background job per Halide app dir (the two matmuls share one).
+Each job has its own private aha tree (`make_tree`, following garnet `mflowgen/CLAUDE.md`
+"App bundles") and records its apps on every config in turn:
 
 ```
 python3 <tree>/garnet/mflowgen/common/application/gen_app_bundle.py --config <config> \
-    --app apps/<app> --bundle-dir <root>/<app> --aha-dir <tree> --cgra-tiles --pond-spec <root>/pond_default.json
+    --app <Halide app> --bundle-dir <root>/<app id> --aha-dir <tree> --cgra-tiles \
+    --pond-spec <root>/pond_default.json [--env KEY=VAL ...]
 ```
 
-- With the 7 distinct configs × 2 modes × 4 apps that is 56 bundles.
+- With the 7 distinct configs × 2 modes × the 6 recordable apps that is 84 bundles; the
+  14 single-level matmul lines are commented out.
 - harris_color takes 1.5-2.5 h per bundle, so its job sets the wall time: 14 bundles,
   about 1-1.5 days.
-- One job per app keeps two runs out of one app directory. aha's
+- One job per app dir keeps two runs out of one app directory. aha's
   `application_parameters.json` is keyed by the app path, so a private app copy would
   silently lose the app's `HALIDE_GEN_ARGS`.
 - `make_tree` is unverified. Compare it with session a16b3973's
@@ -115,11 +139,13 @@ python3 <tree>/garnet/mflowgen/common/application/gen_app_bundle.py --config <co
   - camera_pipeline_2x2: never run there.
   - unsharp: passed on the thesis RV fabric with EXHAUSTIVE_PIPE and balanced on stock;
     aha test sets RV_FLUSH_FIRST itself after a balanced PnR.
-  - resnet: needs the `pondspec_e2e/resnet` copy + `EXT=mat`.
+  - resnet: the `pondspec_e2e/resnet` copy has never been bundled; check it is still in
+    /aha's Halide-to-Hardware.
+  - matmul_pond_agg: bundled on the stock and design-point thesis CGRAs only.
   - dw 8/32: thesis apps there are session a16b3973's.
 
-  Expect failures there. Each job's log is `<root>/<app>.log`, each bundle's is
-  `<bundle>/logs/`.
+  Expect failures there. Each job's log is `<root>/<Halide app basename>.log`, each
+  bundle's is `<bundle>/logs/`.
 
 Then pack for the build machine, leaving the trees out:
 `tar czf app_bundles_thesis_dp.tgz -C /aha/sweep_out app_bundles_thesis_dp`.
@@ -129,11 +155,16 @@ Then pack for the build machine, leaving the trees out:
 ```bash
 cd /sim/mstrange/BUILD_CGRA/garnet && git checkout <GARNET_REV>
 tar xzf app_bundles_thesis_dp.tgz -C /nsim/mstrange/BUILDS
+B=/nsim/mstrange/BUILDS/app_bundles_thesis_dp
 ./mflowgen/cgra_app_power.py --any-config \
-    --variants gaussian=/nsim/mstrange/BUILDS/app_bundles_thesis_dp/gaussian,unsharp=/nsim/mstrange/BUILDS/app_bundles_thesis_dp/unsharp,harris_color=/nsim/mstrange/BUILDS/app_bundles_thesis_dp/harris_color,camera_pipeline_2x2=/nsim/mstrange/BUILDS/app_bundles_thesis_dp/camera_pipeline_2x2 \
+    --variants gaussian_agg=$B/gaussian_agg,unsharp_agg=$B/unsharp_agg,harris_agg=$B/harris_agg,camera_pipeline_agg=$B/camera_pipeline_agg,matmul_pond_agg=$B/matmul_pond_agg,resnet_agg=$B/resnet_agg \
     --clocks-from <the thesis_tiles_mem part dir>/thesis_clocks.json \
     --replay-jobs 4 --out-dir /nsim/mstrange/BUILDS/cgra_app_power_thesis_dp --zip
 ```
+
+(The last line `--commands` prints is this command.) Every app on a config shares that
+config's two tiles: cgra_app_power requires the same spec, mode and pond spec in every
+variant of a config, which `--pond-spec {}` for all apps gives.
 
 - `--clocks-from` must be the table the thesis tile and DSE runs used, so the app power
   runs at each fabric's clock. Every clocked part writes `<part>/thesis_clocks.json`; a
@@ -236,7 +267,8 @@ Garnet is public, so each of these changes needs the user's OK first.
   `cgra_app_power_dw16_r8cad-gf12_20261023-085057.zip`.
   - Of the lake design points, it matches `port_/mem_fw4_dw16_sc8k_sp2x2` and
     `mem_fw2_dw16_sc4k_dp2x2`.
-  - Its apps that map are gaussian and harris_color.
+  - Its apps that map are gaussian, harris_color and, with `--app-map
+    mmpond=matmul_pond_agg`, the pond matmul.
   - The ingest takes it (`--bundles /aha/sweep_out/app_bundles_dw16_20261014` for
     cycles), but the figures don't plot stock rows.
 - **Thesis-fabric sets.** `app_bundles_thesis_20261022` and

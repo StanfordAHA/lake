@@ -141,6 +141,19 @@ def test_row_whose_manifest_disagrees_with_its_config_name_is_skipped(tmp_path):
     assert results == [] and any("not the config name's" in n for n in notes)
 
 
+def test_variant_names_tell_the_two_matmuls_apart(tmp_path):
+    out, bundles = make_out_dir(tmp_path, [(STATIC, "matmul_agg", "tests/matmul_rvtry3", {}),
+                                           (STATIC, "matmul_pond_agg", "pond_x/matmul_rvtry3", {}),
+                                           (RV, "mmpond", "tests/matmul_rvtry3", {})])
+    got = {(r["variant"], r["design_id"]): r for _, r in ing.build_results(ing._Tree(out))[0]}
+    assert got[("matmul_agg", "port_fw4_dw16_sc8k_sp2x2")]["app_id"] == "matmul_agg"
+    assert got[("matmul_agg", "port_fw4_dw16_sc8k_sp2x2")]["level"] == "single"
+    assert got[("matmul_pond_agg", "port_fw4_dw16_sc8k_sp2x2")]["level"] == "two"
+    assert not any(v == "mmpond" for v, _ in got)  # basename matmul_rvtry3 is ambiguous
+    kept = ing.build_results(ing._Tree(out), apps=ing.gc.app_map({"mmpond": "matmul_pond_agg"}))[0]
+    assert {r["app_id"] for _, r in kept if r["variant"] == "mmpond"} == {"matmul_pond_agg"}
+
+
 def test_replay_mismatch_and_pond_spec(tmp_path):
     out, _ = make_out_dir(tmp_path, [(STATIC, "mm", "apps/gaussian",
                                       {"tiles_exact": 29, "pond": {"storage_capacity": 128, "dims": 6}})])

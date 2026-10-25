@@ -22,9 +22,12 @@ one, else from the bundle's ``logs/test.log`` (``aha test`` prints the kernel
 time and output bytes; ``--bundles`` / ``--kernel-stats``).
 
 A row maps to a lake design point by geometry (``garnet_configs``) and to a
-lake app by the Halide app's basename (``registry.APPS``, ``--app-map``). Rows
+lake app by its cgra_app_power variant name (an app id, as ``garnet_configs
+--commands`` names them), else by the Halide app's basename (``registry.APPS``,
+``--app-map``, e.g. ``mmpond=matmul_pond_agg`` for an older bundle set). Rows
 that map to neither are reported and skipped (``--keep-unmapped`` writes them
-under the garnet names). Output: ``<results-root>/<design_id>__<mode>__<fabric>
+under the garnet names). ``level`` is the app's (``AppSpec.level``): the
+single_level_* figures plot only "single". Output: ``<results-root>/<design_id>__<mode>__<fabric>
 [__pond-<id>]/<app_id>/results.json``.
 
 Field meanings (beyond the run_matrix schema):
@@ -56,6 +59,7 @@ from pathlib import Path
 
 from . import garnet_configs as gc
 from .design_points import DESIGNS_SINGLE_LEVEL
+from .registry import APPS
 from ..pipeline.tile_sweep import _gates
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -272,11 +276,14 @@ def build_results(tree: _Tree, *, kernel_stats=None, sweep=None, apps=None,
             continue
         fabric = "thesis" if man.get("thesis") else "stock"
         app = gc.app_basename(man.get("app") or r.get("app") or variant)
-        app_id = apps.get(app)
+        # the variant name first (garnet_configs --commands names variants by app id), then
+        # the Halide app (two registry apps can share one: matmul single / two level)
+        app_id = apps.get(variant) or apps.get(app)
         designs = gc.designs_for_spec(spec, DESIGNS_SINGLE_LEVEL)
         if not designs or app_id is None:
             why = ", ".join(w for w, bad in (("no design point with this geometry", not designs),
-                                             (f"app {app} not in registry.APPS / --app-map", app_id is None)) if bad)
+                                             (f"variant {variant} / app {app} not in registry.APPS / --app-map",
+                                              app_id is None)) if bad)
             if not keep_unmapped:
                 notes.append(f"skip {config}/{variant}: {why}")
                 continue
@@ -294,8 +301,10 @@ def build_results(tree: _Tree, *, kernel_stats=None, sweep=None, apps=None,
 
         n = {f"{t}_{role}": _int(r.get(f"{t}_{role}_n")) or 0 for t in TILES for role in ("placed", "route")}
         array_tiles = man.get("array_tiles") or {}
+        spec_app = next((a for a in APPS if a.id == app_id), None)
         res = {
-            "app_id": app_id, "source": "cgra_app_power", "source_path": source or str(tree.path),
+            "app_id": app_id, "level": spec_app.level if spec_app else "single",
+            "source": "cgra_app_power", "source_path": source or str(tree.path),
             "config": config, "variant": variant, "garnet_app": man.get("app"),
             "mode": mode, "fabric": fabric, "spec_config": spec, "spec_options": gc.spec_options(spec),
             "pond_spec": man.get("pond_spec"), "pond_id": pond_id(man.get("pond_spec")),
@@ -366,7 +375,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--write-kernel-stats", type=Path, help="write the collected kernel stats here")
     ap.add_argument("--tile-sweep", type=Path, help="tile_sweep CSV for MemTile areas (by config)")
     ap.add_argument("--app-map", nargs="+", default=[], metavar="APP=ID",
-                    help="extra Halide app (basename or path) -> lake app id, e.g. matmul_rvtry3=matmul_agg")
+                    help="extra variant name or Halide app (basename or path) -> lake app id, "
+                         "e.g. mmpond=matmul_pond_agg")
     ap.add_argument("--keep-unmapped", action="store_true",
                     help="write rows without a lake design point / app under their garnet names")
     ap.add_argument("--results-root", type=Path, default=RESULTS_ROOT)

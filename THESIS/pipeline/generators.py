@@ -406,7 +406,7 @@ _MODE_TITLE = {"static": "Single-level", "rv": "Single-level LI"}
 
 
 def _load_apps_or_miss(required_col: str | None = None, mode: str = "static") -> pd.DataFrame:
-    df = apps_query.load_app_results_df(mode=mode, fabric=APP_FABRIC,
+    df = apps_query.load_app_results_df(mode=mode, fabric=APP_FABRIC, level="single",
                                         pond_id=apps_query.SINGLE_LEVEL_PONDS)
     if df.empty:
         raise MissingDataError(

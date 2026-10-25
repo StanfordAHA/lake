@@ -189,6 +189,12 @@ SRAM busy fraction for utilization). Results land in
 `DESIGNS_SINGLE_LEVEL` points as they are, duplicate and dual-port points included (user,
 2026-10-25). No data yet: the existing thesis-fabric bundles are all on the design point
 `fw4_dw16_sc4096`, which isn't one of the 8, so the whole matrix has to be recorded.
+Apps (`registry.APPS`, user 2026-10-25): the 4 image apps, matmul single level
+(`matmul_agg`, blocked: the no-pond `matmul_rvtry3 sched=1` does not map on 16x16) and
+two level (`matmul_pond_agg`, pond accumulation; `level="two"`, not in `single_level_*`),
+and the `pondspec_e2e/resnet` copy that ran on both thesis fabrics. Bundles and
+cgra_app_power variants are named by app id; `tab:exploration_applications` now has a
+"Matrix Multiply (pond)" row.
 
 The older single-memory-tile harness ([`THESIS/apps/README.md`](THESIS/apps/README.md),
 never run; Milestone 1 wired as of 2026-09-28):

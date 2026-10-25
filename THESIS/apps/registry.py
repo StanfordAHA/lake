@@ -4,12 +4,13 @@ Each ``AppSpec`` names one app × schedule variant, mapping to a Halide
 app dir + testname that the round-trip flow (`ASPLOS_EXP/run_roundtrip_sweep.sh`)
 can consume.
 
-**Skeleton with TODOs.** The 6 apps come from ``tab:exploration_applications``
-in main_thesis.tex (lines ~1885-1898). The exact
-``/aha/Halide-to-Hardware/apps/hardware_benchmarks/...`` path per app
-needs verification against the local Halide-to-Hardware checkout — I
-haven't confirmed which apps have "aggressive" vs "conservative"
-schedule variants and which need an im2col preprocessing pass.
+The 6 apps come from ``tab:exploration_applications`` in main_thesis.tex
+(lines ~1885-1898); matrix multiply has a single- and a two-level entry
+(2026-10-25). ``halide_app_dir`` is the ``--app`` path garnet's
+``gen_app_bundle.py`` records (``THESIS/apps/CGRA_APP_POWER.md``); the
+matmul and resnet dirs are the ones the garnet app bundles and thesis-fabric
+runs used. Which apps have "aggressive" vs "conservative" schedule variants
+is still open.
 """
 
 from __future__ import annotations
@@ -34,6 +35,12 @@ class AppSpec:
         memory_notes: one-line access-pattern description for the thesis
             narrative — kept in-code so it's easy to keep the tex table
             in sync with the harness.
+        level: "single" (MEM tiles only) | "two" (also maps onto the PE-tile
+            pond); the single_level_* figures plot only "single" apps.
+        bundle_env: extra env for garnet gen_app_bundle.py (``--env``), as
+            space-separated KEY=VAL, beyond aha's application_parameters.json.
+        bundle_blocked: why the app cannot be recorded yet ("" = it can);
+            ``garnet_configs --commands`` prints its lines commented out.
     """
 
     id: str
@@ -42,6 +49,9 @@ class AppSpec:
     testname: str
     schedule_variant: str
     memory_notes: str
+    level: str = "single"
+    bundle_env: str = ""
+    bundle_blocked: str = ""
 
 
 # TODO: verify each halide_app_dir / testname against the local
@@ -65,14 +75,32 @@ APPS: list[AppSpec] = [
             "apps/camera_pipeline_2x2", "camera_pipeline_2x2_hw",
             "aggressive",
             "Bayer→RGB pipeline w/ 2x2 mosaic access; strided reads on short history"),
+    # Matrix multiply in both hierarchies (user 2026-10-25): the n=16 matmul the
+    # garnet app bundles run (tests/matmul_rvtry3), with the reduction unrolled
+    # into a PE adder tree (single level) or accumulated in the PE-tile pond
+    # (two level).
     AppSpec("matmul_agg", "Matrix Multiply",
-            "apps/matmul", "matmul_hw",
+            "tests/matmul_rvtry3", "matmul_rvtry3",
             "aggressive",
-            "GEMM output-stationary; partial-sum RF + weight buffer"),
+            "GEMM; reduction unrolled into a PE adder tree, MEM tiles buffer the operands",
+            bundle_env="HL_TARGET=host-x86-64 HALIDE_GEN_ARGS=sched=1",
+            bundle_blocked="does not map on 16x16: static hits clockwork's "
+                           "garnet_single_port_ram_schedule assert, RV (23 PEs) does not route "
+                           "(garnet mflowgen/CLAUDE.md 'No-pond matmul'); HALIDE_GEN_ARGS also "
+                           "needs the app Makefile's other default args"),
+    AppSpec("matmul_pond_agg", "Matrix Multiply (pond)",
+            "tests/matmul_rvtry3", "matmul_rvtry3",
+            "aggressive",
+            "GEMM; partial sums accumulate in the PE-tile pond, MEM tiles buffer the operands",
+            level="two", bundle_env="HL_TARGET=host-x86-64-enable_ponds"),
+    # The resnet that ran end to end on both thesis fabrics (garnet mflowgen/CLAUDE.md
+    # "Thesis fabrics"): a copy of apps/resnet with the output channel innermost; stock
+    # apps/resnet stops in parse_design_meta. No app bundle of it exists yet.
     AppSpec("resnet_agg", "ResNet block",
-            "apps/resnet_stage", "resnet_stage_hw",  # TODO: verify testname
+            "pondspec_e2e/resnet", "resnet",
             "aggressive",
-            "3×3 conv block w/ weight reuse; ping-pong tile buffer for activations"),
+            "3×3 conv block w/ weight reuse; ping-pong tile buffer for activations",
+            bundle_env="EXT=mat"),
 
     # TODO: conservative-schedule variants. tab:ul_perf splits every app
     # into aggressive/conservative columns. Confirm whether the schedule

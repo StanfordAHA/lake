@@ -7,6 +7,7 @@ import pytest
 
 from THESIS.apps import garnet_configs as gc
 from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL, DesignPoint
+from THESIS.apps.registry import AppSpec
 
 
 def _dp(**kw):
@@ -71,41 +72,59 @@ def test_rv_refuses_wide_vec_capacity():
     assert gc.unsupported(dict(vec_width=4, vec_capacity=4), "static") is None
 
 
-def test_app_map_by_basename_with_overrides():
-    m = gc.app_map({"tests/matmul_rvtry3": "matmul_agg"})
-    assert m["gaussian"] == "gaussian_agg"
-    assert m["harris_color"] == "harris_agg"
-    assert m["matmul_rvtry3"] == "matmul_agg"
+def test_app_map_by_id_unique_basename_and_overrides():
+    m = gc.app_map({"mmpond": "matmul_pond_agg"})
+    assert m["gaussian"] == "gaussian_agg" and m["harris_color"] == "harris_agg"
+    assert m["matmul_agg"] == "matmul_agg" and m["matmul_pond_agg"] == "matmul_pond_agg"
+    assert "matmul_rvtry3" not in m  # shared by the single- and two-level matmul
+    assert m["mmpond"] == "matmul_pond_agg"
     assert gc.app_basename("thesis_x/gaussian/") == "gaussian"
 
 
-def test_bundle_commands_one_tree_per_app_balance_only_on_stock_rv():
+def _app(id, app_dir, **kw):
+    return AppSpec(id, id, app_dir, id, "aggressive", "", **kw)
+
+
+def test_bundle_commands_one_job_per_app_dir_balance_only_on_stock_rv():
     dps = [_dp(id="a"), _dp(id="b")]  # same spec: b's configs are skipped
-    cmds, notes = gc.bundle_commands(dps, ["apps/gaussian", "apps/unsharp"], ["static", "rv"],
-                                     "thesis", "/b", "/t", "/p.json")
-    assert list(cmds) == ["apps/gaussian", "apps/unsharp"]
-    assert [len(c) for c in cmds.values()] == [2, 2]
+    apps = [_app("g", "apps/gaussian"), _app("m1", "tests/mm", bundle_env="HALIDE_GEN_ARGS=sched=1"),
+            _app("m2", "tests/mm", level="two")]
+    jobs, notes = gc.bundle_commands(dps, apps, ["static", "rv"], "thesis", "/b", "/t", "/p.json")
+    assert list(jobs) == ["gaussian", "mm"]  # the two matmuls share one job (one app dir)
+    assert [len(c) for c in jobs.values()] == [2, 4]
     assert sum("same config as an earlier design point" in n for n in notes) == 2
-    every = [c for cs in cmds.values() for c in cs]
+    every = [c for cs in jobs.values() for c in cs]
     assert not any("--rv-balance" in c for c in every)
-    assert all("--cgra-tiles --pond-spec /p.json" in c for c in every)
-    assert all("--aha-dir /t/unsharp" in c for c in cmds["apps/unsharp"])
-    stock, _ = gc.bundle_commands(dps[:1], ["apps/gaussian"], ["static", "rv"], "stock", "/b", "/t", "/p.json")
-    assert ["--rv-balance 8" in c for c in stock["apps/gaussian"]] == [False, True]
-    assert ("--config fw4_dw16_sc8192_sp_in2_out2_vc2_rv --app apps/gaussian --bundle-dir /b/gaussian"
-            in stock["apps/gaussian"][1])
+    assert all("--cgra-tiles --pond-spec /p.json" in c and "--aha-dir /t/" in c for c in every)
+    assert "--bundle-dir /b/m1" in jobs["mm"][0] and jobs["mm"][0].endswith("--env HALIDE_GEN_ARGS=sched=1")
+    assert "--bundle-dir /b/m2" in jobs["mm"][2]
+    stock, _ = gc.bundle_commands(dps[:1], apps[:1], ["static", "rv"], "stock", "/b", "/t", "/p.json")
+    assert ["--rv-balance 8" in c for c in stock["gaussian"]] == [False, True]
+    assert ("--config fw4_dw16_sc8192_sp_in2_out2_vc2_rv --app apps/gaussian --bundle-dir /b/g"
+            in stock["gaussian"][1])
 
 
-def test_bundle_script_runs_one_job_per_app():
-    lines = gc.bundle_script([_dp()], ["apps/gaussian", "apps/unsharp"], ["static", "rv"],
-                             "thesis", "/b", "/t", "/b/p.json")
+def test_blocked_app_is_commented_out():
+    apps = [_app("m1", "tests/mm", bundle_blocked="does not route"), _app("m2", "tests/mm")]
+    jobs, _ = gc.bundle_commands([_dp()], apps, ["static"], "thesis", "/b", "/t", "/p.json")
+    assert jobs["mm"][0] == "# m1 BLOCKED: does not route"
+    assert jobs["mm"][1].startswith("# python3 ") and jobs["mm"][2].startswith("python3 ")
+    only, _ = gc.bundle_commands([_dp()], apps[:1], ["static"], "thesis", "/b", "/t", "/p.json")
+    script = gc.bundle_script([_dp()], apps[:1], ["static"], "thesis", "/b", "/t", "/p.json")
+    assert all(c in script for c in only["mm"]) and "make_tree /t/mm" not in script
+
+
+def test_bundle_script_runs_one_job_per_app_dir():
+    apps = [_app("g", "apps/gaussian"), _app("u", "apps/unsharp")]
+    lines = gc.bundle_script([_dp()], apps, ["static", "rv"], "thesis", "/b", "/t", "/b/p.json")
     text = "\n".join(lines)
     assert text.startswith("#!/bin/bash")
     assert "make_tree /t/gaussian" in text and "make_tree /t/unsharp" in text
     assert text.count(") > /b/gaussian.log 2>&1 &") == 1 and lines[-1] == "wait"
 
 
-def test_power_command_clock_per_fabric():
-    assert "--clocks-from /c.json" in gc.power_command(["apps/gaussian"], "/b", "/o", "thesis", "/c.json")
-    cmd = gc.power_command(["apps/gaussian", "apps/unsharp"], "/b", "/o", "stock", "/c.json")
-    assert "--clock-mhz 400" in cmd and "--variants gaussian=/b/gaussian,unsharp=/b/unsharp" in cmd
+def test_power_command_variants_are_app_ids():
+    apps = [_app("g", "apps/gaussian"), _app("u", "apps/unsharp"), _app("x", "x", bundle_blocked="no")]
+    assert "--clocks-from /c.json" in gc.power_command(apps, "/b", "/o", "thesis", "/c.json")
+    cmd = gc.power_command(apps, "/b", "/o", "stock", "/c.json")
+    assert "--clock-mhz 400" in cmd and "--variants g=/b/g,u=/b/u " in cmd

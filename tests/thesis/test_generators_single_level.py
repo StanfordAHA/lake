@@ -211,6 +211,8 @@ def test_static_figures_skip_rv_and_stock_rows(apps_root, empty_ctx, tmp_path, m
     _write_cell(apps_root, "d__static__thesis", "a", mode="static", fabric="thesis", total_cycles=100)
     _write_cell(apps_root, "d__rv__thesis", "a", mode="rv", fabric="thesis", total_cycles=10_000)
     _write_cell(apps_root, "d__static__stock", "a", mode="static", fabric="stock", total_cycles=20_000)
+    _write_cell(apps_root, "d__static__thesis", "mm_pond", mode="static", fabric="thesis", level="two",
+                total_cycles=30_000)
     seen = {}
     monkeypatch.setattr(generators, "_grouped_bar", lambda df, **kw: seen.update(df=df))
     generators.single_level_performance(empty_ctx, tmp_path / "x.pdf")
