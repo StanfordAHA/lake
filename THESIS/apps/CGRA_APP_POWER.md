@@ -43,19 +43,22 @@ exactly: all 522 configs of garnet's spec sets parse and rename to themselves (c
 
 Every name above is in garnet's `thesis_dse` or `thesis_mem_widths` spec set, so
 `gen_app_bundle.py --config` takes it. Stock-fabric names drop the knobs and `_thesis`
-(`--fabric stock`). The table shows three problems with the current design-point set
-(`design_points.py`):
+(`--fabric stock`).
 
-- `port_fw4_dw16_sc8k_sp2x2` and `mem_fw4_dw16_sc8k_sp2x2` are the same garnet spec. The
-  ingest writes such a row under both ids, so its numbers appear twice.
-- Three points are dual-port, but the thesis text says the single-level evaluation is
-  single-port only.
+**The bundle matrix uses `DESIGNS_SINGLE_LEVEL` as it is: all 8 points** (user,
+2026-10-25). That keeps three things the table shows:
+
+- `port_fw4_dw16_sc8k_sp2x2` and `mem_fw4_dw16_sc8k_sp2x2` are the same garnet spec.
+  `--commands` records it once; the ingest writes its rows under both ids, so both
+  appear in the figures with the same numbers.
+- Three points are dual-port, although the thesis text says the single-level
+  evaluation is single-port only.
 - The thesis design point (`fw4_dw16_sc4096_sp_in2_out2_vc2`, lake's default spec) is not
-  in the set. Every thesis-fabric bundle recorded so far is on that point, so the ingest
-  skips all of them (`--keep-unmapped` writes them under the garnet name).
+  in the set. Every thesis-fabric bundle recorded before 2026-10-25 is on that point, so
+  the ingest skips them (`--keep-unmapped` writes them under the garnet name), and the
+  whole matrix in §2a has to be recorded.
 
-The text's axes (dims, ScheduleGenerator duration) have no design points either. Changing
-the set is the user's call.
+The text's other axes (dims, ScheduleGenerator duration) have no design points.
 
 Apps map by the Halide app's basename (bundles may run a private copy), from
 `registry.APPS`. That covers gaussian, unsharp, harris_color and camera_pipeline_2x2.

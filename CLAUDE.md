@@ -185,9 +185,10 @@ what garnet still has to add (kernel cycles in the manifest, a kernel-only power
 SRAM busy fraction for utilization). Results land in
 `THESIS/data/apps/<design>__<mode>__<fabric>[__pond-<id>]/<app>/results.json`.
 `single_level_*` plot static thesis-fabric rows, `_LI` the RV ones
-(`generators.APP_FABRIC`, `apps_query.select`). No data yet: the existing thesis-fabric
-bundles are all on the design point `fw4_dw16_sc4096`, which `DESIGNS_SINGLE_LEVEL` lacks
-(user decision pending).
+(`generators.APP_FABRIC`, `apps_query.select`). The bundle matrix uses the 8
+`DESIGNS_SINGLE_LEVEL` points as they are, duplicate and dual-port points included (user,
+2026-10-25). No data yet: the existing thesis-fabric bundles are all on the design point
+`fw4_dw16_sc4096`, which isn't one of the 8, so the whole matrix has to be recorded.
 
 The older single-memory-tile harness ([`THESIS/apps/README.md`](THESIS/apps/README.md),
 never run; Milestone 1 wired as of 2026-09-28):
