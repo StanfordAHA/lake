@@ -206,59 +206,83 @@ The ingest writes one file per `cgra_power.csv` row (config × app), at
 
 | figure field | from |
 |---|---|
-| `synth_power_w` | `app_W`: synth-level power of placed + route tiles, averaged over the replay window |
-| `total_cycles` | kernel ns / tb clock (1 ns) from `aha test`'s log or the manifest's `kernel` |
+| `synth_power_w` | `app_W`: synth-level power of placed + route tiles, averaged over the replay window (the kernel when `window_is_kernel`) |
+| `total_cycles` | kernel cycles at the tb clock (1 ns): manifest / `cgra_power.csv` `kernel_cycles`, else `aha test`'s log |
 | `clock_period_ps` | the run's clock (`run_meta.json`) |
 | `tile_count` | MEM tiles with a placed core (ul_perf "Number of UL Memories") |
 | `output_per_cycle` | output words / kernel cycles (ul_perf "Output Pixels per Cycle") |
 | `synth_*_area_um2` | (placed + route tiles) × tile area: the CGRA area the app touches |
-| `utilization` | not set: no source yet (§4); `mem_tile_utilization` = MEM tiles used / in array |
+| `utilization` | `mem_sram_busy_frac`: mean over placed MEM tiles of SRAM access cycles / kernel cycles; `mem_tile_utilization` = MEM tiles used / in array |
 | `app_energy_j`, `array_power_w`, `window_cycles`, `sram_power_w` | kept for later figures |
 
 Caveats:
 
-- **The window is not the kernel.** The replay window runs from the stall release to the
-  end of the recording, so it includes the testbench reading the output back from the
-  GLB. The energy figure's power × kernel cycles × period therefore uses window-average
-  power, and `app_energy_j` overcounts by the tail.
+- **Bundles from before garnet `78295fd1`** have no `kernel` in their manifest. Their
+  replay window runs to the end of the recording, including the testbench reading the
+  output back from the GLB, so `synth_power_w` is a window average and `app_energy_j`
+  overcounts by that tail. Their `utilization` is None.
+  `gen_app_bundle.py --annotate <bundle>` adds `kernel` and `mem_activity` to them
+  before the power run.
 - **SRAM area is drawn in µm².** `single_level_area` stacks SRAM area absolute, while the
   tile figures show SRAM numbers relative (`tile_figures.SRAM_NDA`).
 
-## 4. What garnet must add
+## 4. What garnet added (`78295fd1`, 2026-10-25)
 
-Garnet is public, so each of these changes needs the user's OK first.
+See garnet `mflowgen/CLAUDE.md` "Kernel window, kernel stats, SRAM activity". Not run on
+/aha or the build machine yet; unit-tested only.
 
-1. **`gen_app_bundle.py`: write `manifest["kernel"]`.** After the test step (which
-   already greps `logs/test.log` for "comparison passed"), parse:
-   - `It takes <t> ns total time to run kernel` and `kernel start at <t>`;
-   - `The size of output is <n> Byte`;
-   - the tb clock (`CLK_PERIOD`, Makefile default 1 ns).
+1. **`gen_app_bundle.py` writes `manifest["kernel"]`** = {kernel_ns, start_ns, end_ns,
+   clk_period_ns, cycles, output_bytes, output_words, n_kernels}, from `logs/test.log`
+   ("kernel start at", "It takes … total time to run kernel", "The size of output is …
+   Byte"; words = bytes >> `cgra_byte_offset`). The application step copies the manifest
+   into the workspace, so the cgra_app_power zip carries it, and the ingest uses it ahead
+   of `--bundles`.
+2. **`cgra_power.csv` gets `kernel_cycles`, `output_words`, `kernel_s`** (cycles at the
+   run's clock) and `kernel_J` (= app_W × kernel_s).
+3. **Power over the kernel only.** With `kernel` in the manifest, the replay testbench's
+   `saif_window` falls `kernel.cycles` vectors after it rises. cmd.tcl ends the SAIF there
+   and runs on to `$finish` for the replay check.
+   - `window_is_kernel` in `cgra_power.csv` says it happened on every tile.
+   - Vectors are simvisdbutil rows (`-notime`), about one per recorded cycle, so the end
+     can be a few cycles off.
+4. **SRAM busy fraction.** It comes from the recording (`core.vcd`), not from the replay
+   SAIF as first planned.
+   - Per MEM tile, `manifest["mem_activity"]` counts the controller-clock edges in the
+     kernel at which the lake controller's `memory_port_{read,write}_en_out_*` ports
+     request the SRAM.
+   - The replay is checked bit-exact against the recording, so these are the replayed
+     tile's accesses. They are timestamped, and need no netlist or SAIF name matching.
+   - `cgra_power_tiles.csv` gets `sram_access_cycles` / `sram_busy_frac`, and
+     `cgra_power.csv` gets `mem_sram_busy_frac` (mean over placed MEM tiles; None unless
+     every one has activity).
+   - The ingest maps that to `utilization`.
 
-   Store them as `{kernel_ns, start_ns, clk_period_ns, cycles, output_bytes,
-   output_words, n_kernels}`; words = bytes >> `cgra_byte_offset`, which is dw/8.
-   - The application step copies the manifest into the workspace, so the cgra_app_power
-     zip carries it, and the ingest uses it ahead of `--bundles`.
-   - Existing bundles need no re-record: their `logs/test.log` has the same lines, which
-     is what `--bundles` reads.
-2. **`cgra_app_power.py summarize()`: copy `kernel.cycles` / `output_words` into
-   `cgra_power.csv`.** Add `kernel_s` = cycles / clock and `kernel_J`.
-3. **Power over the kernel only.** `generate_testbench.py` opens `saif_window` at the
-   stall release. It should also close it `kernel.cycles` vectors later.
-   - Vectors are simvisdbutil rows extracted with `-notime`, about one per recording
-     cycle; idle tiles have a few fewer. Extract with times to cut it exactly.
-   - Then `app_W` is kernel-average power and `app_J` is kernel energy.
-   - The window's start stays as is. cmd.tcl would need a stop condition on the window's
-     falling edge.
-4. **Utilization: SRAM busy fraction per MEM tile.** `run_all_tiles.py` (all three
-   copies) should read the replay SAIF before it deletes the tile's sub-workspace.
-   - Take the time each SRAM macro instance's chip-enable spends active, plus write-enable
-     for the read/write split. Lake drives CEN = ~(re | we), so that is exactly the
-     access cycles.
-   - Report it as `sram_busy_frac` in `cgra_power_tiles.csv` and its mean over placed MEM
-     tiles in `cgra_power.csv`; the ingest maps that to `utilization`.
-   - Dual-port macros have two enables.
-   - Tile-count utilization (`mem_tile_utilization`, from manifest `array_tiles`) needs
-     no change.
+Still open in garnet:
+
+- **Static PE timing.** `cgra_app_power.py`'s `tile_env` does not set
+  `PE_OPERANDS_REGISTERED` / `TILE_O_DELAY_NS`. garnet `6f0b1485` added them for the
+  thesis tile set (`thesis_tiles_pe --pe-registered-operands`), so a whole-CGRA power run
+  would synthesize a different static thesis PE than the tile set. Fix before the power
+  run (found by the /aha session aha-08).
+
+## 4b. Known risks before recording (aha-08, 2026-10-25)
+
+- **Data width.** u16 apps don't fit an 8-bit CGRA, and on 32/64 bits their 16-bit
+  wraparound is gone, so the gold and the hardware differ.
+  - Halide-to-Hardware CLAUDE.md "Test apps for other CGRA data widths" (a16b3973) lists
+    only `tests/conv_3_3_u8`, `tests/matmul_bounded` and `tests/down_sample` as exact at
+    other widths.
+  - The dw8 / dw32 design points (`port_fw4_dw8_sc8k_sp2x2`, `port_fw4_dw32_sc8k_sp2x2`,
+    `port_fw2_dw32_sc8k_dp2x2`) therefore need width-safe app variants, or come out of
+    the app matrix. User decision pending.
+- **App parameters.** `--commands` records from the real app dirs (`apps/<app>`), so aha
+  applies `application_parameters.json`.
+  - The thesis-fabric harris bundles recorded so far ran from copies, so they used the
+    Halide generator defaults (schedule 3, unroll 2, width 122), not the appendix's
+    schedule.
+  - `pondspec_e2e/resnet` and `tests/matmul_rvtry3` have no entry there either way.
+- **camera_pipeline_2x2** has passed only on a 28×16 array. On 16×16 it may not place,
+  and a larger array would make its array totals incomparable.
 
 ## 5. Data that exists today (garnet mflowgen/CLAUDE.md)
 

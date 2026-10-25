@@ -188,6 +188,20 @@ def test_manifest_kernel_entry_wins(tmp_path):
     assert r["kernel_cycles"] == 1000 and r["output_words"] == 50 and r["kernel_source"] == "manifest"
 
 
+def test_garnet_kernel_columns_and_sram_busy_fraction(tmp_path):
+    """cgra_power.csv from garnet >= 78295fd1: kernel cycles, the kernel-only window and
+    the placed MEM tiles' SRAM busy fraction (-> utilization)."""
+    out, _ = make_out_dir(tmp_path, [(STATIC, "gauss", "apps/gaussian",
+                                      {"kernel_cycles": 4100, "output_words": 3844,
+                                       "window_is_kernel": "True", "mem_sram_busy_frac": 0.375})])
+    r = ing.build_results(ing._Tree(out))[0][0][1]
+    assert r["kernel_cycles"] == r["total_cycles"] == 4100 and r["kernel_source"] == "cgra_power.csv"
+    assert r["output_per_cycle"] == pytest.approx(3844 / 4100)
+    assert r["window_is_kernel"] is True and r["utilization"] == pytest.approx(0.375)
+    plain = ing.build_results(ing._Tree(make_out_dir(tmp_path / "old", [(STATIC, "gauss", "apps/gaussian", {})])[0]))
+    assert plain[0][0][1]["utilization"] is None and plain[0][0][1]["window_is_kernel"] is False
+
+
 def test_parse_test_log_sums_kernels():
     text = ("[a] It takes 10.00 ns total time to run kernel.\n[a] The size of output is 8 Byte.\n"
             "[b] It takes 5.50 ns total time to run kernel.\n[b] The size of output is 4 Byte.\n")

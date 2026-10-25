@@ -43,7 +43,10 @@ Field meanings (beyond the run_matrix schema):
   tile_count         MEM tiles with a placed core (the UL memories)
   mem_tile_utilization  that / MEM tiles in the array
   synth_*_area_um2   CGRA area the app touches: (placed + route) tiles x tile area
-  utilization        None: needs per-tile SRAM activity (not recorded yet)
+  utilization        mem_sram_busy_frac: mean over the placed MEM tiles of SRAM access
+                     cycles / kernel cycles (garnet >= 78295fd1 bundles; else None)
+  window_is_kernel   the replay's power window was the kernel (garnet >= 78295fd1):
+                     then synth_power_w is the kernel's average and app_energy_j its energy
 """
 
 from __future__ import annotations
@@ -297,6 +300,9 @@ def build_results(tree: _Tree, *, kernel_stats=None, sweep=None, apps=None,
             areas[config] = tile_areas(tree, config)
         dw = int(gc.full_spec(spec)["data_width"])
         kernel = man.get("kernel") or find_kernel(kernel_stats, man, config)
+        if not kernel and _int(r.get("kernel_cycles")):   # cgra_power.csv (garnet >= 78295fd1)
+            kernel = {"cycles": _int(r["kernel_cycles"]), "output_words": _int(r.get("output_words")),
+                      "source": "cgra_power.csv"}
         kernel = kernel_entry(kernel, dw) if kernel else None
 
         n = {f"{t}_{role}": _int(r.get(f"{t}_{role}_n")) or 0 for t in TILES for role in ("placed", "route")}
@@ -314,13 +320,13 @@ def build_results(tree: _Tree, *, kernel_stats=None, sweep=None, apps=None,
             "synth_power_w": _float(r.get("app_W")), "array_power_w": _float(r.get("array_W")),
             "idle_power_w": _float(r.get("idle_W")), "sram_power_w": _float(r.get("sram_W")),
             "app_energy_j": _float(r.get("app_J")), "array_energy_j": _float(r.get("array_J")),
-            "window_s": _float(r.get("window_s")),
+            "window_s": _float(r.get("window_s")), "window_is_kernel": r.get("window_is_kernel") == "True",
             "clock_mhz": clock_mhz, "clock_period_ps": 1e6 / clock_mhz if clock_mhz else None,
             "mem_tiles_placed": n["Tile_MemCore_placed"], "mem_tiles_route": n["Tile_MemCore_route"],
             "pe_tiles_placed": n["Tile_PE_placed"], "pe_tiles_route": n["Tile_PE_route"],
             "array_mem_tiles": array_tiles.get("Tile_MemCore"), "array_pe_tiles": array_tiles.get("Tile_PE"),
             "tile_count": n["Tile_MemCore_placed"],
-            "utilization": None,
+            "utilization": _float(r.get("mem_sram_busy_frac")),
         }
         res["sim_status"] = ("PASS" if res["tiles_replayed"] and res["tiles_exact"] == res["tiles_replayed"]
                              else "FAIL")
