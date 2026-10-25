@@ -7,8 +7,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from THESIS.pipeline import regression as r
-from THESIS.pipeline.errors import MissingDataError
+pytest.importorskip("sklearn")  # THESIS.pipeline.regression needs it; lake's CI container has none
+
+from THESIS.pipeline import regression as r  # noqa: E402 (after importorskip)
+from THESIS.pipeline.errors import MissingDataError  # noqa: E402 (after importorskip)
 
 
 def sweep(n=60, seed=0):
