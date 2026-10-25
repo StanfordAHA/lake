@@ -1014,6 +1014,54 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   remaining data comparators (never a WAR on W1; R1<-W1 is only ever a barrier).
   Per-comparator dependency table and trimming estimates:
   `/aha/sweep_out/tile_area_20261014/RESULTS.md`.
+  (d) **Trimmed comparators: `rv_comparator_trim` (2026-10-25, session cfc4174c; opt-in,
+  off = byte-identical RTL and bitstreams).** The user asked to trade a little performance
+  for a smaller network. It is a kwarg of `Spec`, `build_spec_rv` and `build_pond_rv`, and an
+  RV pond-spec key (`CGRA_POND_KEYS_RV`). garnet's RV pond inherits it from the MEM spec
+  (`with_mem_power_options(..., rv=True)`). `True` = `RV_CMP_TRIM_DEFAULT`; a dict picks
+  `RVComparisonNetwork`'s options:
+  - `one_sided`: each block has its direction's op built in (reader-gated LT, writer-gated
+    GT), with no `comparison_op` register and one adder. LT(s) = GT(-s) on the integers, so a
+    constraint written with the other op is programmed with -s.
+  - `scalar_width` 8: a signed `comparison_scalar`, computed in one width that holds every
+    sum. An out-of-range scalar raises at bitstream time.
+  - `barrier_bit`: a constraint LT with scalar >= 16383 (the converter's barrier) sets a
+    `barrier` bit with selects 0: the comparison stays 0 until either side finishes, so a
+    barrier at any level needs no level mux.
+  - `max_level` 3: the level selects cover levels 0..2. The wrap fixup's outer counter is a
+    mux over levels 1..3 indexed by the select itself. Deeper non-barrier constraints raise.
+  - Converter (`_rv_scalar_fits`): when a column-level RAW scalar doesn't fit (rows wider
+    than about 129 elements at 8 bits: -(W-1)), the reader gets the row-level RAW instead
+    (the `LAKE_RV_ROW_RAW` encoding, one row of latency). Untrimmed specs never take this
+    branch, because every column scalar fits 16 bits.
+  - Why these limits: the 2026-10-11 app audit (`/aha/sweep_out/rv_prune_20261011/audit/`,
+    6,190 constraints) has RAW only on reader-gated blocks (LT) and WAR only on writer-gated
+    ones (GT); 35% are barriers. Non-barrier scalars span -127..36 (603 fail at 7 bits), and
+    non-barrier levels are 0..2 only.
+  - Area (generic Genus, freepdk45, hierarchy kept, 10 ns; thesis RV MemTile controller fw4
+    dw16 4 KB 2x2 nofp portcg, and the default RV pond):
+    - MemTile: network 4,735 -> 2,580 um2 (-46%), controller 18,986 -> 16,563 (-12.8%).
+    - Pond: network 4,142 -> 2,804 (-32%), pond 7,938 -> 6,505 (-18%).
+    - MemTile network by option: one_sided -696, 8-bit + barrier -119, max_level 3 -1,404
+      (plus -268 outside the network: SG extent outputs nobody reads now).
+    - Network config: 200 -> 112 bits (MemTile), 184 -> 112 (pond), in the tile's config
+      registers (not in these numbers).
+    - Shortest network path (network alone, 0.6 ns target): MemTile 1,022 -> 956 ps, pond
+      1,045 -> 945 ps. The fixup adder and the compare stay.
+    - Scripts and reports: scratchpad cfc4174c `cmptrim/synth/`.
+  - Verified:
+    - `tests/spec_unit_tests/test_rv_comparator_trim.py` (26 tests, ~1 min): block and network
+      RTL against the full block's models (MemTile and pond shapes, mixed dims, barriers at any
+      level, both ops on one-sided blocks), bitstream checks, and the wide-row fallback in RTL,
+      free and stressed. Mutation-checked: dropping the op swap, saturating barriers or
+      off-by-one fixup levels each fail 3-6 RTL tests.
+    - The existing RV suites with the trim forced on every spec (83 tests, 35 RV specs:
+      programs free + stress, pond accumulation, filter FIFO, capacity).
+    - 16x16 thesis RV CGRAs, MEM and pond trimmed vs untrimmed (RTL lake origin/THESIS b59ea334
+      + this change), kernel ns: conv_3_3 4150 / 4150, gaussian 6390 / 6390, harris_color 17838 / 17838,
+      pond matmul_rvtry3 13355 / 13355; all bit-accurate, same balancing (driver: scratchpad
+      cfc4174c `cmptrim/ab_chain.sh`).
+  - gf12 A/B: garnet `sweep_specs.py --recipe thesis_cmptrim`.
 - **The filter path (`build_spec_rv(add_filter_path=True)`) is never used by compiled
   apps (checked 2026-10-11).** It is an extra in/out port pair with its own ID/AG/SG
   and a small local buffer (8–32 words). No clockwork code targets the collateral's

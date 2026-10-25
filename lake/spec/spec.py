@@ -17,7 +17,7 @@ import os as os
 from lake.utils.spec_enum import Direction
 from lake.utils.util import connect_memoryport_storage, inline_multiplexer, shift_reg, round_up_to_power_of_2, lift_port, \
     add_counter, gated_clock
-from lake.modules.rv_comparison_network import RVComparisonNetwork
+from lake.modules.rv_comparison_network import RVComparisonNetwork, resolve_rv_comparator_trim
 from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
 from lake.modules.arbiter import Arbiter
@@ -37,7 +37,8 @@ class Spec():
                  comply_17=False,
                  prune_rv_comparators=False,
                  clock_gate_ports=False,
-                 share_clk_ctr=False) -> None:
+                 share_clk_ctr=False,
+                 rv_comparator_trim=None) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
         self._name = name
@@ -82,6 +83,10 @@ class Spec():
         # One cycle counter for every static (free-running) SG instead of a
         # clk_ctr each (see _build_shared_clk_ctr). Opt-in: off by default.
         self.share_clk_ctr = share_clk_ctr
+        # RV only: trimmed comparators (RVComparisonNetwork one_sided /
+        # scalar_width / barrier_bit / max_level; True = RV_CMP_TRIM_DEFAULT).
+        # Opt-in: off by default.
+        self.rv_comparator_trim = resolve_rv_comparator_trim(rv_comparator_trim)
 
     def set_name(self, name):
         self._name = name
@@ -302,7 +307,8 @@ class Spec():
         if self.any_rv_sg:
             # In later stage of spec hw gen will add each read and write port to this...
             self.rv_comparison_network = RVComparisonNetwork(name='rv_comparison_network_this_spec',
-                                                             prune_cross_group=self.prune_rv_comparators)
+                                                             prune_cross_group=self.prune_rv_comparators,
+                                                             **self.rv_comparator_trim)
 
         self.hw_attr = {}
         self.hw_attr['clk'] = self._final_gen.get_clock()
@@ -2059,8 +2065,12 @@ class Spec():
                 # default encoding is what runs on chip today.
                 # Explicit [level, level, scalar] entries (clockwork's barrier /
                 # sweep constraints for reuse buffers) are kept as emitted.
-                if ((os.environ.get("LAKE_RV_ROW_RAW") == "1" or this_depends in force_row_raw) and
-                        comparison == LFComparisonOperator.LT.value and scalar_json is None):
+                # 2026-10-25: also when the column-level scalar does not fit a
+                # trimmed network's comparison_scalar (rv_comparator_trim, 8 bits:
+                # a row wider than ~129 elements gives -(W - 1) < -128).
+                if (comparison == LFComparisonOperator.LT.value and scalar_json is None and
+                        (os.environ.get("LAKE_RV_ROW_RAW") == "1" or this_depends in force_row_raw or
+                         not self._rv_scalar_fits(scalar))):
                     ndims = len(app_json["domain"][this_depends]["extents"])
                     nz = [pd for pd in prec_delts if pd[1] != 0]
                     if nz:
@@ -2142,6 +2152,12 @@ class Spec():
                 "a FIFO storage has one write and one read port, both FIFO sides"
             pairs.append((ws[0], rs[0]))
         return pairs
+
+    def _rv_scalar_fits(self, scalar):
+        """Whether a constraint scalar fits the RV network's signed
+        comparison_scalar (rv_comparator_trim scalar_width; 16 bits untrimmed)."""
+        sw = self.rv_comparator_trim.get("scalar_width", 16)
+        return -(1 << (sw - 1)) <= scalar < (1 << (sw - 1))
 
     def _network_constraints(self, constraints):
         """Constraints in port numbers (writers 0.., then readers) renumbered
