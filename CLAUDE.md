@@ -1090,6 +1090,10 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
   blocks in the writer's early columns; with the newest tap through a buffer shallower
   than ~2·fw·vc+4 words (an 8-deep FIFO, under stalls) that deadlocks. Use the row level
   (`[r, 1, w, 1, LT, 0]`: row k written) when the reader trails by whole rows.
+- **Decision (user, 2026-10-26, relayed by session bc48e85f): the standalone RV filter path is not
+  kept.** The thesis RV MemTile is `add_filter_path=False`; `add_filter_path` and `filter_fifo_depth`
+  stay as options. Its thesis A/B: garnet 9573a704 `sweep_specs.py --recipe thesis_filter_ab`
+  (5 RV geometries x {nofp, ff8}) and 1fa8a391's conv_3_3 A0/A/B bundles.
 - **Filter path as a FIFO: `build_spec_rv(filter_fifo_depth=N)` (2026-10-13, opt-in;
   default None = the general buffer, byte-identical RTL + bitstreams).** User
   direction: keep the iteration domains, make the rest a FIFO. Each side keeps its ID
