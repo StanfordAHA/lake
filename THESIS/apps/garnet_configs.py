@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shlex
 import sys
 
 from .design_points import DESIGNS_SINGLE_LEVEL, DesignPoint
@@ -251,7 +252,7 @@ def bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_s
     for app in apps:
         job = app_basename(app.halide_app_dir)
         tree = f"{tree_root}/{job}"
-        env = "".join(f" --env {kv}" for kv in app.bundle_env.split())
+        env = "".join(f" --env {shlex.quote(kv)}" for kv in shlex.split(app.bundle_env))
         lines = jobs.setdefault(job, [])
         if app.bundle_blocked:
             lines.append(f"# {app.id} BLOCKED: {app.bundle_blocked}")
@@ -270,7 +271,7 @@ def bundle_script(designs, apps, modes, fabric, bundle_root, tree_root, pond_spe
     jobs, notes = bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_spec)
     lines = ["#!/bin/bash",
              "# /aha: aha venv active, xrun on PATH (module load xcelium).",
-             "# Set LAKE and GARNET_REV (the build machine's garnet commit, >= 0bc94ef9).",
+             "# Set LAKE and GARNET_REV (the build machine's garnet commit, >= d79e37b7).",
              "# LAKE: a snapshot of lake at the pushed THESIS commit the build machine's rtl",
              "# step will use, not the shared /aha/lake (other sessions edit it). It goes on",
              "# PYTHONPATH and is each tree's lake. E.g. (ORIGIN.txt: gen_app_bundle's lake_git):",
@@ -333,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
         apps = APPS if args.apps == ["all"] else [a for a in APPS if a.id in set(args.apps)]
         print("\n".join(bundle_script(designs, apps, modes, args.fabric, args.bundle_root,
                                       args.tree_root, args.pond_spec)))
-        print("\n# build machine, from /sim/mstrange/BUILD_CGRA/garnet at GARNET_REV (>= 0bc94ef9), after copying the "
+        print("\n# build machine, from /sim/mstrange/BUILD_CGRA/garnet at GARNET_REV (>= d79e37b7), after copying the "
               f"bundles to {args.power_bundle_root}:")
         print("# " + power_command(apps, args.power_bundle_root, args.power_out_dir, args.fabric,
                                    args.clocks_from))

@@ -3,11 +3,13 @@ lake design points, and the bundle / app-power command matrix."""
 
 from __future__ import annotations
 
+import shlex
+
 import pytest
 
 from THESIS.apps import garnet_configs as gc
 from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL, DesignPoint
-from THESIS.apps.registry import AppSpec
+from THESIS.apps.registry import AppSpec, by_id
 
 
 def _dp(**kw):
@@ -83,6 +85,23 @@ def test_app_map_by_id_unique_basename_and_overrides():
 
 def _app(id, app_dir, **kw):
     return AppSpec(id, id, app_dir, id, "aggressive", "", **kw)
+
+
+def test_bundle_env_words_keep_their_spaces():
+    # one --env per shell word, quoted so bash hands gen_app_bundle.py the whole value
+    apps = [_app("m", "tests/mm", bundle_env="HL_TARGET=x 'HALIDE_GEN_ARGS=sched=1 n=16' MATMUL_N=16")]
+    jobs, _ = gc.bundle_commands([_dp()], apps, ["static"], "thesis", "/b", "/t", "/p.json")
+    words = shlex.split(jobs["mm"][0])
+    assert words[-6:] == ["--env", "HL_TARGET=x", "--env", "HALIDE_GEN_ARGS=sched=1 n=16",
+                          "--env", "MATMUL_N=16"]
+
+
+def test_matmul_records_at_n16():
+    # tests/matmul_rvtry3 has no application_parameters.json entry: without n=16 the
+    # generator builds n=64 while process runs 16x16 (/aha 2026-10-26)
+    for app_id, args in [("matmul_agg", "sched=1 n=16"), ("matmul_pond_agg", "n=16")]:
+        env = dict(kv.partition("=")[::2] for kv in shlex.split(by_id(app_id).bundle_env))
+        assert env["HALIDE_GEN_ARGS"] == args and env["MATMUL_N"] == "16"
 
 
 def test_bundle_commands_one_job_per_app_dir_never_rv_balance():

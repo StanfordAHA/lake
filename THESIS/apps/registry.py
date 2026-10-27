@@ -38,7 +38,8 @@ class AppSpec:
         level: "single" (MEM tiles only) | "two" (also maps onto the PE-tile
             pond); the single_level_* figures plot only "single" apps.
         bundle_env: extra env for garnet gen_app_bundle.py (``--env``), as
-            space-separated KEY=VAL, beyond aha's application_parameters.json.
+            KEY=VAL shell words (quote a value with spaces), beyond aha's
+            application_parameters.json.
         bundle_blocked: why the app cannot be recorded yet ("" = it can);
             ``garnet_configs --commands`` prints its lines commented out.
         bundle_retry_array: "WxH": record again on that array when PnR fails
@@ -84,21 +85,24 @@ APPS: list[AppSpec] = [
     # Matrix multiply in both hierarchies (user 2026-10-25): the n=16 matmul the
     # garnet app bundles run (tests/matmul_rvtry3), with the reduction unrolled
     # into a PE adder tree (single level) or accumulated in the PE-tile pond
-    # (two level).
+    # (two level). aha's application_parameters.json has no entry for it, so the
+    # size comes from the env: without HALIDE_GEN_ARGS n=16 the generator builds
+    # n=64 while process (MATMUL_N, -DMATMUL_N in the app Makefile) runs 16x16, and
+    # halide stops at "accessed at 63, which is beyond the max (15)" (/aha, 2026-10-26).
     AppSpec("matmul_agg", "Matrix Multiply",
             "tests/matmul_rvtry3", "matmul_rvtry3",
             "aggressive",
             "GEMM; reduction unrolled into a PE adder tree, MEM tiles buffer the operands",
-            bundle_env="HL_TARGET=host-x86-64 HALIDE_GEN_ARGS=sched=1",
+            bundle_env="HL_TARGET=host-x86-64 'HALIDE_GEN_ARGS=sched=1 n=16' MATMUL_N=16",
             bundle_blocked="does not map on 16x16: static hits clockwork's "
                            "garnet_single_port_ram_schedule assert, RV (23 PEs) does not route "
-                           "(garnet mflowgen/CLAUDE.md 'No-pond matmul'); HALIDE_GEN_ARGS also "
-                           "needs the app Makefile's other default args"),
+                           "(garnet mflowgen/CLAUDE.md 'No-pond matmul')"),
     AppSpec("matmul_pond_agg", "Matrix Multiply (pond)",
             "tests/matmul_rvtry3", "matmul_rvtry3",
             "aggressive",
             "GEMM; partial sums accumulate in the PE-tile pond, MEM tiles buffer the operands",
-            level="two", bundle_env="HL_TARGET=host-x86-64-enable_ponds"),
+            level="two",
+            bundle_env="HL_TARGET=host-x86-64-enable_ponds HALIDE_GEN_ARGS=n=16 MATMUL_N=16"),
     # The resnet that ran end to end on both thesis fabrics (garnet mflowgen/CLAUDE.md
     # "Thesis fabrics"): a copy of apps/resnet with the output channel innermost; stock
     # apps/resnet stops in parse_design_meta. No app bundle of it exists yet.

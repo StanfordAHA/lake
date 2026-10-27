@@ -68,19 +68,24 @@ The text's other axes (dims, ScheduleGenerator duration) have no design points.
 | unsharp_agg | apps/unsharp | single | |
 | harris_agg | apps/harris_color | single | |
 | camera_pipeline_agg | apps/camera_pipeline_2x2 | single | |
-| matmul_agg | tests/matmul_rvtry3 | single | HL_TARGET=host-x86-64 HALIDE_GEN_ARGS=sched=1 |
-| matmul_pond_agg | tests/matmul_rvtry3 | two | HL_TARGET=host-x86-64-enable_ponds |
+| matmul_agg | tests/matmul_rvtry3 | single | HL_TARGET=host-x86-64 'HALIDE_GEN_ARGS=sched=1 n=16' MATMUL_N=16 |
+| matmul_pond_agg | tests/matmul_rvtry3 | two | HL_TARGET=host-x86-64-enable_ponds HALIDE_GEN_ARGS=n=16 MATMUL_N=16 |
 | resnet_agg | pondspec_e2e/resnet | single | EXT=mat |
 
 - **matmul** is the n=16 matmul the garnet bundles run. Single level unrolls the
   reduction into a PE adder tree, so only MEM tiles hold data; two level accumulates in
   the PE-tile pond.
+  - `tests/matmul_rvtry3` has no `application_parameters.json` entry, so the size comes
+    from `--env`: `HALIDE_GEN_ARGS` with `n=16` for the generator and `MATMUL_N=16`, which
+    the app Makefile passes to process as `-DMATMUL_N`. Every earlier pond-matmul bundle
+    used this recipe. Without it the generator builds n=64 while process runs 16×16, and
+    halide stops with "Input buffer input is accessed at 63, which is beyond the max (15)".
+    All 14 pond-matmul lines of the first /aha run failed that way (2026-10-26).
+  - The manifest records the env (`app_env`).
   - The single-level matmul is **blocked** (`bundle_blocked`; `--commands` prints its
     lines commented out). On 16×16 the static compile hits clockwork's
     `garnet_single_port_ram_schedule` assert, and RV (23 PEs) does not route (garnet
     mflowgen/CLAUDE.md "No-pond matmul").
-  - Its `HALIDE_GEN_ARGS=sched=1` also replaces the app Makefile's other default args;
-    check them before unblocking it.
 - **resnet** is the copy that ran on both thesis fabrics: `apps/resnet` with the output
   channel innermost, run with `EXT=mat`. Stock `apps/resnet` stops in `parse_design_meta`.
   No bundle of it exists yet. The stock app's `HL_TARGET` has no `enable_ponds`, so it's
@@ -102,7 +107,7 @@ cd ~/lake   # THESIS checkout
 python3 -m THESIS.apps.garnet_configs --commands > record.sh   # every design point and app
 # on /aha. LAKE: a snapshot of lake at the pushed THESIS commit the build machine's rtl step
 # will use, not the shared /aha/lake, which other sessions edit (ORIGIN.txt names the commit
-# for the bundle manifests); GARNET_REV: the build machine's garnet commit, >= 0bc94ef9
+# for the bundle manifests); GARNET_REV: the build machine's garnet commit, >= d79e37b7
 # (fetch it into /aha/garnet):
 git -C /aha/lake fetch -q origin THESIS && mkdir -p /aha/sweep_out/lake_snapshot &&
   git -C /aha/lake archive FETCH_HEAD | tar x -C /aha/sweep_out/lake_snapshot &&
@@ -277,8 +282,10 @@ See garnet `mflowgen/CLAUDE.md` "Kernel window, kernel stats, SRAM activity". No
 
 Then garnet `0bc94ef9` (by the /aha session aha-08, 2026-10-26) added
 `cgra_app_power.py --pe-registered-operands`. The static thesis PE now gets the same
-operand registers and output budget as `thesis_tiles_pe`. Use GARNET_REV >= `0bc94ef9`
-for both the recording and the power run.
+operand registers and output budget as `thesis_tiles_pe`. garnet `d79e37b7` (session
+1fa8a391, 2026-10-26; aha mek 3f590be) builds the pond collateral at the MEM spec's data
+width, which the dw8/dw32 pond bundles need. Use GARNET_REV >= `d79e37b7` for both the
+recording and the power run.
 
 ## 4b. Known risks before recording (aha-08, 2026-10-25; decisions 2026-10-26)
 
@@ -303,6 +310,14 @@ for both the recording and the power run.
 - **camera_pipeline_2x2** has passed only on a 28×16 array. Decision (user 2026-10-26):
   record it on a bigger array if 16×16 doesn't place, since the power replays single
   tiles. `retry_bigger` in §2a does this; compare its `app_W`, not `array_W`.
+
+**First /aha run (session 1fa8a391, 2026-10-26; relayed by aha-08):**
+- camera_pipeline_2x2 behaved as planned: 16×16 PnR failed, then it recorded at 28×16.
+- resnet can't map on the two 1-input specs, because its second writer needs a second MEM
+  write port. Those cells stay empty.
+- Static `fw2_dw16_sc4096_dp` resnet isn't bit-accurate (RV passes); under investigation.
+- The pond matmul failed in halide until the lines got `n=16` (above); 1fa8a391 re-ran
+  them that way.
 
 ## 5. Data that exists today (garnet mflowgen/CLAUDE.md)
 
