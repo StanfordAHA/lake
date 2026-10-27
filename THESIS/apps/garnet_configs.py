@@ -184,18 +184,23 @@ def app_map(extra: dict[str, str] | None = None) -> dict[str, str]:
 # ---- commands ------------------------------------------------------------------
 
 # A private aha tree (garnet mflowgen/CLAUDE.md "App bundles"): symlinks to every
-# /aha entry, but its own garnet clone at $GARNET_REV (garnet.py --verilog rewrites
-# $GARNET_HOME's GLB/GLC headers), and real MetaMapper / clockwork dirs with symlinked
-# contents and real *_header.json copies (hw_support `make map` copies the app's
-# headers there; through a symlink they would land in the shared /aha).
+# /aha directory, but its own garnet clone at $GARNET_REV (garnet.py --verilog rewrites
+# $GARNET_HOME's GLB/GLC headers), lake = the $LAKE snapshot (aha map/pnr's LAKE_PATH,
+# as PYTHONPATH has it), and real MetaMapper / clockwork dirs with symlinked contents and
+# real *_header.json copies (hw_support `make map` copies the app's headers there;
+# through a symlink they would land in the shared /aha). aha uses only its --dir's
+# directories, so loose files at the top of /aha (notes, logs, anything private) stay
+# out of the trees.
 MAKE_TREE = r"""make_tree() {  # make_tree <tree>
   local t=$1 e n d h
   [ -d "$t/garnet" ] && return
   mkdir -p "$t"
   for e in "$AHA"/* "$AHA"/.[a-z]*; do
     n=$(basename "$e")
-    case $n in garnet|MetaMapper|clockwork) ;; *) [ -e "$t/$n" ] || ln -s "$e" "$t/$n" ;; esac
+    [ -d "$e" ] || continue  # directories only
+    case $n in garnet|MetaMapper|clockwork|lake) ;; *) [ -e "$t/$n" ] || ln -s "$e" "$t/$n" ;; esac
   done
+  ln -s "$LAKE" "$t/lake"
   git clone -q "$AHA/garnet" "$t/garnet" && git -C "$t/garnet" checkout -q "$GARNET_REV"
   for d in MetaMapper clockwork; do
     mkdir -p "$t/$d"
@@ -265,11 +270,17 @@ def bundle_script(designs, apps, modes, fabric, bundle_root, tree_root, pond_spe
     jobs, notes = bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_spec)
     lines = ["#!/bin/bash",
              "# /aha: aha venv active, xrun on PATH (module load xcelium).",
-             "# Set LAKE (a lake checkout at the commit the build machine's tiles will use; it",
-             "# goes on PYTHONPATH) and GARNET_REV (the build machine's garnet commit, >= 0bc94ef9).",
+             "# Set LAKE and GARNET_REV (the build machine's garnet commit, >= 0bc94ef9).",
+             "# LAKE: a snapshot of lake at the pushed THESIS commit the build machine's rtl",
+             "# step will use, not the shared /aha/lake (other sessions edit it). It goes on",
+             "# PYTHONPATH and is each tree's lake. E.g. (ORIGIN.txt: gen_app_bundle's lake_git):",
+             "#   git -C /aha/lake fetch -q origin THESIS && mkdir -p /aha/sweep_out/lake_snapshot &&",
+             "#   git -C /aha/lake archive FETCH_HEAD | tar x -C /aha/sweep_out/lake_snapshot &&",
+             "#   git -C /aha/lake rev-parse FETCH_HEAD > /aha/sweep_out/lake_snapshot/ORIGIN.txt",
              "set -u",
              'AHA=${AHA:-/aha}',
              ': "${LAKE:?set LAKE}" "${GARNET_REV:?set GARNET_REV}"',
+             'LAKE=$(cd "$LAKE" && pwd)',
              'export PYTHONPATH="$LAKE${PYTHONPATH:+:$PYTHONPATH}"',
              MAKE_TREE, RETRY_BIGGER,
              f"mkdir -p {bundle_root} && echo '{{}}' > {pond_spec}", *notes]

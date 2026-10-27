@@ -132,6 +132,9 @@ def test_bundle_script_runs_one_job_per_app_dir():
     text = "\n".join(lines)
     assert text.startswith("#!/bin/bash")
     assert "make_tree /t/gaussian" in text and "make_tree /t/unsharp" in text
+    # trees link /aha's directories only (no loose files) and take lake from the $LAKE snapshot
+    assert '[ -d "$e" ] || continue' in gc.MAKE_TREE and 'ln -s "$LAKE" "$t/lake"' in gc.MAKE_TREE
+    assert "garnet|MetaMapper|clockwork|lake)" in gc.MAKE_TREE and 'LAKE=$(cd "$LAKE" && pwd)' in text
     assert text.count(") > /b/gaussian.log 2>&1 &") == 1 and lines[-1] == "wait"
 
 

@@ -100,9 +100,14 @@ The text's other axes (dims, ScheduleGenerator duration) have no design points.
 ```bash
 cd ~/lake   # THESIS checkout
 python3 -m THESIS.apps.garnet_configs --commands > record.sh   # every design point and app
-# on /aha, with LAKE = a lake checkout at origin/THESIS (what the build machine's rtl step
-# checks out) and GARNET_REV = the build machine's garnet commit (fetch it into /aha/garnet):
-LAKE=/aha/sweep_out/lake_snapshot GARNET_REV=<sha, >= 0bc94ef9> bash record.sh
+# on /aha. LAKE: a snapshot of lake at the pushed THESIS commit the build machine's rtl step
+# will use, not the shared /aha/lake, which other sessions edit (ORIGIN.txt names the commit
+# for the bundle manifests); GARNET_REV: the build machine's garnet commit, >= 0bc94ef9
+# (fetch it into /aha/garnet):
+git -C /aha/lake fetch -q origin THESIS && mkdir -p /aha/sweep_out/lake_snapshot &&
+  git -C /aha/lake archive FETCH_HEAD | tar x -C /aha/sweep_out/lake_snapshot &&
+  git -C /aha/lake rev-parse FETCH_HEAD > /aha/sweep_out/lake_snapshot/ORIGIN.txt
+LAKE=/aha/sweep_out/lake_snapshot GARNET_REV=<sha> bash record.sh
 ```
 
 `record.sh` runs one background job per Halide app dir (the two matmuls share one).
@@ -122,8 +127,11 @@ python3 <tree>/garnet/mflowgen/common/application/gen_app_bundle.py --config <co
 - One job per app dir keeps two runs out of one app directory. aha's
   `application_parameters.json` is keyed by the app path, so a private app copy would
   silently lose the app's `HALIDE_GEN_ARGS`.
-- `make_tree` is unverified. Compare it with session a16b3973's
-  `thesis_dw/make_tree.sh` before the first run; the dw 8/32 configs write other widths'
+- `make_tree` links only /aha's directories, so loose top-level files (notes, logs,
+  anything private) stay out of the trees; aha uses only its `--dir`'s directories. The
+  tree's `lake` is the `$LAKE` snapshot, so `aha map`/`pnr` (`LAKE_PATH`) and the Python
+  import agree. Checked on a fake /aha tree; compare it with session a16b3973's
+  `thesis_dw/make_tree.sh` before the first run. The dw 8/32 configs write other widths'
   headers, which is why the MetaMapper/clockwork dirs must be real.
 - **No `--rv-balance` anywhere.** Since garnet `5fab9324`, RV records balanced on every
   fabric: DENSE_READY_VALID only, no PnR pipelining, and `aha pnr` latency-matches the
