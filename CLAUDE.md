@@ -1061,7 +1061,9 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
       + this change), kernel ns: conv_3_3 4150 / 4150, gaussian 6390 / 6390, harris_color 17838 / 17838,
       pond matmul_rvtry3 13355 / 13355; all bit-accurate, same balancing (driver: scratchpad
       cfc4174c `cmptrim/ab_chain.sh`).
-  - gf12 A/B: garnet `sweep_specs.py --recipe thesis_cmptrim`.
+  - gf12 A/B: garnet `sweep_specs.py --recipe thesis_cmptrim` (never run).
+  - **Not adopted (user decision 2026-10-26, relayed by session bc48e85f):** the thesis RV fabric
+    keeps the full comparators; the option stays here, off by default.
 - **The filter path (`build_spec_rv(add_filter_path=True)`) is never used by compiled
   apps (checked 2026-10-11).** It is an extra in/out port pair with its own ID/AG/SG
   and a small local buffer (8–32 words). No clockwork code targets the collateral's
