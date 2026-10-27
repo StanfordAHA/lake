@@ -85,7 +85,7 @@ def _app(id, app_dir, **kw):
     return AppSpec(id, id, app_dir, id, "aggressive", "", **kw)
 
 
-def test_bundle_commands_one_job_per_app_dir_balance_only_on_stock_rv():
+def test_bundle_commands_one_job_per_app_dir_never_rv_balance():
     dps = [_dp(id="a"), _dp(id="b")]  # same spec: b's configs are skipped
     apps = [_app("g", "apps/gaussian"), _app("m1", "tests/mm", bundle_env="HALIDE_GEN_ARGS=sched=1"),
             _app("m2", "tests/mm", level="two")]
@@ -98,10 +98,22 @@ def test_bundle_commands_one_job_per_app_dir_balance_only_on_stock_rv():
     assert all("--cgra-tiles --pond-spec /p.json" in c and "--aha-dir /t/" in c for c in every)
     assert "--bundle-dir /b/m1" in jobs["mm"][0] and jobs["mm"][0].endswith("--env HALIDE_GEN_ARGS=sched=1")
     assert "--bundle-dir /b/m2" in jobs["mm"][2]
+    # garnet >= 5fab9324 records RV balanced on every fabric; --rv-balance is the old flow
     stock, _ = gc.bundle_commands(dps[:1], apps[:1], ["static", "rv"], "stock", "/b", "/t", "/p.json")
-    assert ["--rv-balance 8" in c for c in stock["gaussian"]] == [False, True]
+    assert not any("--rv-balance" in c for c in stock["gaussian"])
     assert ("--config fw4_dw16_sc8192_sp_in2_out2_vc2_rv --app apps/gaussian --bundle-dir /b/g"
             in stock["gaussian"][1])
+
+
+def test_retry_array_app_runs_through_retry_bigger():
+    apps = [_app("cam", "apps/camera_pipeline_2x2", bundle_retry_array="28x16"), _app("g", "apps/gaussian")]
+    jobs, _ = gc.bundle_commands([_dp()], apps, ["static"], "thesis", "/b", "/t", "/p.json")
+    assert jobs["camera_pipeline_2x2"][0].startswith("retry_bigger 28 16 python3 /t/camera_pipeline_2x2/")
+    assert jobs["gaussian"][0].startswith("python3 ")
+    script = "\n".join(gc.bundle_script([_dp()], apps, ["static"], "thesis", "/b", "/t", "/p.json"))
+    assert gc.RETRY_BIGGER in script and script.index("retry_bigger() {") < script.index("retry_bigger 28 16")
+    assert "--width \"$w\" --height \"$h\"" in gc.RETRY_BIGGER
+    assert next(a for a in gc.APPS if a.id == "camera_pipeline_agg").bundle_retry_array == "28x16"
 
 
 def test_blocked_app_is_commented_out():
@@ -125,6 +137,8 @@ def test_bundle_script_runs_one_job_per_app_dir():
 
 def test_power_command_variants_are_app_ids():
     apps = [_app("g", "apps/gaussian"), _app("u", "apps/unsharp"), _app("x", "x", bundle_blocked="no")]
-    assert "--clocks-from /c.json" in gc.power_command(apps, "/b", "/o", "thesis", "/c.json")
+    thesis = gc.power_command(apps, "/b", "/o", "thesis", "/c.json")
+    assert "--clocks-from /c.json --pe-registered-operands" in thesis   # garnet >= 0bc94ef9
     cmd = gc.power_command(apps, "/b", "/o", "stock", "/c.json")
     assert "--clock-mhz 400" in cmd and "--variants g=/b/g,u=/b/u " in cmd
+    assert "--pe-registered-operands" not in cmd

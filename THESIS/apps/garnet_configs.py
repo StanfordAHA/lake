@@ -205,6 +205,22 @@ MAKE_TREE = r"""make_tree() {  # make_tree <tree>
     done
   done
 }"""
+# A gen_app_bundle.py run again on a bigger array when its PnR failed on the default
+# 16x16 one (gen_app_bundle exits "*** pnr... FAILED"); any other failure stands.
+RETRY_BIGGER = r"""retry_bigger() {  # retry_bigger <width> <height> <gen_app_bundle.py command ...>
+  local w=$1 h=$2 log rc
+  shift 2
+  log=$(mktemp)
+  "$@" 2>&1 | tee "$log"
+  rc=${PIPESTATUS[0]}
+  if [ "$rc" != 0 ] && grep -q '^\*\*\* pnr[^ ]* FAILED' "$log"; then
+    echo "=== PnR failed on the default array: again on ${w}x${h}"
+    "$@" --width "$w" --height "$h"
+    rc=$?
+  fi
+  rm -f "$log"
+  return $rc
+}"""
 
 
 def bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_spec):
@@ -213,7 +229,9 @@ def bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_s
     <bundle_root>/<app id>. Apps that share a Halide app dir (the two matmuls) share
     a job, so no two runs use one app dir at once; each job has its own private aha
     tree (<tree_root>/<job>) and runs its lines one after another. A bundle_blocked
-    app's lines are commented out."""
+    app's lines are commented out; a bundle_retry_array app's run through
+    retry_bigger. RV records balanced on every fabric (garnet >= 5fab9324: no PnR
+    pipelining, aha pnr latency-matches), so no line passes --rv-balance."""
     configs, notes = [], []
     for dp in designs:
         for mode in modes:
@@ -236,8 +254,8 @@ def bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_s
             cmd = (f"python3 {tree}/garnet/mflowgen/common/application/gen_app_bundle.py "
                    f"--config {cfg} --app {app.halide_app_dir} --bundle-dir {bundle_root}/{app.id} "
                    f"--aha-dir {tree} --cgra-tiles --pond-spec {pond_spec}{env}")
-            if fabric == "stock" and mode == "rv":
-                cmd += " --rv-balance 8"
+            if app.bundle_retry_array:
+                cmd = f"retry_bigger {app.bundle_retry_array.replace('x', ' ')} {cmd}"
             lines.append(f"# {cmd}" if app.bundle_blocked else cmd)
     return jobs, notes
 
@@ -248,12 +266,12 @@ def bundle_script(designs, apps, modes, fabric, bundle_root, tree_root, pond_spe
     lines = ["#!/bin/bash",
              "# /aha: aha venv active, xrun on PATH (module load xcelium).",
              "# Set LAKE (a lake checkout at the commit the build machine's tiles will use; it",
-             "# goes on PYTHONPATH) and GARNET_REV (the build machine's garnet commit).",
+             "# goes on PYTHONPATH) and GARNET_REV (the build machine's garnet commit, >= 0bc94ef9).",
              "set -u",
              'AHA=${AHA:-/aha}',
              ': "${LAKE:?set LAKE}" "${GARNET_REV:?set GARNET_REV}"',
              'export PYTHONPATH="$LAKE${PYTHONPATH:+:$PYTHONPATH}"',
-             MAKE_TREE,
+             MAKE_TREE, RETRY_BIGGER,
              f"mkdir -p {bundle_root} && echo '{{}}' > {pond_spec}", *notes]
     for job, job_lines in jobs.items():
         if all(c.startswith("#") for c in job_lines):
@@ -267,9 +285,12 @@ def bundle_script(designs, apps, modes, fabric, bundle_root, tree_root, pond_spe
 
 
 def power_command(apps, bundle_root, out_dir, fabric, clocks_from):
-    """cgra_app_power.py over every app that can be recorded, one variant per app id."""
+    """cgra_app_power.py over every app that can be recorded, one variant per app id. On
+    the thesis fabric the static PE is timed with registered operands, as the thesis
+    tile set (garnet >= 0bc94ef9 --pe-registered-operands; RV/MemCore unchanged)."""
     variants = ",".join(f"{a.id}={bundle_root}/{a.id}" for a in apps if not a.bundle_blocked)
-    clock = f"--clocks-from {clocks_from}" if fabric == "thesis" else "--clock-mhz 400"
+    clock = (f"--clocks-from {clocks_from} --pe-registered-operands" if fabric == "thesis"
+             else "--clock-mhz 400")
     return (f"./mflowgen/cgra_app_power.py --any-config --variants {variants} {clock} "
             f"--replay-jobs 4 --out-dir {out_dir} --zip")
 
@@ -290,8 +311,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--power-bundle-root", default="/nsim/mstrange/BUILDS/app_bundles_thesis_dp",
                     help="where the bundles are on the build machine")
     ap.add_argument("--power-out-dir", default="/nsim/mstrange/BUILDS/cgra_app_power_thesis_dp")
-    ap.add_argument("--clocks-from", default="<thesis_tiles_mem>/thesis_clocks.json",
-                    help="the clock table the thesis tile runs used")
+    ap.add_argument("--clocks-from", default="<OUT>/thesis_tiles_pe/thesis_clocks.json",
+                    help="the clock table of the thesis tile set (a fresh thesis_fmax run since "
+                         "lassen 0f44a74 made every PE probe stale)")
     args = ap.parse_args(argv)
     designs = (DESIGNS_SINGLE_LEVEL if args.designs == ["all"]
                else [d for d in DESIGNS_SINGLE_LEVEL if d.id in set(args.designs)])
@@ -300,7 +322,7 @@ def main(argv: list[str] | None = None) -> int:
         apps = APPS if args.apps == ["all"] else [a for a in APPS if a.id in set(args.apps)]
         print("\n".join(bundle_script(designs, apps, modes, args.fabric, args.bundle_root,
                                       args.tree_root, args.pond_spec)))
-        print("\n# build machine, from /sim/mstrange/BUILD_CGRA/garnet at GARNET_REV, after copying the "
+        print("\n# build machine, from /sim/mstrange/BUILD_CGRA/garnet at GARNET_REV (>= 0bc94ef9), after copying the "
               f"bundles to {args.power_bundle_root}:")
         print("# " + power_command(apps, args.power_bundle_root, args.power_out_dir, args.fabric,
                                    args.clocks_from))

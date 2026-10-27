@@ -41,6 +41,8 @@ class AppSpec:
             space-separated KEY=VAL, beyond aha's application_parameters.json.
         bundle_blocked: why the app cannot be recorded yet ("" = it can);
             ``garnet_configs --commands`` prints its lines commented out.
+        bundle_retry_array: "WxH": record again on that array when PnR fails
+            on the default 16x16 one ("" = never).
     """
 
     id: str
@@ -52,6 +54,7 @@ class AppSpec:
     level: str = "single"
     bundle_env: str = ""
     bundle_blocked: str = ""
+    bundle_retry_array: str = ""
 
 
 # TODO: verify each halide_app_dir / testname against the local
@@ -71,10 +74,13 @@ APPS: list[AppSpec] = [
             "apps/harris_color", "harris_color_hw",
             "aggressive",
             "multi-stage color→gradient→corner stencils; chained line buffers"),
+    # Has passed only on a 28x16 array (16+ IO tiles); user 2026-10-26: record it on a
+    # bigger array if 16x16 does not place (whole-CGRA power replays single tiles).
     AppSpec("camera_pipeline_agg", "Camera Pipeline 2x2",
             "apps/camera_pipeline_2x2", "camera_pipeline_2x2_hw",
             "aggressive",
-            "Bayer→RGB pipeline w/ 2x2 mosaic access; strided reads on short history"),
+            "Bayer→RGB pipeline w/ 2x2 mosaic access; strided reads on short history",
+            bundle_retry_array="28x16"),
     # Matrix multiply in both hierarchies (user 2026-10-25): the n=16 matmul the
     # garnet app bundles run (tests/matmul_rvtry3), with the reduction unrolled
     # into a PE adder tree (single level) or accumulated in the PE-tile pond

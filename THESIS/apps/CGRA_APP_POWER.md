@@ -102,7 +102,7 @@ cd ~/lake   # THESIS checkout
 python3 -m THESIS.apps.garnet_configs --commands > record.sh   # every design point and app
 # on /aha, with LAKE = a lake checkout at origin/THESIS (what the build machine's rtl step
 # checks out) and GARNET_REV = the build machine's garnet commit (fetch it into /aha/garnet):
-LAKE=/aha/sweep_out/lake_snapshot GARNET_REV=<sha> bash record.sh
+LAKE=/aha/sweep_out/lake_snapshot GARNET_REV=<sha, >= 0bc94ef9> bash record.sh
 ```
 
 `record.sh` runs one background job per Halide app dir (the two matmuls share one).
@@ -125,18 +125,22 @@ python3 <tree>/garnet/mflowgen/common/application/gen_app_bundle.py --config <co
 - `make_tree` is unverified. Compare it with session a16b3973's
   `thesis_dw/make_tree.sh` before the first run; the dw 8/32 configs write other widths'
   headers, which is why the MetaMapper/clockwork dirs must be real.
-- **No `--rv-balance` on the thesis fabric.** `gen_app_bundle.py` refuses it there.
-  Thesis RV records with DENSE_READY_VALID only, and `aha pnr` latency-matches the
-  branches itself (balanced by default since 2026-10-19).
-  - Only stock-fabric RV needs `--rv-balance 8` (`--fabric stock` adds it).
-  - The existing stock dw16 RV bundles (`app_bundles_dw16_20261014`) are unbalanced.
-    Their cycle counts include branch imbalance (harris 333 vs 62 µs), so they don't
-    belong in an LI performance figure.
+- **No `--rv-balance` anywhere.** Since garnet `5fab9324`, RV records balanced on every
+  fabric: DENSE_READY_VALID only, no PnR pipelining, and `aha pnr` latency-matches the
+  branches itself. `--rv-balance N` now selects the older EXHAUSTIVE_PIPE flow.
+  - The existing stock dw16 RV bundles (`app_bundles_dw16_20261014`) are from before that
+    and unbalanced. Their cycle counts include branch imbalance (harris 333 vs 62 µs), so
+    they don't belong in an LI performance figure.
+- **camera_pipeline_2x2 retries on 28×16** (user 2026-10-26, via aha-08). Its lines run
+  through `retry_bigger 28 16`, which records again with `--width 28 --height 16` only
+  when PnR fails on 16×16. Any other failure stands. Its manifest then says 28×16, and
+  its `array_W` / `array_J` count the bigger array; the figures use `app_W` (the tiles
+  the app touches), which compares.
 - `--pond-spec {}` (lake's default spec pond) in both modes, so each config's Tile_PE
   serves every app. Two-level runs pass their own pond JSON instead; the ingest then
   files them under `…__pond-<id>`.
 - Apps not yet recorded on any thesis CGRA:
-  - camera_pipeline_2x2: never run there.
+  - camera_pipeline_2x2: never run there; passed on stock only at 28×16 (see above).
   - unsharp: passed on the thesis RV fabric with EXHAUSTIVE_PIPE and balanced on stock;
     aha test sets RV_FLUSH_FIRST itself after a balanced PnR.
   - resnet: the `pondspec_e2e/resnet` copy has never been bundled; check it is still in
@@ -158,7 +162,7 @@ tar xzf app_bundles_thesis_dp.tgz -C /nsim/mstrange/BUILDS
 B=/nsim/mstrange/BUILDS/app_bundles_thesis_dp
 ./mflowgen/cgra_app_power.py --any-config \
     --variants gaussian_agg=$B/gaussian_agg,unsharp_agg=$B/unsharp_agg,harris_agg=$B/harris_agg,camera_pipeline_agg=$B/camera_pipeline_agg,matmul_pond_agg=$B/matmul_pond_agg,resnet_agg=$B/resnet_agg \
-    --clocks-from <the thesis_tiles_mem part dir>/thesis_clocks.json \
+    --clocks-from <OUT>/thesis_tiles_pe/thesis_clocks.json --pe-registered-operands \
     --replay-jobs 4 --out-dir /nsim/mstrange/BUILDS/cgra_app_power_thesis_dp --zip
 ```
 
@@ -166,9 +170,15 @@ B=/nsim/mstrange/BUILDS/app_bundles_thesis_dp
 config's two tiles: cgra_app_power requires the same spec, mode and pond spec in every
 variant of a config, which `--pond-spec {}` for all apps gives.
 
-- `--clocks-from` must be the table the thesis tile and DSE runs used, so the app power
-  runs at each fabric's clock. Every clocked part writes `<part>/thesis_clocks.json`; a
-  thesis_fmax out dir works too.
+- `--clocks-from` must be the table the thesis tile set used, so the app power runs at
+  each fabric's clock.
+  - lassen `0f44a74` (Cond rewritten as a balanced select) made every PE clock probe
+    stale. The clocks come from a fresh `thesis_fmax` run in a new out dir `<OUT>`, then
+    `thesis_tiles` into the same dir; use its `thesis_tiles_pe/thesis_clocks.json`.
+  - The existing `/nsim/.../thesis_dse` table is out of date.
+- `--pe-registered-operands` (garnet `0bc94ef9`) synthesizes the static thesis Tile_PE
+  with registered operands, as `thesis_tiles_pe` does. RV, MemCore and stock tiles are
+  unchanged.
 - Load is tile-jobs (2) × parallel-jobs (4) × replay-jobs (4) sims. A 16×16 harris
   variant has about 200 tiles.
 - `--dry-run` first prints each config's mode and clock.
@@ -257,32 +267,34 @@ See garnet `mflowgen/CLAUDE.md` "Kernel window, kernel stats, SRAM activity". No
      every one has activity).
    - The ingest maps that to `utilization`.
 
-Still open in garnet:
+Then garnet `0bc94ef9` (by the /aha session aha-08, 2026-10-26) added
+`cgra_app_power.py --pe-registered-operands`. The static thesis PE now gets the same
+operand registers and output budget as `thesis_tiles_pe`. Use GARNET_REV >= `0bc94ef9`
+for both the recording and the power run.
 
-- **Static PE timing.** `cgra_app_power.py`'s `tile_env` does not set
-  `PE_OPERANDS_REGISTERED` / `TILE_O_DELAY_NS`. garnet `6f0b1485` added them for the
-  thesis tile set (`thesis_tiles_pe --pe-registered-operands`), so a whole-CGRA power run
-  would synthesize a different static thesis PE than the tile set. Fix before the power
-  run (found by the /aha session aha-08).
-
-## 4b. Known risks before recording (aha-08, 2026-10-25)
+## 4b. Known risks before recording (aha-08, 2026-10-25; decisions 2026-10-26)
 
 - **Data width.** u16 apps don't fit an 8-bit CGRA, and on 32/64 bits their 16-bit
   wraparound is gone, so the gold and the hardware differ.
   - Halide-to-Hardware CLAUDE.md "Test apps for other CGRA data widths" (a16b3973) lists
     only `tests/conv_3_3_u8`, `tests/matmul_bounded` and `tests/down_sample` as exact at
     other widths.
-  - The dw8 / dw32 design points (`port_fw4_dw8_sc8k_sp2x2`, `port_fw4_dw32_sc8k_sp2x2`,
-    `port_fw2_dw32_sc8k_dp2x2`) therefore need width-safe app variants, or come out of
-    the app matrix. User decision pending.
+  - **Decision (user 2026-10-26, via aha-08): keep the dw8 / dw32 design points**
+    (`port_fw4_dw8_sc8k_sp2x2`, `port_fw4_dw32_sc8k_sp2x2`, `port_fw2_dw32_sc8k_dp2x2`)
+    with the same apps.
+  - `gen_app_bundle.py` keeps a bundle only if `aha test` prints "comparison passed". A
+    u16 app is therefore recorded only where its output still matches the 16-bit gold.
+    Expect gaps at those widths: the matching cells are simply missing, and the figures
+    show the rest.
 - **App parameters.** `--commands` records from the real app dirs (`apps/<app>`), so aha
   applies `application_parameters.json`.
   - The thesis-fabric harris bundles recorded so far ran from copies, so they used the
     Halide generator defaults (schedule 3, unroll 2, width 122), not the appendix's
     schedule.
   - `pondspec_e2e/resnet` and `tests/matmul_rvtry3` have no entry there either way.
-- **camera_pipeline_2x2** has passed only on a 28×16 array. On 16×16 it may not place,
-  and a larger array would make its array totals incomparable.
+- **camera_pipeline_2x2** has passed only on a 28×16 array. Decision (user 2026-10-26):
+  record it on a bigger array if 16×16 doesn't place, since the power replays single
+  tiles. `retry_bigger` in §2a does this; compare its `app_W`, not `array_W`.
 
 ## 5. Data that exists today (garnet mflowgen/CLAUDE.md)
 
