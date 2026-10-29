@@ -271,7 +271,7 @@ def bundle_script(designs, apps, modes, fabric, bundle_root, tree_root, pond_spe
     jobs, notes = bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_spec)
     lines = ["#!/bin/bash",
              "# /aha: aha venv active, xrun on PATH (module load xcelium).",
-             "# Set LAKE and GARNET_REV (the build machine's garnet commit, >= d79e37b7).",
+             "# Set LAKE and GARNET_REV (the build machine's garnet commit, >= 35e23a53).",
              "# LAKE: a snapshot of lake at the pushed THESIS commit the build machine's rtl",
              "# step will use, not the shared /aha/lake (other sessions edit it). It goes on",
              "# PYTHONPATH and is each tree's lake. E.g. (ORIGIN.txt: gen_app_bundle's lake_git):",
@@ -334,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
         apps = APPS if args.apps == ["all"] else [a for a in APPS if a.id in set(args.apps)]
         print("\n".join(bundle_script(designs, apps, modes, args.fabric, args.bundle_root,
                                       args.tree_root, args.pond_spec)))
-        print("\n# build machine, from /sim/mstrange/BUILD_CGRA/garnet at GARNET_REV (>= d79e37b7), after copying the "
+        print("\n# build machine, from /sim/mstrange/BUILD_CGRA/garnet at GARNET_REV (>= 35e23a53), after copying the "
               f"bundles to {args.power_bundle_root}:")
         print("# " + power_command(apps, args.power_bundle_root, args.power_out_dir, args.fabric,
                                    args.clocks_from))

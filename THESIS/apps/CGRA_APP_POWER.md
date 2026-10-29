@@ -107,7 +107,7 @@ cd ~/lake   # THESIS checkout
 python3 -m THESIS.apps.garnet_configs --commands > record.sh   # every design point and app
 # on /aha. LAKE: a snapshot of lake at the pushed THESIS commit the build machine's rtl step
 # will use, not the shared /aha/lake, which other sessions edit (ORIGIN.txt names the commit
-# for the bundle manifests); GARNET_REV: the build machine's garnet commit, >= d79e37b7
+# for the bundle manifests); GARNET_REV: the build machine's garnet commit, >= 35e23a53
 # (fetch it into /aha/garnet):
 git -C /aha/lake fetch -q origin THESIS && mkdir -p /aha/sweep_out/lake_snapshot &&
   git -C /aha/lake archive FETCH_HEAD | tar x -C /aha/sweep_out/lake_snapshot &&
@@ -284,8 +284,10 @@ Then garnet `0bc94ef9` (by the /aha session aha-08, 2026-10-26) added
 `cgra_app_power.py --pe-registered-operands`. The static thesis PE now gets the same
 operand registers and output budget as `thesis_tiles_pe`. garnet `d79e37b7` (session
 1fa8a391, 2026-10-26; aha mek 3f590be) builds the pond collateral at the MEM spec's data
-width, which the dw8/dw32 pond bundles need. Use GARNET_REV >= `d79e37b7` for both the
-recording and the power run.
+width, which the dw8/dw32 pond bundles need. garnet `35e23a53` (session cfc4174c,
+2026-10-29; aha mek 6cc1a05) makes `rv_balance` model the PE input FIFOs that clockwork
+pre-fills; before it, camera_pipeline_2x2 balanced to 3/4 rate (§4b). Use GARNET_REV >=
+`35e23a53` for both the recording and the power run.
 
 ## 4b. Known risks before recording (aha-08, 2026-10-25; decisions 2026-10-26)
 
@@ -323,6 +325,11 @@ recording and the power run.
   Notes: clockwork/CLAUDE.md "Thesis matrix compile fixes".
 - The pond matmul failed in halide until the lines got `n=16` (above); 1fa8a391 re-ran
   them that way.
+- camera_pipeline_2x2 RV ran at 3/4 rate (16,459 ns vs 12,562 static) because the
+  balancer started clockwork's pre-filled PE FIFOs empty. garnet `35e23a53` fixed that
+  (RV now 12,364 ns, bit-accurate). The app_power_pipeclean session re-records the four
+  dw16 camera RV bundles as `addon3`, which replaces the old ones; camera RV cycles and
+  energy come from addon3. No other app changes.
 
 ## 5. Data that exists today (garnet mflowgen/CLAUDE.md)
 
