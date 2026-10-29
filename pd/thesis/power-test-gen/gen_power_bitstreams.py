@@ -126,12 +126,13 @@ def main():
                    help="input data seed (the CGRA-tile flow uses the same streams "
                         "for the same seed)")
     p.add_argument("--outdir",           type=str, default="outputs")
-    p.add_argument("--clock_gate_ports", action="store_true",
-                   help="Build the spec with clock_gate_ports (its bitstreams carry "
-                        "each configured port's port_enable bit); must match the RTL")
-    p.add_argument("--share_clk_ctr", action="store_true",
-                   help="Build the spec with share_clk_ctr (same bitstreams; must "
-                        "match the RTL)")
+    # Spec's clock gating is on by default (2026-10-28); --no_* for an ungated RTL.
+    # Must match the RTL: clock_gate_ports bitstreams carry each configured port's
+    # port_enable bit (share_clk_ctr doesn't change the bitstream).
+    p.add_argument("--clock_gate_ports", dest="clock_gate_ports", action="store_true", default=True)
+    p.add_argument("--no_clock_gate_ports", dest="clock_gate_ports", action="store_false")
+    p.add_argument("--share_clk_ctr", dest="share_clk_ctr", action="store_true", default=True)
+    p.add_argument("--no_share_clk_ctr", dest="share_clk_ctr", action="store_false")
     p.add_argument("--physical",         action="store_true",
                    help="Pass through to build_four_port_wide_fetch so the "
                         "spec ships a GF_Tech_Map that matches the rtl step.")

@@ -641,8 +641,23 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
     `clock_gate_ports` (below), including configured ports the app doesn't filter.
   - Smaller items: the arbiter `grant_line` rotates every cycle (~12 µW); the
     static OUT delay lines (~9 µW per port).
-- **Two opt-in Spec options cover the biggest items (lake 9f9480c9,
-  2026-10-14). Both are off by default; off = byte-identical RTL and bitstreams.**
+- **On by default since 2026-10-28 (user: "make gating the default").** Spec and
+  every builder default to `clock_gate_ports=True, share_clk_ctr=True`:
+  `build_spec`, `build_spec_rv`, `build_pond`, `build_pond_rv`, `build_cgra_pond`
+  (an absent pond key takes the builder default) and `build_four_port_wide_fetch_rv`
+  (garnet's built-in MEM spec, so Zircon and the default RV pond are gated). Also
+  thesis_sweep's builder.
+  - thesis_sweep.py and power-test-gen take `--no_clock_gate_ports` /
+    `--no_share_clk_ctr`; the positive flags are accepted as no-ops.
+  - Passing False builds the old design: RTL byte-identical to the old default for
+    all five builders. The new default is byte-identical to the old explicit True.
+  - garnet sweep configs write both keys explicitly (garnet `POWER_OPTION_KEYS`), so
+    a config name without `_sharectr`/`_portcg` is still ungated.
+  - A bundle or spec JSON without the keys is read as ungated by garnet's
+    check_bundle/cgra_app_power, because that's how such bundles were recorded.
+    gen_app_bundle writes them explicitly.
+- **Two Spec options cover the biggest items (lake 9f9480c9, 2026-10-14; opt-in
+  until 2026-10-28, see above).**
   They are kwargs of `Spec`, `build_spec`, `build_spec_rv` and thesis_sweep's
   `build_four_port_wide_fetch`, and flags of thesis_sweep.py and
   gen_power_bitstreams.py. garnet passes them through `spec_config.json`.

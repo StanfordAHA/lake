@@ -18,7 +18,7 @@ def build_four_port_wide_fetch(storage_capacity=4096, data_width=16, dims: int =
                                   reg_file=False, vec_capacity=2, opt_rv=False, add_filter_path=False,
                                   in_ports=2, out_ports=2, dual_port=False,
                                   max_extent=None, max_sequence_width=None,
-                                  clock_gate_ports=False, share_clk_ctr=False) -> Spec:
+                                  clock_gate_ports=True, share_clk_ctr=True) -> Spec:
 
     opt_rv = False
 
@@ -1122,8 +1122,8 @@ def validate_generated_outputs(collateral_path, verilog_path,
 def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
                                     tp: TestPrepper = None, test='linear', reg_file=False, dimensionality=6, opt_rv=False,
                                     in_ports=2, out_ports=2, dual_port=False, vec_capacity=2,
-                                    max_extent=None, max_sequence_width=None, clock_gate_ports=False,
-                                    share_clk_ctr=False):
+                                    max_extent=None, max_sequence_width=None, clock_gate_ports=True,
+                                    share_clk_ctr=True):
 
     assert tp is not None
 
@@ -1260,10 +1260,16 @@ if __name__ == "__main__":
     parser.add_argument("--vec_capacity", type=int, default=2)
     parser.add_argument("--max_extent", type=int, default=None)
     parser.add_argument("--max_sequence_width", type=int, default=None)
-    parser.add_argument("--clock_gate_ports", action="store_true",
-                        help="Gate the clock of unconfigured ports (Spec clock_gate_ports)")
-    parser.add_argument("--share_clk_ctr", action="store_true",
-                        help="One cycle counter for every static SG (Spec share_clk_ctr)")
+    # Spec's clock gating is on by default (2026-10-28); --no_* builds the ungated
+    # design. The positive flags stay accepted (no-ops) for older scripts.
+    parser.add_argument("--clock_gate_ports", dest="clock_gate_ports", action="store_true", default=True,
+                        help="Gate the clock of unconfigured ports (Spec clock_gate_ports; default)")
+    parser.add_argument("--no_clock_gate_ports", dest="clock_gate_ports", action="store_false",
+                        help="Ungated ports")
+    parser.add_argument("--share_clk_ctr", dest="share_clk_ctr", action="store_true", default=True,
+                        help="One cycle counter for every static SG (Spec share_clk_ctr; default)")
+    parser.add_argument("--no_share_clk_ctr", dest="share_clk_ctr", action="store_false",
+                        help="A clk_ctr per static SG")
     args = parser.parse_args()
 
     print("Preparing hardware test")

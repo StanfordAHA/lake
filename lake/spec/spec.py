@@ -36,8 +36,8 @@ class Spec():
                  run_flush_pass=True,
                  comply_17=False,
                  prune_rv_comparators=False,
-                 clock_gate_ports=False,
-                 share_clk_ctr=False,
+                 clock_gate_ports=True,
+                 share_clk_ctr=True,
                  rv_comparator_trim=None) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
@@ -77,11 +77,12 @@ class Spec():
         self.prune_rv_comparators = prune_rv_comparators
         # Gate the clock of every port whose iteration domain is unconfigured
         # (see _port_gated_clock), and of each RV in-port's item filter while
-        # the app gives it no filter (Port.use_filter_enable). Opt-in: off by
-        # default.
+        # the app gives it no filter (Port.use_filter_enable). On by default
+        # since 2026-10-28 (user); False builds the ungated design.
         self.clock_gate_ports = clock_gate_ports
         # One cycle counter for every static (free-running) SG instead of a
-        # clk_ctr each (see _build_shared_clk_ctr). Opt-in: off by default.
+        # clk_ctr each (see _build_shared_clk_ctr). On by default since
+        # 2026-10-28 (user); False keeps a clk_ctr per SG.
         self.share_clk_ctr = share_clk_ctr
         # RV only: trimmed comparators (RVComparisonNetwork one_sided /
         # scalar_width / barrier_bit / max_level; True = RV_CMP_TRIM_DEFAULT).

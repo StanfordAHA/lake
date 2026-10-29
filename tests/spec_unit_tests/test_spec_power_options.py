@@ -1,4 +1,5 @@
-"""Opt-in Spec power options (2026-10-14), both off by default.
+"""Spec power options (2026-10-14), on by default since 2026-10-28 (user);
+False builds the ungated design.
 
 share_clk_ctr: every static ScheduleGenerator (the ports' and the SIPO/PISO
 ones inside vectorized ports) reads one shared cycle counter instead of a
@@ -55,7 +56,7 @@ def static_sgs(spec):
 
 
 def test_share_clk_ctr_static(tmp_path):
-    base = rtl(built(build_spec), tmp_path / "base")
+    base = rtl(built(build_spec, share_clk_ctr=False), tmp_path / "base")
     spec = built(build_spec, share_clk_ctr=True)
     shared = rtl(spec, tmp_path / "shared")
     sgs = static_sgs(spec)
@@ -102,7 +103,7 @@ def test_clock_gate_ports_enable_bit():
             assert port_id.has_port_enable
             field = port_id.get_cfg_map()["port_enable"]
             assert (field, 1) in port_id.gen_bitstream(2, [4, 4])
-        plain = built(builder)
+        plain = built(builder, clock_gate_ports=False)
         assert not plain.get_port_controllers(plain.get_in_ports()[0])[0].has_port_enable
 
 
@@ -120,7 +121,7 @@ def test_clock_gate_ports_filter_enable_bit():
         dense = {"extents": [4, 4], "dimensionality": 2}
         assert enable_bit not in port.gen_bitstream(id_map=dense)
         assert enable_bit in port.gen_bitstream(id_map=dict(dense, offset=[2], strides=[1, 4]))
-    plain = built(build_spec_rv)
+    plain = built(build_spec_rv, clock_gate_ports=False)
     assert not any(p.filter_sg.has_filter_enable for p in plain.get_in_ports() if p.get_filter())
 
 
@@ -134,12 +135,31 @@ def test_cgra_pond_power_options():
         with contextlib.redirect_stdout(io.StringIO()):
             spec = build_cgra_pond(params, rv=rv)
             spec.generate_hardware()
-            plain = build_cgra_pond({}, rv=rv)
+            plain = build_cgra_pond({"clock_gate_ports": False, "share_clk_ctr": False}, rv=rv)
             plain.generate_hardware()
+            default = build_cgra_pond({}, rv=rv)
+            default.generate_hardware()
         ports = spec.get_in_ports() + spec.get_out_ports()
         assert all(spec.get_port_controllers(p)[0].has_port_enable for p in ports)
         assert not any(plain.get_port_controllers(p)[0].has_port_enable
                        for p in plain.get_in_ports() + plain.get_out_ports())
+        assert all(default.get_port_controllers(p)[0].has_port_enable
+                   for p in default.get_in_ports() + default.get_out_ports())
         if not rv:
             sgs = static_sgs(spec)
             assert sgs and all(sg.shared_clk_ctr for sg in sgs)
+
+
+def test_gating_is_the_default():
+    """Every builder gates by default (user 2026-10-28)."""
+    from lake.spec.spec_memory_controller import build_four_port_wide_fetch_rv
+    for builder, kw in ((build_spec, {}), (build_spec_rv, {}),
+                        (build_four_port_wide_fetch_rv, dict(physical=False))):
+        with contextlib.redirect_stdout(io.StringIO()):
+            spec = builder(**kw) if kw else builder(**KW)
+            spec.generate_hardware()
+        assert spec.clock_gate_ports and spec.share_clk_ctr
+        assert all(spec.get_port_controllers(p)[0].has_port_enable
+                   for p in spec.get_in_ports() + spec.get_out_ports())
+    spec = built(build_spec)
+    assert all(sg.shared_clk_ctr for sg in static_sgs(spec))

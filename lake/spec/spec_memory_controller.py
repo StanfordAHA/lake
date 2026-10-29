@@ -14,7 +14,7 @@ from lake.top.tech_maps import GF_Tech_Map
 
 def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: int = 6, vec_width=4, physical=True,
                                   reg_file=False, vec_capacity=2, opt_rv=True, remote_storage=True, id_width=16, add_filter_path=True,
-                                  prune_rv_comparators=False, clock_gate_ports=False, share_clk_ctr=False) -> Spec:
+                                  prune_rv_comparators=False, clock_gate_ports=True, share_clk_ctr=True) -> Spec:
 
     # TODO: Override this in garnet and not here...
     id_width = 11
@@ -160,7 +160,7 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 def build_pond_rv(storage_capacity: int = 64, data_width=16,
                   dims: int = 6, physical=False, reg_file=True,
                   remote_storage=True, opt_rv=True, filter=False, max_extent=None,
-                  comply_17=True, clock_gate_ports=False, share_clk_ctr=False,
+                  comply_17=True, clock_gate_ports=True, share_clk_ctr=True,
                   rv_comparator_trim=None) -> Spec:
     """Ready-valid pond. filter=True gives the data input lake's filter
     (item-drop) hardware, so a broadcast-banked writer (one stream feeding
@@ -306,7 +306,7 @@ def build_pond(storage_capacity: int = 64, data_width=16, dims: int = 4,
                in_ports=2, out_ports=2, max_extent=None, max_sequence_width=None,
                physical=False, reg_file=True, remote_storage=True,
                config_passthru=True, comply_17=True, name="lakespec_pond_static",
-               clock_gate_ports=False, share_clk_ctr=False) -> Spec:
+               clock_gate_ports=True, share_clk_ctr=True) -> Spec:
     """Static (fixed-schedule) pond: the lake-spec replacement for the legacy
     LakeTop pond and the static sibling of build_pond_rv.
 
@@ -382,7 +382,8 @@ def build_pond(storage_capacity: int = 64, data_width=16, dims: int = 4,
 
 
 # Pond-spec JSON keys (garnet --lake-pond-spec-config / lake.utils.pond_collateral)
-# The clock-gating options (Spec share_clk_ctr / clock_gate_ports; default off) are
+# The clock-gating options (Spec share_clk_ctr / clock_gate_ports; on by default since
+# 2026-10-28, an absent key takes the builder's default) are
 # accepted by both ponds; share_clk_ctr changes nothing on the RV pond (no
 # free-running schedule generators).
 CGRA_POND_POWER_KEYS = {"clock_gate_ports", "share_clk_ctr"}
@@ -427,15 +428,13 @@ def build_cgra_pond(params=None, rv=False, comply_17=True) -> Spec:
                              dims=p["dims"], physical=False, reg_file=True, opt_rv=True,
                              filter=p["filter"], max_extent=p.get("max_extent"),
                              comply_17=comply_17,
-                             clock_gate_ports=p.get("clock_gate_ports", False),
-                             share_clk_ctr=p.get("share_clk_ctr", False),
+                             **{k: p[k] for k in sorted(CGRA_POND_POWER_KEYS) if k in p},
                              rv_comparator_trim=p.get("rv_comparator_trim"))
     return build_pond(storage_capacity=p["storage_capacity"], data_width=p["data_width"], dims=p["dims"],
                       max_extent=p.get("max_extent"), max_sequence_width=p.get("max_sequence_width"),
                       physical=False, reg_file=True, remote_storage=True, config_passthru=True,
                       comply_17=comply_17,
-                      clock_gate_ports=p.get("clock_gate_ports", False),
-                      share_clk_ctr=p.get("share_clk_ctr", False))
+                      **{k: p[k] for k in sorted(CGRA_POND_POWER_KEYS) if k in p})
 
 
 class SpecMemoryController(MemoryController):
@@ -536,7 +535,7 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
                dims=6, in_ports=2, out_ports=2, dual_port=False,
                vec_capacity=2, max_extent=None, max_sequence_width=None,
                physical=False, config_passthru=False,
-               clock_gate_ports=False, share_clk_ctr=False, comply_17=True):
+               clock_gate_ports=True, share_clk_ctr=True, comply_17=True):
     """Factory function to build a lake Spec for any thesis configuration.
 
     Args:
@@ -558,11 +557,11 @@ def build_spec(storage_capacity=4096, data_width=16, vec_width=4,
         clock_gate_ports: Gate each port's clock off while the application
             leaves it unconfigured (Spec clock_gate_ports; adds a port_enable
             config bit per port), and each RV in-port's item filter while the
-            application gives that port no filter (a filter_enable bit). Off by
-            default.
+            application gives that port no filter (a filter_enable bit). On by
+            default since 2026-10-28; False builds the ungated design.
         share_clk_ctr: One cycle counter for every static schedule generator
             instead of a clk_ctr each (Spec share_clk_ctr; same RTL behavior and
-            bitstream). Off by default.
+            bitstream). On by default since 2026-10-28.
         comply_17: Data ports one bit wider than data_width, the extra (top) bit
             driven 0 (Spec comply_17), to match a fabric whose data tracks carry
             the sparse end-of-stream bit. False: data_width-bit ports.
@@ -673,7 +672,7 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
                   dims=6, in_ports=2, out_ports=2, dual_port=False,
                   vec_capacity=2, max_extent=None, max_sequence_width=None,
                   add_filter_path=True, physical=True, prune_rv_comparators=True,
-                  filter_fifo_depth=None, clock_gate_ports=False, share_clk_ctr=False,
+                  filter_fifo_depth=None, clock_gate_ports=True, share_clk_ctr=True,
                   comply_17=True, rv_comparator_trim=None):
     """Factory function to build an RV (ready-valid / dynamic) lake Spec.
 
@@ -713,8 +712,8 @@ def build_spec_rv(storage_capacity=4096, data_width=16, vec_width=4,
         clock_gate_ports: Gate each port's clock off while the application
             leaves it unconfigured (Spec clock_gate_ports; adds a port_enable
             config bit per port), and each RV in-port's item filter while the
-            application gives that port no filter (a filter_enable bit). Off by
-            default.
+            application gives that port no filter (a filter_enable bit). On by
+            default since 2026-10-28; False builds the ungated design.
         share_clk_ctr: One cycle counter for every static schedule generator
             instead of a clk_ctr each (Spec share_clk_ctr). An RV spec has none
             (its filter SGs count input valids), so this changes nothing here.
