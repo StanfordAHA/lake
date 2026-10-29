@@ -656,6 +656,12 @@ garnet `mflowgen/CLAUDE.md` "Fabric data width follows the spec". Lake pieces:
   - A bundle or spec JSON without the keys is read as ungated by garnet's
     check_bundle/cgra_app_power, because that's how such bundles were recorded.
     gen_app_bundle writes them explicitly.
+  - Landed 2026-10-29: lake 14d9f070, garnet ebda5a58, aha mek b20d4bb. The Zircon gold
+    ref is rebuilt from those pins; its diff from the old ref is gating only (gated
+    clocks, enable bits, a larger config readback mux). The four RV apps of
+    `regress fast` pass on a gated 8x8 Zircon (scratchpad 5b33d095 `zircon/run_fast.sh`;
+    `BEHAVIORAL_MATRIX_UNIT=1`, because CI's MU sim models come from the agents'
+    /nobackup/zircon).
 - **Two Spec options cover the biggest items (lake 9f9480c9, 2026-10-14; opt-in
   until 2026-10-28, see above).**
   They are kwargs of `Spec`, `build_spec`, `build_spec_rv` and thesis_sweep's
