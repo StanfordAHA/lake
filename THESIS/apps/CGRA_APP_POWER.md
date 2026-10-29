@@ -313,9 +313,14 @@ recording and the power run.
 
 **First /aha run (session 1fa8a391, 2026-10-26; relayed by aha-08):**
 - camera_pipeline_2x2 behaved as planned: 16×16 PnR failed, then it recorded at 28×16.
-- resnet can't map on the two 1-input specs, because its second writer needs a second MEM
-  write port. Those cells stay empty.
-- Static `fw2_dw16_sc4096_dp` resnet isn't bit-accurate (RV passes); under investigation.
+- resnet can't map on the two 1-input specs: the MEM accumulator needs a second write
+  port. Since clockwork 38ed931e the compile refuses it with that message. Those cells
+  stay empty; a pond-based fallback is blocked on garnet/thesis-unpacked-pond-output.
+- clockwork 38ed931e (`ready_valid_extract`, session 43d74890, 2026-10-28; aha mek 3eb16a4)
+  fixes six static bundles: fw1 dp gaussian / unsharp / harris / camera (28×16), and the
+  fw2 dp dw16 / dw32 resnet, which wasn't bit-accurate (RV passed). 1fa8a391 re-records
+  them as an add-on tarball, which bc48e85f's `thesis_final.sh` merges into the set.
+  Notes: clockwork/CLAUDE.md "Thesis matrix compile fixes".
 - The pond matmul failed in halide until the lines got `n=16` (above); 1fa8a391 re-ran
   them that way.
 
