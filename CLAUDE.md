@@ -289,6 +289,12 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
   and idle (dashed). `port_{area,power}_vs_data_width` are BOGUS (dw16 only).
 - PUB = `ctrl + sram`: `pub_capacity_*` (line per memory organization),
   `pub_bandwidth_*` (8 KB, SP vs DP, stacked SRAM / controller).
+- **Equal-bandwidth figures plot balanced organizations only** (user 2026-10-28): the
+  MEMORY_EXP figures (PUB, Storage, MemoryPort, memtile capacity/bandwidth) keep a config only
+  if its fetch width = in + out ports (single-port) or = ports per direction (dual-port)
+  (`tile_figures._balanced`, applied in `_exp`). All 26 dw16 MEMORY_EXP configs pass. The x axis
+  is SRAM bandwidth (read + write bits per cycle) and legends name the SRAM word width
+  ("DP 16b (fw1)" sits at 32 b/cycle beside "SP 32b (fw2)").
 - Memory tile: `memtile_interconnect_{area,power}` (CB/SB/glue vs ports),
   `memtile_block_breakdown` (area/idle/active share per block, 3 fit
   geometries × static/RV), `memtile_rv_overhead_area`, `memtile_rv_energy_breakdown`

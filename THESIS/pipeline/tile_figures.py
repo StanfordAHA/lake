@@ -104,8 +104,18 @@ def _load(mode: str | None = "static") -> pd.DataFrame:
     return df
 
 
+def _balanced(df: pd.DataFrame) -> np.ndarray:
+    """Ports matched to the SRAM: fetch width = in + out ports (single-port, one
+    access per cycle) or = the ports per direction (dual-port). Otherwise the SRAM
+    is wider than the ports can use, or the ports wait on it (user 2026-10-28)."""
+    fw, n_in, n_out = df["vec_width"], df["in_ports"], df["out_ports"]
+    return np.where(df["dual_port"], (fw == n_in) & (fw == n_out), fw == n_in + n_out)
+
+
 def _exp(df: pd.DataFrame, exp: str) -> pd.DataFrame:
     sub = df[df["experiments"].fillna("").str.contains(exp)]
+    if exp == "MEMORY_EXP":  # compared at equal SRAM bandwidth: balanced organizations only
+        sub = sub[_balanced(sub)]
     if sub.empty:
         raise MissingDataError(f"tile sweep has no {exp} configs")
     return sub
@@ -130,8 +140,12 @@ _BW_COLOR = {32: SERIES[0], 64: SERIES[1], 128: SERIES[2]}
 
 
 def _topo_label(r) -> str:
+    """e.g. "DP 16b (fw1), 1 in, 1 out": the SRAM's word width, so a dual-port
+    organization doesn't read as its bandwidth (2 x the word)."""
     kind = "DP" if r["dual_port"] else "SP"
-    return f"{kind} fw{int(r['vec_width'])}, {int(r['in_ports'])} in, {int(r['out_ports'])} out"
+    fw = int(r["vec_width"])
+    return (f"{kind} {fw * int(r.get('data_width', DATA_WIDTH))}b (fw{fw}), "
+            f"{int(r['in_ports'])} in, {int(r['out_ports'])} out")
 
 
 def _topo_style(r):
@@ -1036,9 +1050,10 @@ def _sp_dp_fig(outpath: Path, df: pd.DataFrame, x: str, metric: str, ylabel: str
 
 def _memory_port(outpath: Path, metric: str, view: str = "raw") -> None:
     """MEMORY_EXP: MemoryPort (memory-port muxes, arbiters, interface decoders)
-    vs SRAM interface width, single- vs dual-port.
+    vs SRAM bandwidth (read + write bits per cycle), single- vs dual-port. At one
+    bandwidth the dual-port SRAM is half as wide (32 b/cycle = SP 32b or DP 16b).
 
-    Port count rises with width in this sweep (it's in the tick labels), and
+    Port count rises with bandwidth in this sweep (it's in the tick labels), and
     capacity barely matters to this logic, so each point is the median over
     capacities with a min-max bar.
     """
@@ -1046,7 +1061,7 @@ def _memory_port(outpath: Path, metric: str, view: str = "raw") -> None:
     scale, unit = _units(df, metric)
     ports = df.groupby("sram_bw_bits")["in_ports"].first().to_dict()
     _sp_dp_fig(outpath, df, "sram_bw_bits", metric, f"MemoryPort {metric}",
-               "SRAM interface width (bits/cycle)", sorted(ports),
+               "SRAM bandwidth, read + write (bits/cycle)", sorted(ports),
                lambda b: f"{int(b)}\n{ports[b]} in, {ports[b]} out", scale, unit, view)
 
 
@@ -1121,8 +1136,7 @@ def _pub_capacity(outpath: Path, metric: str, view: str = "raw") -> None:
     for _, g in groups:
         g = g.sort_values("kb")
         r = g.iloc[0]
-        kind = "DP" if r["dual_port"] else "SP"
-        lab = f"{kind} fw{int(r['vec_width'])}, {int(r['in_ports'])} in, {int(r['out_ports'])} out"
+        lab = _topo_label(r)
         if ax is not None:
             ax.plot(g["kb"], g["y"] / scale, markersize=4, label=lab, **_topo_style(r))
         if pax is not None:
