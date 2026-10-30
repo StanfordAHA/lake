@@ -35,6 +35,7 @@ Terms used in labels:
 
 from __future__ import annotations
 
+import weakref
 from pathlib import Path
 
 import matplotlib
@@ -53,14 +54,20 @@ INK, INK2, MUTED = "#0b0b0b", "#52514e", "#898781"
 GRID, AXIS = "#e1e0d9", "#c3c2b7"
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
 BLUE_RAMP = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"]  # ordinal, light→dark
-FULL_W = 6.3  # inches, ~\textwidth
-HALF_W = 3.0  # inches, a 0.48\textwidth subfigure
+# Figures are drawn at their printed width, so font sizes are the printed sizes (body
+# text is 10 pt). All text is bold and as large as fits, with tight margins (user
+# 2026-10-28).
+FULL_W = 6.5  # inches, \textwidth (1 in margins on letter)
+HALF_W = 3.12  # inches, a 0.48\textwidth subfigure
 
 plt.rcParams.update({
-    "font.size": 8.5, "axes.labelsize": 9, "axes.titlesize": 9, "legend.fontsize": 7.5,
-    "xtick.labelsize": 8, "ytick.labelsize": 8, "lines.linewidth": 1.6, "lines.markersize": 5,
-    "axes.edgecolor": AXIS, "axes.labelcolor": INK, "xtick.color": INK2, "ytick.color": INK2,
+    "font.size": 10, "axes.labelsize": 10.5, "axes.titlesize": 10.5, "legend.fontsize": 9.5,
+    "legend.title_fontsize": 9.5, "xtick.labelsize": 10, "ytick.labelsize": 10,
+    "font.weight": "bold", "axes.labelweight": "bold", "axes.titleweight": "bold",
+    "mathtext.default": "bf", "lines.linewidth": 1.8, "lines.markersize": 5.5,
+    "axes.edgecolor": AXIS, "axes.labelcolor": INK, "xtick.color": INK, "ytick.color": INK,
     "text.color": INK, "pdf.fonttype": 42, "ps.fonttype": 42, "legend.frameon": False,
+    "savefig.pad_inches": 0.02,
 })
 
 K = 1000.0
@@ -85,11 +92,71 @@ def _ax_style(ax, ygrid=True, xgrid=False):
 
 
 def _panel_label(ax, s):
-    ax.text(-0.14, 1.02, s, transform=ax.transAxes, fontsize=9, fontweight="bold", va="bottom")
+    ax.text(-0.14, 1.02, s, transform=ax.transAxes, fontsize=11, fontweight="bold", va="bottom")
+
+
+def _wrap(lab, s: str, room: float, size) -> bool:
+    """Break label ``lab`` (text ``s``) into the fewest lines no longer than ``room``
+    pixels (``size(text)`` measures one): before " (" or after ", " where that does
+    it, else at any space."""
+    def split(s, at_space):
+        parts, i = [], 0
+        for j in range(1, len(s)):
+            if (s[j] == " " if at_space else
+                    s.startswith(" (", j) or s.startswith(", ", j - 1)):
+                parts.append(s[i:j].rstrip())
+                i = j + (1 if s[j] == " " else 0)
+        return parts + [s[i:]]
+
+    def fill(parts):
+        lines = [parts[0]]
+        for p in parts[1:]:
+            if size(lines[-1] + " " + p) <= room:
+                lines[-1] += " " + p
+            else:
+                lines.append(p)
+        return lines
+
+    lines = fill(split(s, False))
+    if any(size(ln) > room for ln in lines):
+        lines = fill(split(s, True))
+    lab.set_text("\n".join(lines))
+    return len(lines) > 1
+
+
+def _wrap_labels(fig) -> bool:
+    """Wrap each y label longer than its axis, and each x label that would stick out
+    past the outermost axes (savefig's tight bbox crops it there). True if any
+    label changed."""
+    r = fig.canvas.get_renderer()
+    changed = False
+    boxes = [ax.get_window_extent(r) for ax in fig.axes]
+    left, right = min(b.x0 for b in boxes), max(b.x1 for b in boxes)
+    for ax, box in zip(fig.axes, boxes):
+        mid = (box.x0 + box.x1) / 2
+        for lab, room in ((ax.yaxis.label, box.height),
+                          (ax.xaxis.label, 2 * min(mid - left, right - mid))):
+            s = lab.get_text()
+            if not s or "\n" in s:
+                continue
+            ext = lab.get_window_extent(r)
+            if max(ext.width, ext.height) <= room:
+                continue
+
+            def size(t, lab=lab):
+                lab.set_text(t)
+                e = lab.get_window_extent(r)
+                return max(e.width, e.height)
+            if not _wrap(lab, s, room, size):
+                lab.set_text(s)
+            changed = True
+    return changed
 
 
 def _save(fig, outpath: Path):
     outpath.parent.mkdir(parents=True, exist_ok=True)
+    if _wrap_labels(fig):
+        fig.tight_layout()
     fig.savefig(outpath, bbox_inches="tight", dpi=200 if outpath.suffix == ".png" else "figure")
     plt.close(fig)
 
@@ -119,6 +186,11 @@ def _exp(df: pd.DataFrame, exp: str) -> pd.DataFrame:
     if sub.empty:
         raise MissingDataError(f"tile sweep has no {exp} configs")
     return sub
+
+
+def _pow2_fmt(v) -> str:
+    """16384 -> "16K": a multiple of 1024 from 1024 up, else the plain value."""
+    return f"{v / 1024:g}K" if v >= 1024 and v % 1024 == 0 else f"{v:g}"
 
 
 def _log2_axis(ax, ticks, fmt=lambda v: f"{v:g}"):
@@ -167,6 +239,7 @@ VIEWS = ("raw", "pct", "both")
 VIEWABLE: set = set()
 PCT_LBL = "Change per step (%)"
 _REF_STYLE = dict(color=MUTED, linestyle=":", linewidth=1.1, marker="x", markersize=3.5)
+_REF_OFF_SCALE: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()  # pax -> legend label
 
 
 def _viewable(fn):
@@ -190,8 +263,8 @@ def _view_axes(view: str, figsize):
     if view == "pct":
         fig, pax = plt.subplots(figsize=figsize)
         return fig, None, pax
-    fig, (ax, pax) = plt.subplots(2, 1, figsize=(figsize[0], figsize[1] * 1.5), sharex=True,
-                                  gridspec_kw={"height_ratios": [2.3, 1]})
+    fig, (ax, pax) = plt.subplots(2, 1, figsize=(figsize[0], figsize[1] * 1.3), sharex=True,
+                                  gridspec_kw={"height_ratios": [2.2, 1]})
     ax.tick_params(labelbottom=False)
     return fig, ax, pax
 
@@ -246,17 +319,16 @@ def _pct_axis(pax, xvals, pos=None, geo: bool = False):
     for x, y, c in off:
         up = y > hi
         pax.text(x, top if up else bottom, f"{'↑' if up else '↓'}{y:+.0f}%", ha="center",
-                 va="top" if up else "bottom", fontsize=6, color=c)
-    if off_ref and len(off_ref) == len(ref):
+                 va="top" if up else "bottom", fontsize=8.5, color=c)
+    if off_ref and len(off_ref) == len(ref):  # noted in the legend's y ∝ x entry
         r0, r1 = min(ref), max(ref)
         rng = f"{r0:+.0f}%" if round(r0) == round(r1) else f"{r0:+.0f}% to {r1:+.0f}%"
-        pax.text(0.99, 0.97, f"y ∝ x off scale: {rng} per step", transform=pax.transAxes,
-                 ha="right", va="top", fontsize=6, color=MUTED)
+        _REF_OFF_SCALE[pax] = f"y ∝ x, off scale:\n{rng} per step"
     pax.axhline(0, color=AXIS, linewidth=0.9, zorder=1)
     if pos is not None:  # categories (bars): half a category of margin, as the bars have
         pax.set_xlim(-0.5, len(xvals) - 0.5)
     if len(pax.figure.axes) > 1:  # under a raw panel: a title, so the y labels can't collide
-        pax.set_title(PCT_LBL, loc="left", fontsize=7.5, color=INK2, pad=3)
+        pax.set_title(PCT_LBL, loc="left", fontsize=9.5, color=INK2, pad=6)
     else:
         pax.set_ylabel(PCT_LBL)
     _ax_style(pax)
@@ -297,13 +369,13 @@ def memtile_capacity_area(ctx, outpath: Path) -> None:
         _log2_axis(ax, [1, 2, 4, 8, 16, 32])
         ax.set_xlabel("Capacity (KB)")
         ax.set_ylabel(AREA_LBL)
-        ax.set_title(lab, loc="left", fontsize=8.5, color=INK2)
+        ax.set_title(lab, loc="left", fontsize=10.5, color=INK2)
         ax.set_ylim(bottom=0)
         _ax_style(ax)
     h, l = axes[0].get_legend_handles_labels()
     fig.legend(h, l, loc="upper center", ncol=3, bbox_to_anchor=(0.5, 0.0),
                title="Solid = single-port, dashed = dual-port; color = SRAM bits/cycle (32, 64, 128)",
-               title_fontsize=7.5)
+               title_fontsize=9.5)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -330,14 +402,14 @@ def memtile_bandwidth_area(ctx, outpath: Path) -> None:
             ax.bar(x, r["syn_std"] / K, w, bottom=r["syn_sram"] / K, color=SERIES[1],
                    edgecolor="white", linewidth=1, label="Std cells" if i == 0 and j == 0 else None)
             ax.text(x, r["syn_cell"] / K * 1.015, f"{r['syn_cell'] / K:.1f}", ha="center",
-                    va="bottom", fontsize=7, color=INK2)
+                    va="bottom", fontsize=9, color=INK2)
             ticks.append(x)
             tick_lbls.append("DP" if dp else "SP")
         # bandwidth group label under the SP/DP tick labels
         ax.text(i, -0.11, f"{int(bw)} b/cycle", transform=ax.get_xaxis_transform(),
-                ha="center", va="top", fontsize=8, color=INK2)
+                ha="center", va="top", fontsize=9.5, color=INK2)
     ax.set_xticks(ticks)
-    ax.set_xticklabels(tick_lbls, fontsize=7.5)
+    ax.set_xticklabels(tick_lbls, fontsize=9.5)
     ax.tick_params(axis="x", length=0)
     ax.set_ylabel(AREA_LBL)
     ax.set_xlabel("SRAM bandwidth (8 KB capacity, 16-bit data)", labelpad=16)
@@ -382,7 +454,7 @@ def memtile_interconnect_area(ctx, outpath: Path) -> None:
         ax.set_ylabel(AREA_LBL)
         ax.set_ylim(0, hi.values.max() / K * 1.08)
         _ax_style(ax)
-    _view_legend(ax if ax is not None else pax, pax, ncol=2)
+    _view_legend(ax if ax is not None else pax, pax)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -408,15 +480,15 @@ def memtile_port_buffer_area(ctx, outpath: Path) -> None:
             xs = np.geomspace(df["bits"].min(), df["bits"].max(), 60)
             ax.plot(xs, np.polyval(lin, xs) / K, color=MUTED, linewidth=1, zorder=2)
             ax.text(0.04, 0.94, f"linear fit: {lin[0]:.1f} µm² per buffer bit", transform=ax.transAxes,
-                    va="top", fontsize=7.5, color=INK2)
+                    va="top", fontsize=9.5, color=INK2)
         _log2_axis(ax, sorted(df["bits"].unique()), fmt=lambda v: f"{int(v)}")
         ax.set_xlabel(f"Buffer bits per port (fw × {DATA_WIDTH} × vc)")
         ax.set_ylabel(AREA_LBL)
-        ax.set_title(lab, loc="left", fontsize=8.5, color=INK2)
+        ax.set_title(lab, loc="left", fontsize=10.5, color=INK2)
         _ax_style(ax, xgrid=True)
     h, l = axes[0].get_legend_handles_labels()
     fig.legend(h, l, loc="lower center", ncol=len(fws), bbox_to_anchor=(0.5, -0.08),
-               title="fetch width", title_fontsize=7.5)
+               title="fetch width", title_fontsize=9.5)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -438,8 +510,8 @@ def memtile_control_area(ctx, outpath: Path) -> None:
                     markeredgecolor="white", markeredgewidth=0.6, label=f"{int(v)}")
         ax.set_xticks(range(1, 7))
         ax.set_xlabel("Dimensionality")
-        ax.set_title(lab, loc="left", fontsize=8.5, color=INK2)
-        ax.legend(title=name, title_fontsize=7.5, loc="upper left")
+        ax.set_title(lab, loc="left", fontsize=10.5, color=INK2)
+        ax.legend(title=name, title_fontsize=9.5, loc="upper left")
         _ax_style(ax)
     axes[0].set_ylabel("MemCore logic, " + AREA_LBL)
     fig.tight_layout()
@@ -469,21 +541,22 @@ def memtile_rv_overhead_area(ctx, outpath: Path) -> None:
         return f"{kind} fw{int(r['vec_width'])}"
     j["group"] = j.apply(group, axis=1)
     order = (j.groupby("group")["pct"].median().sort_values(ascending=False).index.tolist())
-    fig, ax = plt.subplots(figsize=(FULL_W * 0.75, 0.32 * len(order) + 0.8))
+    fig, ax = plt.subplots(figsize=(FULL_W * 0.75, 0.4 * len(order) + 0.8))
     rng = np.random.default_rng(0)
     for i, gname in enumerate(order):
         g = j[j["group"] == gname]["pct"]
         y = i + rng.uniform(-0.18, 0.18, len(g))
         ax.scatter(g, y, s=16, color=SERIES[0], alpha=0.85, edgecolor="white", linewidth=0.5, zorder=3)
         ax.plot([g.median()] * 2, [i - 0.3, i + 0.3], color=INK, linewidth=1.4, zorder=4)
-        ax.text(g.max() + 1.2, i, f"median {g.median():+.0f}%  (n={len(g)})", va="center",
-                fontsize=7, color=INK2)
+        ax.annotate(f"median {g.median():+.0f}%\n(n={len(g)})", (1, i),  # a column right of the axes
+                    xycoords=("axes fraction", "data"), xytext=(6, 0), textcoords="offset points",
+                    va="center", fontsize=9.5, color=INK2, linespacing=1.0)
     ax.axvline(0, color=AXIS, linewidth=1)
     ax.set_yticks(range(len(order)))
-    ax.set_yticklabels(order)
+    ax.set_yticklabels([g.replace(" (", "\n(") for g in order], linespacing=1.0)
     ax.invert_yaxis()
     ax.set_xlabel("RV std-cell area vs static (%)")
-    ax.set_xlim(min(-5, j["pct"].min() - 2), j["pct"].max() + 22)
+    ax.set_xlim(min(-5, j["pct"].min() - 2), j["pct"].max() + 3)
     _ax_style(ax, ygrid=False, xgrid=True)
     fig.tight_layout()
     _save(fig, outpath)
@@ -537,7 +610,7 @@ def memtile_interconnect_power(ctx, outpath: Path) -> None:
     h, l = top.get_legend_handles_labels()
     if pax is not None:  # the % panel's dashed lines are the idle power
         h, l = h + [_style_handles("power")[1]], l + ["idle (step)"]
-    _view_legend(top, pax, h, l, ncol=2)
+    _view_legend(top, pax, h, l)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -572,7 +645,8 @@ def memtile_block_breakdown(ctx, outpath: Path) -> None:
         raise MissingDataError(f"breakdown configs not in the tile sweep: {', '.join(missing)}")
     panels = (("blk_", "(a) Cell area"), ("pw_synth_idle_", "(b) Idle power"),
               ("pw_synth_active_", "(c) Active power"))
-    fig, axes = plt.subplots(1, 3, figsize=(FULL_W, 2.9), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(FULL_W, 2.6), sharey=True)
+    nums = []
     for ax, (pre, title) in zip(axes, panels):
         cols = [f"{pre}{b}" for _, bs in _BREAKDOWN for b in bs]
         _blocks(df.reset_index(), cols, title)
@@ -584,21 +658,37 @@ def memtile_block_breakdown(ctx, outpath: Path) -> None:
             for j, ((lab, _), x) in enumerate(zip(_BREAKDOWN, v)):
                 ax.barh(i, x, left=left, color=SERIES[j], edgecolor="white", linewidth=0.6,
                         height=0.72, label=lab if i == 0 else None)
-                if x >= 9:
-                    ax.text(left + x / 2, i, f"{x:.0f}", ha="center", va="center", fontsize=6.5,
-                            color="white")
+                if x >= 5:
+                    nums.append((ax, x, ax.text(left + x / 2, i, f"{x:.0f}", ha="center",
+                                                va="center", fontsize=9, color="white")))
                 left += x
         ax.set_xlim(0, 100)
-        ax.set_xticks([0, 25, 50, 75, 100])
-        ax.set_xlabel("Share of tile (%)")
-        ax.set_title(title, loc="left", fontsize=8.5, color=INK2)
+        ax.set_xticks([0, 50, 100])
+        ax.set_title(title, loc="left", fontsize=10.5, color=INK2)
         _ax_style(ax, ygrid=False)
     axes[0].set_yticks(range(len(rows)))
-    axes[0].set_yticklabels([r for r, _ in rows], fontsize=7.5)
+    axes[0].set_yticklabels(["RV" if c.endswith("_rv") else "static" for _, c in rows])
     axes[0].invert_yaxis()
+    axes[1].set_xlabel("Share of tile (%)")  # once, under the middle panel
+    fig.tight_layout(w_pad=0.6)
+    r = fig.canvas.get_renderer()
+    tick_w = axes[0].get_window_extent(r).x0 - min(
+        t.get_window_extent(r).x0 for t in axes[0].get_yticklabels())
+    groups = []
+    for k, (_, lab) in enumerate(_BREAKDOWN_CONFIGS):  # each geometry once, beside its pair
+        parts = lab.split(", ")
+        groups.append(axes[0].annotate(
+            ", ".join(parts[:2]) + "\n" + ", ".join(parts[2:]), (0, 2 * k + 0.5),
+            xycoords=("axes fraction", "data"), xytext=(-(tick_w + 10) * 72 / fig.dpi, 0),
+            textcoords="offset points", ha="right", va="center", fontsize=9.5))
+    group_w = max(g.get_window_extent(r).width for g in groups)
+    fig.tight_layout(rect=((group_w + 10) / fig.bbox.width, 0, 1, 1), w_pad=0.6)
+    for ax, x, t in nums:  # a segment's share only where the number fits inside it
+        if t.get_window_extent(r).width + 2 > ax.transData.transform((x, 0))[0] - \
+                ax.transData.transform((0, 0))[0]:
+            t.remove()
     h, l = axes[0].get_legend_handles_labels()
-    fig.legend(h, l, loc="upper center", ncol=4, bbox_to_anchor=(0.5, 0.0), fontsize=7)
-    fig.tight_layout()
+    _fit_legend(fig, list(zip(h, l)), None, 0.0, below=True)
     _save(fig, outpath)
 
 
@@ -646,7 +736,7 @@ def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
                                for _, bs, _ in _RV_GROUPS for b in bs if b not in ("c_rvnet", "c_storage", "c_rdbuf")],
             "RV energy breakdown")
     bw = _bw_gbps(df)
-    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 3.0))
+    fig, axes = plt.subplots(2, 1, figsize=(FULL_W, 4.4), sharex=True)
     w = 0.38
     for ax, var in zip(axes, ("active", "idle")):
         ticks, labels = [], []
@@ -667,25 +757,27 @@ def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
                     note = f"{share:.0f}%" if SRAM_NDA else f"+{r['pw_synth_active_sram'] * scale:.2f}"
                 else:
                     note = f"{bottom:.2f}"
-                ax.text(x, bottom, note, ha="center", va="bottom", fontsize=5.5, color=INK2)
+                ax.text(x, bottom, note, ha="center", va="bottom", fontsize=9, color=INK2)
                 ticks.append(x)
                 labels.append("S" if mode == "Static" else "RV")
-            ax.text(i, -0.09, lab, transform=ax.get_xaxis_transform(), ha="center", va="top",
-                    fontsize=6, color=INK2)
+            if var == "idle":
+                ax.annotate(lab, (i, 0), xycoords=("data", "axes fraction"), xytext=(0, -19),
+                            textcoords="offset points", ha="center", va="top", fontsize=9.5,
+                            color=INK2)
         ax.set_xticks(ticks)
-        ax.set_xticklabels(labels, fontsize=6)
+        ax.set_xticklabels(labels)
         ax.tick_params(axis="x", length=0)
         ax.set_ylim(0, ax.get_ylim()[1] * 1.12)
         _ax_style(ax)
     axes[0].set_ylabel("Non-SRAM active energy (pJ/bit)")
     axes[0].set_title("(a) Active per bit (top: SRAM share)" if SRAM_NDA else
-                      "(a) Active per bit (top: SRAM pJ/bit)", loc="left", fontsize=8, color=INK2)
+                      "(a) Active per bit (top: SRAM pJ/bit)", loc="left", fontsize=9.5, color=INK2)
     axes[1].set_ylabel("Non-SRAM idle power (mW)")
-    axes[1].set_title("(b) Idle (top: total)", loc="left", fontsize=8, color=INK2)
-    h, l = axes[0].get_legend_handles_labels()
-    fig.legend(h, l, loc="upper center", ncol=3, fontsize=7, bbox_to_anchor=(0.5, 0.0))
+    axes[1].set_title("(b) Idle (top: total)", loc="left", fontsize=9.5, color=INK2)
     fig.tight_layout()
-    fig.subplots_adjust(bottom=0.3, wspace=0.2)
+    fig.subplots_adjust(bottom=0.2, hspace=0.25)
+    h, l = axes[0].get_legend_handles_labels()
+    _fit_legend(fig, list(zip(h, l)), None, 0.0, below=True)
     _save(fig, outpath)
 
 
@@ -698,12 +790,16 @@ def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
 _MODE_STYLE = {"static": (SERIES[0], "Static"), "rv": (SERIES[1], "RV")}
 
 
-def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, unit: str):
+def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, unit: str,
+                 note: str, one_line: bool) -> float:
     """Scatter (fit = dots, held out = stars) with each mode's fit line on
-    ``ax``; prediction error per build on ``rax``. Returns the held-out errors."""
+    ``ax``; prediction error per build on ``rax``. Each fit's equation (R² on the
+    same line if ``one_line``) and the held-out error (``note`` formats its mean
+    and max) are stacked above ``ax``; returns that block's height in points. The
+    series are labeled for one legend over the figure."""
     lo, hi = p[xcol].min() / norm, p[xcol].max() / norm
     pad = (hi - lo) * 0.06
-    errs = []
+    errs, lines = [], []
     for mode, (c, name) in _MODE_STYLE.items():
         g = p[p["mode"] == mode]
         f, v = g[g["pnr_role"] == "fit"], g[g["pnr_role"] == "validate"]
@@ -713,9 +809,10 @@ def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, un
         r2 = np.corrcoef(f[xcol], f[ycol])[0, 1] ** 2
         # solid over the fit range, dotted where held-out builds extrapolate
         fx = np.array([f[xcol].min(), f[xcol].max()]) / norm
-        ax.plot(fx, a * fx + b, color=c, linewidth=1.1, zorder=2,
-                label=f"{name} fit: $y = {a:.3f}x {'+' if b >= 0 else '-'} {abs(b):.{_dec(b)}f}$, "
-                      f"$R^2 = {r2:.5f}$")
+        ax.plot(fx, a * fx + b, color=c, linewidth=1.1, zorder=2, label=f"{name} fit")
+        eq = f"{name} fit: $y = {a:.3f}x {'+' if b >= 0 else '-'} {abs(b):.{_dec(b)}f}$"
+        lines += [(f"{eq}, $R^2 = {r2:.5f}$", c)] if one_line else \
+            [(eq, c), (f"{' ' * 4}$R^2 = {r2:.5f}$", c)]
         ex = np.array([min(lo - pad, fx[0]), max(hi + pad, fx[1])])
         ax.plot(ex, a * ex + b, color=c, linewidth=0.9, linestyle=":", zorder=1)
         for sub, m, s, lab in ((f, "o", 26, f"{name}, fit set (n={len(f)})"),
@@ -737,7 +834,11 @@ def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, un
     _ax_style(ax, xgrid=True)
     _ax_style(rax, xgrid=True)
     ax.tick_params(labelbottom=False)
-    return errs
+    lines.append((note.format(np.mean(errs), max(errs)), INK2))
+    for k, (text, c) in enumerate(reversed(lines)):
+        ax.annotate(text, (0, 1), xycoords="axes fraction", xytext=(0, 4 + 12.5 * k),
+                    textcoords="offset points", ha="left", va="bottom", fontsize=9, color=c)
+    return 4 + 12.5 * len(lines)
 
 
 def _dec(v: float) -> int:
@@ -772,13 +873,12 @@ def memtile_synth_vs_pnr_area(ctx, outpath: Path) -> None:
     norm, unit = _model_norm(p, "tile_synth_cell_area")
     fig, (ax, rax) = plt.subplots(2, 1, figsize=(FULL_W * 0.62, 3.9), sharex=True,
                                   gridspec_kw={"height_ratios": [3, 1.15], "hspace": 0.08})
-    errs = _model_panel(ax, rax, p, "tile_synth_cell_area", "tile_pnr_total_area", norm, unit)
+    _model_panel(ax, rax, p, "tile_synth_cell_area", "tile_pnr_total_area", norm, unit,
+                 "Held-out |error|: mean {:.2f}%, max {:.2f}%", one_line=True)
     ax.set_ylabel(f"PnR total area ({unit})")
     rax.set_xlabel(f"Synthesis cell area ({unit})")
-    ax.legend(loc="upper left", fontsize=6.8, handletextpad=0.4)
-    ax.text(0.98, 0.04, f"Held-out |error|: mean {np.mean(errs):.2f}%, max {max(errs):.2f}%",
-            transform=ax.transAxes, ha="right", va="bottom", fontsize=7.5, color=INK2)
     fig.align_ylabels([ax, rax])
+    _legend_above(ax)
     _save(fig, outpath)
 
 
@@ -786,7 +886,7 @@ def memtile_synth_vs_pnr_power(ctx, outpath: Path) -> None:
     """Synthesis -> PnR power model, idle and active, same layout as the area
     figure (fit builds = dots, held-out builds = stars)."""
     p = _pnr_builds()
-    fig, axes = plt.subplots(2, 2, figsize=(FULL_W, 3.9), sharex="col",
+    fig, axes = plt.subplots(2, 2, figsize=(FULL_W, 4.6), sharex="col",
                              gridspec_kw={"height_ratios": [3, 1.15], "hspace": 0.08,
                                           "wspace": 0.3})
     for k, (var, title) in enumerate((("idle", "(a) Idle"), ("active", "(b) Active"))):
@@ -794,14 +894,16 @@ def memtile_synth_vs_pnr_power(ctx, outpath: Path) -> None:
         q = p.dropna(subset=[x, y])
         norm, unit = _model_norm(q, x)
         ax, rax = axes[0, k], axes[1, k]
-        errs = _model_panel(ax, rax, q, x, y, norm, unit)
-        ax.set_title(title, loc="left", fontsize=8.5, color=INK2)
+        block = _model_panel(ax, rax, q, x, y, norm, unit,
+                             "Held-out |error|: mean {:.1f}%, max {:.1f}%", one_line=False)
+        ax.set_title(title, loc="left", fontsize=10.5, color=INK2, pad=block + 2)
         ax.set_ylabel(f"PnR power ({unit})")
         rax.set_xlabel(f"Synthesis power ({unit})")
-        ax.legend(loc="upper left", fontsize=6, handletextpad=0.3)
-        ax.text(0.98, 0.04, f"Held-out |error|: mean {np.mean(errs):.1f}%, max {max(errs):.1f}%",
-                transform=ax.transAxes, ha="right", va="bottom", fontsize=7, color=INK2)
+    if axes[0, 0].get_legend_handles_labels()[1] != axes[0, 1].get_legend_handles_labels()[1]:
+        raise MissingDataError("idle and active PnR power have different builds; one legend "
+                               "can't label both panels")
     fig.align_ylabels(axes[:, 0])
+    _legend_above(axes[0, 0])
     _save(fig, outpath)
 
 
@@ -849,22 +951,51 @@ def _style_handles(metric: str, prefix: bool = False) -> list:
     return hs
 
 
-def _legend_above(ax, handles=None, labels=None, title=None, ncol=None):
+def _fit_legend(fig, entries: list, title, y: float, below: bool = False):
+    """A legend above the figure (lower left at figure coords (0, y)), or below it
+    (upper left at (0, y)), in the fewest rows that fit the figure's width, its
+    columns as even as those rows allow."""
+    r, width = fig.canvas.get_renderer(), fig.bbox.width
+    kw = dict(title=title, loc="upper left" if below else "lower left", bbox_to_anchor=(0, y),
+              columnspacing=0.7,
+              handlelength=1.3, handletextpad=0.4, borderaxespad=0.1, alignment="left")
+    nc = len(entries)
+    while nc > 1:
+        leg = fig.legend(*zip(*entries), ncol=nc, **kw)
+        fits = leg.get_window_extent(r).width <= width
+        leg.remove()
+        if fits:
+            break
+        nc -= 1
+    rows = -(-len(entries) // nc)
+    return fig.legend(*zip(*entries), ncol=-(-len(entries) // rows), **kw)
+
+
+def _legend_above(ax, handles=None, labels=None, title=None):
+    """Legend above the whole figure: the data series (with ``title``) over the gray
+    key (active/idle, y ∝ x, ...), each in as many columns as fit the width."""
     if handles is None:
         handles, labels = ax.get_legend_handles_labels()
     elif labels is None:
         labels = [h.get_label() for h in handles]
-    order = sorted(range(len(labels)), key=lambda i: labels[i].lower().startswith("idle"))
-    handles, labels = [handles[i] for i in order], [labels[i] for i in order]
-    n = len(handles)
-    ncol = ncol or (n if n <= 4 else -(-n // 2))
-    ax.legend(handles, labels, title=title, title_fontsize=7, fontsize=7, loc="lower left",
-              bbox_to_anchor=(0.0, 1.0), ncol=ncol, columnspacing=0.9, handlelength=1.5,
-              borderaxespad=0.3, alignment="left")
+    fig = ax.figure
+    note = next((v for k, v in _REF_OFF_SCALE.items() if k.figure is fig), None)
+    labels = [note if note and lab == "y ∝ x" else lab for lab in labels]
+    order = sorted(range(len(labels)), key=lambda i: (labels[i].startswith("y ∝ x"),
+                                                      labels[i].lower().startswith("idle")))
+    entries = [(handles[i], labels[i]) for i in order]
+    is_key = [getattr(h, "get_color", lambda: None)() == MUTED for h, _ in entries]
+    fig.tight_layout()
+    y = max(1.0, fig.get_tightbbox().y1 / fig.get_figheight())  # over anything poking out
+    for group, ttl in (([e for e, k in zip(entries, is_key) if k], None),
+                       ([e for e, k in zip(entries, is_key) if not k], title)):
+        if group:
+            leg = _fit_legend(fig, group, ttl, y)
+            y += leg.get_window_extent(fig.canvas.get_renderer()).height / fig.bbox.height
 
 
 def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel: str,
-               blocks: list[str], ylabel: str, xfmt=lambda v: f"{v:g}", log2: bool = False,
+               blocks: list[str], ylabel: str, xfmt=_pow2_fmt, log2: bool = False,
                metric: str = "area", mode: str = "static", view: str = "raw") -> None:
     """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``."""
     df = _exp(_load(mode), exp).dropna(subset=[x, hue])
@@ -1043,7 +1174,7 @@ def _sp_dp_fig(outpath: Path, df: pd.DataFrame, x: str, metric: str, ylabel: str
     top = ax if ax is not None else pax
     h, l = top.get_legend_handles_labels()
     _view_legend(top, pax, h + _style_handles(metric),
-                 l + [s.get_label() for s in _style_handles(metric)], ncol=2)
+                 l + [s.get_label() for s in _style_handles(metric)])
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -1062,7 +1193,7 @@ def _memory_port(outpath: Path, metric: str, view: str = "raw") -> None:
     ports = df.groupby("sram_bw_bits")["in_ports"].first().to_dict()
     _sp_dp_fig(outpath, df, "sram_bw_bits", metric, f"MemoryPort {metric}",
                "SRAM bandwidth, read + write (bits/cycle)", sorted(ports),
-               lambda b: f"{int(b)}\n{ports[b]} in, {ports[b]} out", scale, unit, view)
+               lambda b: f"{int(b)}\n{ports[b]} in\n{ports[b]} out", scale, unit, view)
 
 
 @_viewable
@@ -1154,7 +1285,7 @@ def _pub_capacity(outpath: Path, metric: str, view: str = "raw") -> None:
         ax.set_ylabel(f"PUB {'area' if metric == 'area' else 'active power'} ({unit})")
         ax.set_ylim(bottom=0)
         _ax_style(ax)
-    _view_legend(ax if ax is not None else pax, pax, ncol=2)
+    _view_legend(ax if ax is not None else pax, pax)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -1213,11 +1344,11 @@ def _pub_bandwidth(outpath: Path, metric: str, view: str = "raw") -> None:
             tick_lbls.append("DP" if dp else "SP")
         if pax is None:
             bot.text(i, -0.13, f"{int(bw)}", transform=bot.get_xaxis_transform(),
-                     ha="center", va="top", fontsize=7.5, color=INK2)
+                     ha="center", va="top", fontsize=9.5, color=INK2)
         else:  # the % panel is short, so offset by points rather than axes height
             bot.annotate(f"{int(bw)}", (i, 0), xycoords=bot.get_xaxis_transform(),
                          xytext=(0, -13), textcoords="offset points", ha="center", va="top",
-                         fontsize=7.5, color=INK2)
+                         fontsize=9.5, color=INK2)
     step_handles = []
     if pax is not None:  # SP and DP totals, step by step along the bandwidth groups
         for dp, c, m, name in ((False, SERIES[6], "o", "SP total (step)"),
@@ -1231,7 +1362,7 @@ def _pub_bandwidth(outpath: Path, metric: str, view: str = "raw") -> None:
                           linewidth=0.9, markersize=2.6)
         _pct_axis(pax, bws, pos=range(len(bws)))
     bot.set_xticks(ticks)
-    bot.set_xticklabels(tick_lbls, fontsize=7)
+    bot.set_xticklabels(tick_lbls, fontsize=9)
     bot.tick_params(axis="x", length=0)
     bot.set_xlabel("SRAM bandwidth (bits/cycle), 8 KB", labelpad=12)
     if ax is not None:
@@ -1243,7 +1374,7 @@ def _pub_bandwidth(outpath: Path, metric: str, view: str = "raw") -> None:
     h, l = h + step_handles, l + [s.get_label() for s in step_handles]
     if pax is not None and metric == "power":
         h, l = h + [_style_handles("power")[1]], l + ["idle (step)"]
-    _view_legend(top, pax, h, l, ncol=3 if pax is None else 2)
+    _view_legend(top, pax, h, l)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -1317,7 +1448,7 @@ def _li_ports(outpath: Path, metric: str, view: str = "raw") -> None:
             ax.scatter(xs, idle, marker="_", s=110, color=INK, linewidth=1.4, zorder=4,
                        label="Idle total")
             for xi, top, v in zip(xs, (tot["max"].loc[ports] / scale).values, idle.values):
-                ax.text(xi, top, f"idle {v:.1f}", ha="center", va="bottom", fontsize=6.5,
+                ax.text(xi, top, f"idle {v:.1f}", ha="center", va="bottom", fontsize=8.5,
                         color=INK2)
     step_handles = []
     if pax is not None:  # each part and the stacked total (the bar top), step by step
@@ -1341,7 +1472,7 @@ def _li_ports(outpath: Path, metric: str, view: str = "raw") -> None:
     for s in step_handles:  # the % panel reuses the bar colors; add only what's new
         if s.get_label() not in l:
             h, l = h + [s], l + [s.get_label()]
-    _view_legend(ax if ax is not None else pax, pax, h, l, ncol=2)
+    _view_legend(ax if ax is not None else pax, pax, h, l)
     fig.tight_layout()
     _save(fig, outpath)
 
@@ -1406,14 +1537,14 @@ def pe_tile_pitch(ctx, outpath: Path) -> None:
             raise MissingDataError(f"{f} Memory Tile is {rel:.2f} PE tiles: more than {MAX_HEIGHT} unit heights")
         w = rel / k
         ax.add_patch(plt.Rectangle((x, 0), 1, 1, facecolor=color, alpha=0.35, edgecolor=color, lw=1.2))
-        ax.text(x + 0.5, 0.5, "PE\n1.00", ha="center", va="center", fontsize=8)
+        ax.text(x + 0.5, 0.5, "PE\n1.00", ha="center", va="center", fontsize=9.5)
         mx = x + 1 + gap
         ax.add_patch(plt.Rectangle((mx, 0), MEM_MAX_WIDTH, k, fill=False, edgecolor=MUTED, lw=0.8, ls=(0, (3, 2))))
         ax.add_patch(plt.Rectangle((mx, 0), w, k, facecolor=color, alpha=0.6, edgecolor=color, lw=1.2))
-        ax.text(mx + w / 2, k / 2, f"Memory\nTile\n{rel:.2f}", ha="center", va="center", fontsize=8)
-        ax.text(mx + MEM_MAX_WIDTH, k + 0.08, f"{k}x height", ha="right", va="bottom", fontsize=7.5, color=INK2)
+        ax.text(mx + w / 2, k / 2, f"Memory\nTile\n{rel:.2f}", ha="center", va="center", fontsize=9.5)
+        ax.text(mx + MEM_MAX_WIDTH, k + 0.08, f"{k}x height", ha="right", va="bottom", fontsize=9.5, color=INK2)
         ax.text(x + (1 + gap + MEM_MAX_WIDTH) / 2, -0.32, _MODE_STYLE[f][1] + " fabric",
-                ha="center", va="top", fontsize=9)
+                ha="center", va="top", fontsize=11)
         x = mx + MEM_MAX_WIDTH + 1.2
     top = max(2, int(np.ceil(ax.dataLim.y1)))
     for y in range(1, top + 1):
@@ -1423,5 +1554,5 @@ def pe_tile_pitch(ctx, outpath: Path) -> None:
     ax.set_aspect("equal")
     ax.axis("off")
     ax.text(x - 1.0, -0.62, f"Areas in PE tiles (PnR). Dashed: the slot a Memory Tile may fill, "
-            f"{MEM_MAX_WIDTH:g} unit tiles wide.", ha="right", va="top", fontsize=7, color=MUTED)
+            f"{MEM_MAX_WIDTH:g} unit tiles wide.", ha="right", va="top", fontsize=9, color=MUTED)
     _save(fig, outpath)

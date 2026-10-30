@@ -321,6 +321,18 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
   choosing: `python3 THESIS/generate_thesis_artifacts.py --only <ids>
   --preview-views <dir>` (side-by-side `index.html`). Details:
   `THESIS/PIPELINE.md` "Views".
+- **Style: bold text as large as fits, little whitespace** (user 2026-10-28). Figures
+  are drawn at their printed width (`FULL_W` = \textwidth, `HALF_W` = a 0.48\textwidth
+  subfigure; every sweep subfigure in main.tex is 0.48\textwidth since 2026-10-29), so
+  the rcParams sizes are printed sizes (9–11 pt, all bold).
+  - `_legend_above` puts the legend over the whole figure, in as many columns as fit:
+    the data series first, then the gray key (active/idle, y ∝ x).
+  - `_save` wraps an axis label that would overflow its axis (`_wrap_labels`).
+  - Check a figure's PNG before shipping it: `--preview-views`, or a generator called
+    with a `.png` path.
+  - The Ch. 5 app figures (`generators._grouped_bar`, `single_level_area`) still use
+    the old 6×4 in style. Restyle them once app data exists: 8 long design ids don't
+    fit a half-width legend.
 Placement + captions for main.tex (the Overleaf project "Thesis Rough Draft" is
 the live copy; local `main_thesis.tex` is stale):
 `THESIS/output/snippets/memtile_figures.tex` (EDIT 1–7).
