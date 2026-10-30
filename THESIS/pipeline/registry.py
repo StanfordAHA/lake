@@ -514,7 +514,8 @@ MEMTILE_CHARACTERIZATION = [
 APPENDIX = [
     Entry("halide_appendix", "app:halide_code",
           "listings/halide_appendix.tex", "listing",
-          "Halide-to-Hardware generators at aha's pinned commit + aha application_parameters.json args",
+          "Halide-to-Hardware generators at aha's pinned commit, with the dirs and args the "
+          "app bundles record (THESIS/apps/registry.py, else aha application_parameters.json)",
           "real", ha.halide_appendix,
           notes="Pasted inline into the appendix of main.tex (Overleaf); one lstlisting per app."),
 ]

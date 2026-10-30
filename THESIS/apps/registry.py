@@ -105,7 +105,7 @@ APPS: list[AppSpec] = [
             bundle_env="HL_TARGET=host-x86-64-enable_ponds HALIDE_GEN_ARGS=n=16 MATMUL_N=16"),
     # The resnet that ran end to end on both thesis fabrics (garnet mflowgen/CLAUDE.md
     # "Thesis fabrics"): a copy of apps/resnet with the output channel innermost; stock
-    # apps/resnet stops in parse_design_meta. No app bundle of it exists yet.
+    # apps/resnet stops in parse_design_meta. In H2H thesis since 163a591a.
     AppSpec("resnet_agg", "ResNet block",
             "pondspec_e2e/resnet", "resnet",
             "aggressive",

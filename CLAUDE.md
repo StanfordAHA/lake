@@ -221,8 +221,9 @@ never run; Milestone 1 wired as of 2026-09-28):
 `python3 THESIS/generate_thesis_artifacts.py --only halide_appendix` writes
 `THESIS/output/listings/halide_appendix.tex`: the generator code of the six
 `tab:exploration_applications` apps at the Halide-to-Hardware commit aha pins,
-with only the Clockwork schedule aha's `application_parameters.json` args
-select. Paste it over the listings in the Overleaf appendix
+from the dirs the app bundles record (`THESIS/apps/registry.py`; matmul is
+`tests/matmul_rvtry3` at n=16, resnet `pondspec_e2e/resnet`, both in H2H thesis
+since 163a591a), with only the Clockwork schedule their args select. Paste it over the listings in the Overleaf appendix
 (`app:halide_code`). Details: `THESIS/PIPELINE.md` §4.
 
 ### 1.8 Memory-tile (Tile_MemCore) sweep figures
