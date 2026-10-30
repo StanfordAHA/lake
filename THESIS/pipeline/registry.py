@@ -411,13 +411,18 @@ TABLES = [
           "real", g.ul_design_points),
     Entry("ul_perf", "tab:ul_perf",
           "tables/ul_perf.tex", "table",
-          "per-app perf + memory usage on single-level designs", "bogus", None,
-          notes="TODO: fill from the same app-mapping harness that feeds single_level_* figs."),
+          "per-app perf + memory usage on single-level designs", "real", g.ul_perf,
+          notes="Static app results (THESIS/data/apps), aggressive schedules only: per app the "
+                "UL memories, output words per cycle and kernel cycles, each a range over the "
+                "design points it ran on. BOGUS until the final run's app power is ingested."),
     Entry("ul_ppa_summary", "tab:ul_ppa_summary",
           "tables/ul_ppa_summary.tex", "table",
-          "PPA summary per single-level design point (area+timing live; power blank until sweep runs)",
+          "PPA summary per single-level design point (area+timing from the standalone builds; "
+          "power from the in-CGRA MemTile sweep)",
           "real", g.ul_ppa_summary,
-          notes="Power column blank until ptpx-synth flow runs; auto-fills once synth_power_w populated."),
+          notes="Power: the static thesis MemTile of each design point, synth-level active power "
+                "at its clock (the final run's thesis_dse memtile_power.csv, via tile_sweep.load()). "
+                "Blank until that zip is ingested with THESIS.pipeline.tile_sweep."),
 ]
 
 

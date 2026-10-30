@@ -5,10 +5,11 @@ Each ``emit_*`` function writes one ``.tex`` snippet (a bare
 path. Anything undetermined at generation time is left as a
 ``% TODO: <what's missing>`` LaTeX comment so it's obvious in-file.
 
-The three "populate now from existing data" tables are here:
+The "populate now from existing data" tables are here:
   - emit_ul_ppa_summary  — per-DesignPoint PPA rollup
   - emit_ul_design_points — DesignPoint axis enumeration
   - emit_exploration_applications — render AppSpec list
+  - emit_ul_perf — per-app memories, output rate and runtime (app results)
 
 The two "structural skeletons with prose TODOs":
   - emit_lake_interfaces — scraped from lake/spec/*.py
@@ -64,8 +65,23 @@ def _find_design_row(df: pd.DataFrame, dp) -> pd.Series | None:
 # ---- tab:ul_ppa_summary ----------------------------------------------------
 
 
-def emit_ul_ppa_summary(df: pd.DataFrame, outpath: Path) -> None:
-    """PPA per design point (area + timing today; power drops in later)."""
+def _memtile_power_row(memtile: pd.DataFrame | None, dp, mode: str = "static") -> pd.Series | None:
+    """A design point's in-CGRA MemTile row of the tile sweep (``tile_sweep.load()``):
+    the thesis tile of its geometry in mode (``garnet_configs.garnet_config``), with
+    its synth-level active power (garnet ``--memtile-power``, memtile_power.csv)."""
+    from ..apps.garnet_configs import garnet_config
+
+    if memtile is None or "config" not in memtile or "synth_active_total_power" not in memtile:
+        return None
+    hits = memtile[memtile["config"] == garnet_config(dp, mode, "thesis")]
+    hits = hits.dropna(subset=["synth_active_total_power"])
+    return None if hits.empty else hits.iloc[0]
+
+
+def emit_ul_ppa_summary(df: pd.DataFrame, outpath: Path, memtile: pd.DataFrame | None = None) -> None:
+    """PPA per design point: area and timing from the standalone builds (df), power
+    from the final run's in-CGRA MemTile sweep (memtile, ``tile_sweep.load()`` of
+    thesis_dse): the static thesis tile's synth-level active power at its clock."""
     from ..apps.design_points import DESIGNS_SINGLE_LEVEL
 
     if not DESIGNS_SINGLE_LEVEL:
@@ -78,43 +94,45 @@ def emit_ul_ppa_summary(df: pd.DataFrame, outpath: Path) -> None:
         r"Total area (\si{\micro\meter\squared})",
         r"$f_{\mathrm{max}}$-slack (\si{\pico\second})",
         r"Crit-path (\si{\pico\second})",
-        r"Synth power (\si{\milli\watt})",
+        r"MemTile power (\si{\milli\watt})",
+        r"MemTile clock (\si{\mega\hertz})",
     ]
     lines = [
-        r"\begin{tabular}{lrrrrrr}",
+        r"\begin{tabular}{lrrrrrrr}",
         r"\toprule",
         " & ".join(header) + r" \\",
         r"\midrule",
     ]
 
     missing_rows: list[str] = []
-    missing_power = False
+    missing_power: list[str] = []
     for dp in DESIGNS_SINGLE_LEVEL:
         row = _find_design_row(df, dp)
         if row is None:
             missing_rows.append(dp.id)
-            cells = [_fmt(dp.display)] + [_fmt(None)] * 6
+            cells = [_fmt(dp.display)] + [_fmt(None)] * 5
         else:
             logic = None
             if pd.notna(row.get("synth_total_area_um2")) and pd.notna(row.get("synth_storage_area_um2")):
                 logic = float(row["synth_total_area_um2"]) - float(row["synth_storage_area_um2"])
-            sram = row.get("synth_storage_area_um2")
-            total = row.get("synth_total_area_um2")
-            wns = row.get("wns_ps")
-            crit = row.get("crit_path_delay_ps")
-            pwr_w = row.get("synth_power_w")
-            if pd.isna(pwr_w):
-                missing_power = True
-            pwr_mw = float(pwr_w) * 1000 if pd.notna(pwr_w) else None
             cells = [
                 _fmt(dp.display),
                 _fmt(logic),
-                _fmt(sram),
-                _fmt(total),
-                _fmt(wns),
-                _fmt(crit),
-                _fmt(pwr_mw),
+                _fmt(row.get("synth_storage_area_um2")),
+                _fmt(row.get("synth_total_area_um2")),
+                _fmt(row.get("wns_ps")),
+                _fmt(row.get("crit_path_delay_ps")),
             ]
+        tile = _memtile_power_row(memtile, dp)
+        if tile is None:
+            missing_power.append(dp.id)
+            cells += [_fmt(None)] * 2
+        else:
+            mhz = tile.get("clock_mhz")
+            if pd.isna(mhz) and pd.notna(tile.get("clock_period_ps")):
+                mhz = 1e6 / float(tile["clock_period_ps"])
+            cells += [_fmt(float(tile["synth_active_total_power"]) * 1000),
+                      _fmt(None if pd.isna(mhz) else round(float(mhz)))]
         lines.append(" & ".join(cells) + r" \\")
 
     lines.extend([r"\bottomrule", r"\end{tabular}"])
@@ -124,7 +142,8 @@ def emit_ul_ppa_summary(df: pd.DataFrame, outpath: Path) -> None:
     if missing_rows:
         notes.append(f"missing extractor rows for: {', '.join(missing_rows)}")
     if missing_power:
-        notes.append("TODO: synth power blank until ptpx-synth flow runs")
+        notes.append(f"TODO: MemTile power blank for {', '.join(missing_power)} -- no thesis_dse "
+                     "row (python3 -m THESIS.pipeline.tile_sweep <thesis_dse zip>)")
     if notes:
         body = "% " + " | ".join(notes) + "\n" + body
 
@@ -171,12 +190,66 @@ def emit_ul_design_points(df: pd.DataFrame, outpath: Path) -> None:
     outpath.write_text("\n".join(lines) + "\n")
 
 
+# ---- tab:ul_perf ------------------------------------------------------------
+
+
+def _span(values: pd.Series, fmt) -> str:
+    """``a`` when every value is a, else ``lo--hi``; ``--`` when there is none."""
+    v = values.dropna()
+    if v.empty:
+        return "--"
+    lo, hi = fmt(v.min()), fmt(v.max())
+    return lo if lo == hi else f"{lo}--{hi}"
+
+
+def emit_ul_perf(df: pd.DataFrame, outpath: Path, mode: str = "static") -> None:
+    """One row per app of the mode's app results (``apps_query``): the UL
+    memories it places (``tile_count``), output words per cycle and kernel
+    cycles, each a range over the design points it ran on. Apps that record
+    nothing in the mode (``bundle_blocked``, ``bundle_modes``) are left out."""
+    from ..apps import garnet_configs as gc
+    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    from ..apps.registry import APPS
+
+    if df.empty:
+        raise MissingDataError(f"no {mode} app results")
+    n_configs = len({gc.garnet_config(dp, mode) for dp in DESIGNS_SINGLE_LEVEL} - {None})
+    header = ["Application", "UL memories", "Output words per cycle", "Total runtime (cycles)", "Notes"]
+    lines = [
+        r"\begin{tabular}{lcccl}",
+        r"\toprule",
+        " & ".join(header) + r" \\",
+        r"\midrule",
+    ]
+    for a in APPS:
+        if a.bundle_blocked or (a.bundle_modes and mode not in a.bundle_modes.split(",")):
+            continue
+        rows = df[df["app_id"] == a.id]
+        notes = [f"{rows['config'].nunique() if 'config' in rows else len(rows)} of {n_configs} design points"]
+        if a.level == "two":
+            notes.append("PE-tile pond")
+        arrays = {f"{int(w)}x{int(h)}" for w, h in zip(rows.get("cgra_width", []), rows.get("cgra_height", []))
+                  if pd.notna(w) and pd.notna(h) and (w, h) != (16, 16)}
+        notes += [f"{x} array" for x in sorted(arrays)]
+        none = pd.Series(dtype=float)
+        cells = [_fmt(a.display),
+                 _span(rows.get("tile_count", none), lambda v: str(int(v))),
+                 _span(rows.get("output_per_cycle", none), lambda v: f"{v:.3g}"),
+                 _span(rows.get("total_cycles", none), lambda v: f"{int(v):,}"),
+                 _fmt("; ".join(notes))]
+        lines.append(" & ".join(cells) + r" \\")
+    lines.extend([r"\bottomrule", r"\end{tabular}"])
+
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    outpath.write_text("\n".join(lines) + "\n")
+
+
 # ---- tab:exploration_applications ------------------------------------------
 
 
 def emit_exploration_applications(outpath: Path) -> None:
     """Render the app registry as a LaTeX table."""
-    from ..apps.registry import APPS
+    from ..apps.registry import APPS, unverified
 
     if not APPS:
         raise MissingDataError("APPS registry is empty")
@@ -195,9 +268,9 @@ def emit_exploration_applications(outpath: Path) -> None:
 
     body = "\n".join(lines) + "\n"
     # Warn if any AppSpec still has "??" markers so it's obvious in-file.
-    unverified = [a.id for a in APPS if "??" in " ".join(a.__dict__.values())]
-    if unverified:
-        body = f"% TODO: verify halide_app_dir/testname for: {', '.join(unverified)}\n" + body
+    todo = [a.id for a in unverified()]
+    if todo:
+        body = f"% TODO: verify halide_app_dir/testname for: {', '.join(todo)}\n" + body
 
     outpath.parent.mkdir(parents=True, exist_ok=True)
     outpath.write_text(body)

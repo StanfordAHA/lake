@@ -145,6 +145,28 @@ def test_blocked_app_is_commented_out():
     assert all(c in script for c in only["mm"]) and "make_tree /t/mm" not in script
 
 
+def test_mode_and_port_filters_skip_configs():
+    dps = [_dp(id="a"), _dp(id="b", in_ports=1, storage_cap_bytes=4096)]
+    apps = [_app("p", "x/pond", bundle_modes="rv", bundle_in_ports=1), _app("g", "apps/gaussian")]
+    jobs, _ = gc.bundle_commands(dps, apps, ["static", "rv"], "thesis", "/b", "/t", "/p.json")
+    assert jobs["pond"][0] == "# p: rv only on 1-input points"
+    assert len(jobs["pond"]) == 2 and "--config fw4_dw16_sc4096_sp_in1_out2_vc2_nofp_portcg_thesis_rv " in jobs["pond"][1]
+    assert len(jobs["gaussian"]) == 4 and not any(c.startswith("#") for c in jobs["gaussian"])
+
+
+def test_resnet_pond_records_the_addon2_cells():
+    # garnet mflowgen/CLAUDE.md "Add-ons": addon2 recorded resnet_pond_agg RV on the two
+    # 1-input points, where resnet_agg cannot map
+    jobs, _ = gc.bundle_commands(DESIGNS_SINGLE_LEVEL, [by_id("resnet_pond_agg")], list(gc.MODES),
+                                 "thesis", "/b", "/t", "/p.json")
+    cfgs = [w[w.index("--config") + 1] for w in map(shlex.split, jobs["resnet_pond"]) if "--config" in w]
+    assert cfgs == ["fw2_dw16_sc2048_sp_in1_out1_vc2_nofp_portcg_thesis_rv",
+                    "fw1_dw16_sc4096_dp_in1_out1_nofp_portcg_thesis_rv"]
+    assert gc.app_map()["resnet_pond"] == "resnet_pond_agg"  # the manifests' probe_1fa8/resnet_pond
+    # its bundles record app_env {} (EXT defaults to png), unlike resnet_agg's EXT=mat
+    assert not any("--env" in c for c in jobs["resnet_pond"])
+
+
 def test_bundle_script_runs_one_job_per_app_dir():
     apps = [_app("g", "apps/gaussian"), _app("u", "apps/unsharp")]
     lines = gc.bundle_script([_dp()], apps, ["static", "rv"], "thesis", "/b", "/t", "/b/p.json")

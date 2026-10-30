@@ -139,8 +139,15 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
   Clockwork schedule those args select (`pipeline/halide_appendix.py`). Checkouts default to
   `../aha` and `../Halide-to-Hardware`; override with `AHA_DIR` / `H2H_DIR`.
   The snippet is pasted inline into the appendix of main.tex (Overleaf).
-- **THESIS_BUILDS** (standalone lakespec) → the `tab:ul_ppa_summary` table.
+- **THESIS_BUILDS** (standalone lakespec) → the area and timing columns of
+  `tab:ul_ppa_summary`. Its power column comes from the tile sweep
+  (`tile_sweep.load()`): each design point's static thesis MemTile, synth-level active
+  power at that tile's clock (the final run's `thesis_dse` `memtile_power.csv`; 2026-10-29).
   (`tab:memtile_model_*` fit the tile sweep since 2026-10-24: §7.)
+- **App results** (`data/apps`, `THESIS.apps.cgra_power_ingest`) → `tab:ul_perf`
+  (`tables.emit_ul_perf`): one row per app of the static run, aggressive schedules
+  only. Each row gives the UL memories (`tile_count`), output words per cycle and kernel
+  cycles, as a range over the design points the app ran on. Pond apps are included.
 - **PE tile pitch** → `fig:pe_tile_height` (`tile_figures.pe_tile_pitch`): each
   fabric's PE and Memory Tile PnR area from `data/pe_tile/thesis_tiles.csv`
   (copied by hand from garnet mflowgen/CLAUDE.md, the 2026-10-22 thesis tile set at
@@ -162,7 +169,7 @@ manual (block diagram / curated table). Full breakdown: run
 | No dedicated per-stride / per-offset AFFINE sweep | `affine_{area,power}_vs_{stride,offset}` | **dropped** (2026-10-17): not separate hardware parameters (SG: `max_sequence_width`, AG: address width); figures removed from the tex and the registry |
 | No dedicated ScheduleGenerator sweep | `sched_gen_{dim,max_extent}` | open |
 | No LI ScheduleGenerator sweep in THESIS_BUILDS | `li_sched_{ports,loc}_{area,power}` | open |
-| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf`, `tab:ul_ppa_summary` | **ingest written (2026-10-25), no data yet**: garnet `cgra_app_power.py` → `THESIS.apps.cgra_power_ingest` → `results.json`; `single_level_*` and `single_level_*_LI` are real but draw BOGUS until thesis-fabric bundles for the design points are recorded and powered. Commands: `THESIS/apps/CGRA_APP_POWER.md` |
+| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf` | **ingest written (2026-10-25), no data yet**: garnet `cgra_app_power.py` → `THESIS.apps.cgra_power_ingest` → `results.json`; `single_level_*`, `single_level_*_LI` and `tab:ul_perf` are real but draw BOGUS until thesis-fabric bundles for the design points are recorded and powered. Commands: `THESIS/apps/CGRA_APP_POWER.md` |
 | No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — tile-sweep model (2026-10-24, §7); refit on the thesis-fabric design-space sweep once ingested |
 | No pre/post SB PPA numbers | `fig:interconnect_fork_ready_valid_data`, `fig:interconnect_fifo_replace_ff` | **build command exists, not run** (2026-10-17): garnet `sweep_specs.py --recipe fabric_mem` + `pe_tile` (static vs ready-valid fabric, hierarchy kept; garnet mflowgen/CLAUDE.md "Thesis data recipe"). No lake ingest for those zips yet |
 
@@ -238,8 +245,11 @@ tiers:
 
 - **Fully data-driven** (populate now from existing state):
   - `emit_ul_ppa_summary` — per-`DesignPoint` PPA rollup. Area+timing
-    live; power blank until the ptpx sweep runs. Missing DataFrame
-    rows are called out in a `%`-comment header.
+    from THESIS_BUILDS; power + its clock from the in-CGRA MemTile sweep
+    (blank until the thesis_dse zip is ingested). Missing rows and power
+    are called out in a `%`-comment header.
+  - `emit_ul_perf` — per-app UL memories, output rate and runtime over
+    the design points (app results).
   - `emit_ul_design_points` — DesignPoint axis enumeration with a
     `roundtrip_validated` column.
   - `emit_exploration_applications` — renders `THESIS/apps/registry.APPS`

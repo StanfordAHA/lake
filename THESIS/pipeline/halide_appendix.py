@@ -36,7 +36,8 @@ _LAKE_REPO = Path(__file__).resolve().parents[2]
 
 # (registry app id, listing name, label, generator name when it isn't the app
 # dir's). Matrix multiply lists the two-level (pond) entry: the single-level one
-# doesn't map yet, and both run the same generator.
+# doesn't map yet, and both run the same generator. ResNet has both: the pond one
+# runs where the single-level one cannot map.
 APPS = [
     ("gaussian_agg", "Gaussian", "lst:gaussian_halide", ""),
     ("unsharp_agg", "Unsharp", "lst:unsharp_halide", ""),
@@ -44,6 +45,7 @@ APPS = [
     ("camera_pipeline_agg", "Camera Pipeline", "lst:camera_pipe_halide", ""),
     ("matmul_pond_agg", "Matrix Multiplication", "lst:matrix_multiply_halide", "matmul"),
     ("resnet_agg", "ResNet", "lst:resnet_halide", ""),
+    ("resnet_pond_agg", "ResNet (pond)", "lst:resnet_pond_halide", "resnet"),
 ]
 
 LST_OPTS = "basicstyle=\\scriptsize\\ttfamily, columns=fullflexible, breaklines=true, keepspaces=true"
@@ -62,7 +64,10 @@ def _code_comment(line: str) -> bool:
     if _NOTE.match(rest) or _ARGS.match(rest):
         return True
     assign = re.match(r"^[\w\.]+\s*=[^=]", rest) and re.search(r"[()\[\]<>*/+\-]", rest)
-    return bool(re.search(r";\s*(//.*)?$", rest) or rest.endswith(("{", "}"))
+    # a statement, unless its code part runs four plain words (prose ending in ";")
+    stmt = re.search(r";\s*(//.*)?$", rest) and not re.search(r"(?:[A-Za-z]+ ){3}[A-Za-z]+",
+                                                            re.sub(r"//.*", "", rest))
+    return bool(stmt or rest.endswith(("{", "}"))
                 or re.match(r"^[\w\.]+(\(|\.\w)", rest) or assign)
 
 

@@ -94,5 +94,7 @@ def test_sched_chain_inside_the_shared_schedule():
 
 def test_prose_with_a_semicolon_is_kept():
     assert not ha._code_comment("// ROM tiles; the lake spec MemCore cannot")
+    assert not ha._code_comment("// scratch: output tile per accelerator invocation (28 = whole image);")
+    assert ha._code_comment("//int k_z = 8;")
     assert ha._code_comment("// out.unroll(x);")
     assert ha._code_comment("//hw_input.unroll(x, 3);   // unroll x")

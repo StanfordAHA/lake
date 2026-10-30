@@ -369,8 +369,14 @@ def memtile_model_verif(ctx: GenContext, outpath: Path) -> None:
 
 
 def ul_ppa_summary(ctx: GenContext, outpath: Path) -> None:
-    """PPA rollup per DesignPoint. Power blank until sweep runs."""
-    tables.emit_ul_ppa_summary(ctx.df, outpath)
+    """PPA rollup per DesignPoint: area + timing from the standalone builds, power
+    from the in-CGRA MemTile sweep (the final run's thesis_dse, tile_sweep.load())."""
+    from . import tile_sweep
+    try:
+        memtile = tile_sweep.load()
+    except MissingDataError:
+        memtile = None
+    tables.emit_ul_ppa_summary(ctx.df, outpath, memtile)
 
 
 def ul_design_points(ctx: GenContext, outpath: Path) -> None:
@@ -405,8 +411,9 @@ APP_FABRIC = "thesis"
 _MODE_TITLE = {"static": "Single-level", "rv": "Single-level LI"}
 
 
-def _load_apps_or_miss(required_col: str | None = None, mode: str = "static") -> pd.DataFrame:
-    df = apps_query.load_app_results_df(mode=mode, fabric=APP_FABRIC, level="single",
+def _load_apps_or_miss(required_col: str | None = None, mode: str = "static",
+                       level: str | None = "single") -> pd.DataFrame:
+    df = apps_query.load_app_results_df(mode=mode, fabric=APP_FABRIC, level=level,
                                         pond_id=apps_query.SINGLE_LEVEL_PONDS)
     if df.empty:
         raise MissingDataError(
@@ -550,6 +557,12 @@ def single_level_energy_efficiency(ctx: GenContext, outpath: Path, mode: str = "
         xlabel="App", ylabel="Energy (µJ)",
         outpath=outpath,
     )
+
+
+def ul_perf(ctx: GenContext, outpath: Path) -> None:
+    """Per-app UL memories, output rate and runtime over the single-level design
+    points: the static app results, every app of the run (the pond matmul too)."""
+    tables.emit_ul_perf(_load_apps_or_miss(required_col="total_cycles", level=None), outpath)
 
 
 def _li(gen):

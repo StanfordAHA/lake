@@ -236,7 +236,8 @@ def bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_s
     a job, so no two runs use one app dir at once; each job has its own private aha
     tree (<tree_root>/<job>) and runs its lines one after another. A bundle_blocked
     app's lines are commented out; a bundle_retry_array app's run through
-    retry_bigger. RV records balanced on every fabric (garnet >= 5fab9324: no PnR
+    retry_bigger; an app with bundle_modes / bundle_in_ports records only those
+    configs. RV records balanced on every fabric (garnet >= 5fab9324: no PnR
     pipelining, aha pnr latency-matches), so no line passes --rv-balance."""
     configs, notes = [], []
     for dp in designs:
@@ -244,10 +245,10 @@ def bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_s
             cfg = garnet_config(dp, mode, fabric)
             if cfg is None:
                 notes.append(f"# {dp.id} {mode}: {unsupported(design_spec(dp), mode)}")
-            elif cfg in [c for c, _ in configs]:
+            elif cfg in [c for c, _, _ in configs]:
                 notes.append(f"# {dp.id} {mode}: same config as an earlier design point ({cfg})")
             else:
-                configs.append((cfg, mode))
+                configs.append((cfg, mode, dp))
     jobs: dict[str, list[str]] = {}
     for app in apps:
         job = app_basename(app.halide_app_dir)
@@ -256,7 +257,13 @@ def bundle_commands(designs, apps, modes, fabric, bundle_root, tree_root, pond_s
         lines = jobs.setdefault(job, [])
         if app.bundle_blocked:
             lines.append(f"# {app.id} BLOCKED: {app.bundle_blocked}")
-        for cfg, mode in configs:
+        app_modes = app.bundle_modes.split(",") if app.bundle_modes else MODES
+        only = [(c, m) for c, m, dp in configs
+                if m in app_modes and app.bundle_in_ports in (0, dp.in_ports)]
+        if len(only) < len(configs):
+            ports = f" on {app.bundle_in_ports}-input points" if app.bundle_in_ports else ""
+            lines.append(f"# {app.id}: {'/'.join(app_modes)} only{ports}")
+        for cfg, mode in only:
             cmd = (f"python3 {tree}/garnet/mflowgen/common/application/gen_app_bundle.py "
                    f"--config {cfg} --app {app.halide_app_dir} --bundle-dir {bundle_root}/{app.id} "
                    f"--aha-dir {tree} --cgra-tiles --pond-spec {pond_spec}{env}")

@@ -96,14 +96,33 @@ def test_ul_ppa_summary_writes_valid_tabular(tmp_path):
 
 
 def test_ul_ppa_summary_flags_missing_power_in_comment(tmp_path):
-    """When synth_power_w is null everywhere, a % TODO header is prepended."""
-    df = _fake_extractor_df().copy()
-    df["synth_power_w"] = None
+    """Without the MemTile sweep, a % TODO header names the blank power rows."""
     out = tmp_path / "ppa.tex"
-    tables.emit_ul_ppa_summary(df, out)
+    tables.emit_ul_ppa_summary(_fake_extractor_df(), out)
     body = out.read_text()
     assert body.startswith("%")
-    assert "synth power blank" in body or "ptpx" in body
+    assert "MemTile power blank for port_fw4_dw16_sc8k_sp2x2" in body and "thesis_dse" in body
+
+
+def test_ul_ppa_summary_power_from_the_memtile_sweep(tmp_path):
+    """Power is the static thesis MemTile's synth active power at its clock, not
+    the standalone build's synth_power_w."""
+    from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
+    from THESIS.apps.garnet_configs import garnet_config
+    dp = DESIGNS_SINGLE_LEVEL[0]
+    memtile = pd.DataFrame([
+        {"config": garnet_config(dp, "static", "thesis"), "synth_active_total_power": 0.0123,
+         "clock_period_ps": 1666.67},
+        {"config": garnet_config(dp, "rv", "thesis"), "synth_active_total_power": 0.0456,
+         "clock_period_ps": 1428.57},
+        {"config": garnet_config(dp, "static"), "synth_active_total_power": 0.0789,  # stock fabric
+         "clock_period_ps": 1333.0},
+    ])
+    out = tmp_path / "ppa.tex"
+    tables.emit_ul_ppa_summary(_fake_extractor_df(), out, memtile)
+    row = next(ln for ln in out.read_text().splitlines() if ln.startswith(tables._fmt(dp.display) + " &"))
+    assert row.endswith(r" & 12.3 & 600 \\")
+    assert "MemTile power blank for port_fw4_dw16_sc8k_sp2x2" not in out.read_text()
 
 
 def test_ul_ppa_summary_flags_missing_extractor_rows(tmp_path):
@@ -137,6 +156,41 @@ def test_ul_ppa_summary_raises_when_no_designs(tmp_path, monkeypatch):
     monkeypatch.setattr(design_points, "DESIGNS_SINGLE_LEVEL", [])
     with pytest.raises(MissingDataError, match="empty"):
         tables.emit_ul_ppa_summary(_fake_extractor_df(), tmp_path / "x.tex")
+
+
+# ---------- emit_ul_perf ------------------------------------------------------
+
+
+def _app_rows():
+    def r(app, config, tiles, cycles, words, **kw):
+        return {"app_id": app, "config": config, "tile_count": tiles, "total_cycles": cycles,
+                "output_per_cycle": words / cycles, "cgra_width": 16, "cgra_height": 16, **kw}
+    return pd.DataFrame([
+        r("gaussian_agg", "a", 2, 4096, 4096), r("gaussian_agg", "b", 3, 4096, 4096),
+        r("camera_pipeline_agg", "a", 9, 12562, 3 * 4096, cgra_width=28),
+        r("matmul_pond_agg", "a", 4, 1000, 256, cgra_width=None),  # a float column, as with a gap
+    ])
+
+
+def test_ul_perf_one_row_per_app_with_ranges(tmp_path):
+    out = tmp_path / "perf.tex"
+    tables.emit_ul_perf(_app_rows(), out)
+    lines = out.read_text().splitlines()
+    row = {ln.split(" & ")[0]: ln for ln in lines if " & " in ln}
+    assert row["Gaussian"] == r"Gaussian & 2--3 & 1 & 4,096 & 2 of 7 design points \\"
+    assert row["Camera Pipeline 2x2"].endswith(r"& 0.978 & 12,562 & 1 of 7 design points; 28x16 array \\")
+    assert "PE-tile pond" in row["Matrix Multiply (pond)"]
+    assert row["Unsharp"] == r"Unsharp & -- & -- & -- & 0 of 7 design points \\"
+    # matmul_agg is blocked and resnet_pond_agg records RV only: not in the static table
+    assert "Matrix Multiply &" not in out.read_text() and "ResNet block (pond)" not in row
+    rv = tmp_path / "perf_rv.tex"
+    tables.emit_ul_perf(_app_rows(), rv, mode="rv")
+    assert "ResNet block (pond) &" in rv.read_text()
+
+
+def test_ul_perf_raises_without_results(tmp_path):
+    with pytest.raises(MissingDataError):
+        tables.emit_ul_perf(pd.DataFrame(), tmp_path / "x.tex")
 
 
 # ---------- emit_ul_design_points ------------------------------------------

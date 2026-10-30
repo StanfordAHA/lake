@@ -6,11 +6,12 @@ can consume.
 
 The 6 apps come from ``tab:exploration_applications`` in main_thesis.tex
 (lines ~1885-1898); matrix multiply has a single- and a two-level entry
-(2026-10-25). ``halide_app_dir`` is the ``--app`` path garnet's
+(2026-10-25), and resnet a two-level one where the single-level one cannot map
+(2026-10-29). ``halide_app_dir`` is the ``--app`` path garnet's
 ``gen_app_bundle.py`` records (``THESIS/apps/CGRA_APP_POWER.md``); the
 matmul and resnet dirs are the ones the garnet app bundles and thesis-fabric
-runs used. Which apps have "aggressive" vs "conservative" schedule variants
-is still open.
+runs used. Every app is the aggressive schedule: the final run has no
+conservative ones (user 2026-10-29).
 """
 
 from __future__ import annotations
@@ -30,8 +31,8 @@ class AppSpec:
             with ``$AHA_ROOT/apps/hardware_benchmarks/``).
         testname: Halide "testname" the round-trip flow passes to
             ``run_clockwork.py`` via ``--testname``.
-        schedule_variant: "aggressive" | "conservative" (matches the
-            column split in ``tab:ul_perf``).
+        schedule_variant: "aggressive" | "conservative" (every app is
+            aggressive: tab:ul_perf has no conservative rows).
         memory_notes: one-line access-pattern description for the thesis
             narrative — kept in-code so it's easy to keep the tex table
             in sync with the harness.
@@ -44,6 +45,10 @@ class AppSpec:
             ``garnet_configs --commands`` prints its lines commented out.
         bundle_retry_array: "WxH": record again on that array when PnR fails
             on the default 16x16 one ("" = never).
+        bundle_modes: the runtime modes it records in, comma-separated ("" =
+            every mode).
+        bundle_in_ports: record only on design points with this many input
+            ports (0 = every point).
     """
 
     id: str
@@ -56,6 +61,8 @@ class AppSpec:
     bundle_env: str = ""
     bundle_blocked: str = ""
     bundle_retry_array: str = ""
+    bundle_modes: str = ""
+    bundle_in_ports: int = 0
 
 
 # TODO: verify each halide_app_dir / testname against the local
@@ -111,11 +118,23 @@ APPS: list[AppSpec] = [
             "aggressive",
             "3×3 conv block w/ weight reuse; ping-pong tile buffer for activations",
             bundle_env="EXT=mat"),
+    # Resnet where resnet_agg cannot map (two MEM writers, one input port): the same
+    # app with the reduction innermost, accumulated in the PE-tile pond, the output
+    # channels a loop and HL_TARGET -enable_ponds (its Makefile), at the default
+    # tile=28. addon2 recorded it RV on the two 1-input points (garnet mflowgen/CLAUDE.md
+    # "Add-ons"); static outputs all zeros there, so those two cells are gaps (user
+    # 2026-10-29). Recorded from an identical copy (manifest app probe_1fa8/resnet_pond);
+    # in H2H thesis since ff1435830. No app env: its bundles record app_env {} and ran
+    # with hardware_targets.mk's default EXT=png, bit-accurate (unlike resnet_agg's
+    # EXT=mat; /aha manifests, aha-08 2026-10-29).
+    AppSpec("resnet_pond_agg", "ResNet block (pond)",
+            "pondspec_e2e/resnet_pond", "resnet",
+            "aggressive",
+            "3×3 conv block; each output pixel's partial sums accumulate in the PE-tile pond",
+            level="two",
+            bundle_modes="rv",
+            bundle_in_ports=1),
 
-    # TODO: conservative-schedule variants. tab:ul_perf splits every app
-    # into aggressive/conservative columns. Confirm whether the schedule
-    # variant is a separate Halide testname or a compile flag; add rows
-    # once known.
 ]
 
 
@@ -129,4 +148,4 @@ def by_id(app_id: str) -> AppSpec:
 def unverified() -> list[AppSpec]:
     """Return apps that still have a ``??`` in any field — the harness
     should refuse to run these until they're pinned down."""
-    return [a for a in APPS if "??" in " ".join(a.__dict__.values())]
+    return [a for a in APPS if "??" in " ".join(map(str, a.__dict__.values()))]

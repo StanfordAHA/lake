@@ -107,8 +107,9 @@ power and energy figures also need `ptpx-synth` data.
 
 ## 3. Later milestones (in dependency order)
 
-- **Milestone 2 — Aggressive/conservative schedule split.** Adds the
-  second column set in `tab:ul_perf` + doubles the app matrix.
+- **Milestone 2 — Aggressive/conservative schedule split.** Dropped
+  (user 2026-10-29): the final run has aggressive schedules only, and
+  `tab:ul_perf` has no conservative rows.
 - **Milestone 3 — LI variants.** Rerun everything with `Spec(opt_rv=True)`
   (already supported in `tests/test_spec/thesis_sweep.py:36`) and a new
   LI round-trip config. Flips `single_level_*_LI` and eventually the

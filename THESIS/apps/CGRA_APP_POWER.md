@@ -1,8 +1,9 @@
 # Whole-CGRA app power → Ch. 5 app figures
 
 This doc covers how garnet's whole-CGRA app power (`mflowgen/cgra_app_power.py`) feeds
-these figures: `single_level_*`, `single_level_*_LI` and, later, `two_level_*`,
-`tab:ul_perf` and `tab:ul_ppa_summary`. It replaces `run_matrix.py`'s plan, which
+these figures: `single_level_*`, `single_level_*_LI` and, later, `two_level_*`, and
+`tab:ul_perf` (`tab:ul_ppa_summary` takes its power from the MemTile sweep, not from
+here). It replaces `run_matrix.py`'s plan, which
 simulated one memory tile and used synthetic power. Written 2026-10-25. Nothing below has
 run on the build machine yet.
 
@@ -91,13 +92,16 @@ The text's other axes (dims, ScheduleGenerator duration) have no design points.
   It is in H2H thesis since 163a591a (the appendix lists it) and recorded on every point
   but the two 1-input specs (§4b). The stock app's `HL_TARGET` has no `enable_ponds`, so
   it's listed as single level; check the copy's `design.place` for pond blocks.
-  - **`resnet_pond_agg` is a different app.** addon2's two RV cells on the 1-input specs
-    ran the untracked `probe_1fa8/resnet_pond` (source copy:
-    `/aha/sweep_out/app_bundles_thesis_dp_sources/resnet_pond/`). Its reduction is
-    innermost and accumulates in the pond, output channels are a loop, the output is
-    `(x, y, w)`, and its target has `enable_ponds`.
-  - lake's registry has no entry for it, so the ingest skips those rows. Don't
-    `--app-map resnet_pond_agg=resnet_agg`: the appendix's resnet listing is not their code.
+  - **`resnet_pond_agg` is a different app** (registry entry since 2026-10-29, level
+    "two"). addon2's two RV cells on the 1-input specs ran an untracked copy,
+    `probe_1fa8/resnet_pond`, which is identical to `pondspec_e2e/resnet_pond` in H2H
+    thesis since ff1435830 (the appendix lists it). Its reduction is innermost and
+    accumulates in the pond, output channels are a loop, the output is `(x, y, w)`, its
+    Makefile's `HL_TARGET` has `enable_ponds`, and `tile` stays at its default of 28.
+  - The ingest maps those rows by variant name, or by the manifests' app basename
+    `resnet_pond`. `--commands` records it RV only on the 1-input points
+    (`bundle_modes`, `bundle_in_ports`); its static cells there output all zeros and
+    stay gaps. Don't `--app-map resnet_pond_agg=resnet_agg`: they are different code.
 - A cgra_app_power row maps to an app by its variant name (the app id, as `--commands`
   names variants and bundle dirs), else by the Halide app's basename when only one app
   has it. `matmul_rvtry3` is shared by both matmuls, so older sets need `--app-map`
@@ -240,8 +244,8 @@ The ingest writes one file per `cgra_power.csv` row (config × app), at
 | `synth_power_w` | `app_W`: synth-level power of placed + route tiles, averaged over the replay window (the kernel when `window_is_kernel`) |
 | `total_cycles` | kernel cycles at the tb clock (1 ns): manifest / `cgra_power.csv` `kernel_cycles`, else `aha test`'s log |
 | `clock_period_ps` | the run's clock (`run_meta.json`) |
-| `tile_count` | MEM tiles with a placed core (ul_perf "Number of UL Memories") |
-| `output_per_cycle` | output words / kernel cycles (ul_perf "Output Pixels per Cycle") |
+| `tile_count` | MEM tiles with a placed core (ul_perf "UL memories") |
+| `output_per_cycle` | output words / kernel cycles (ul_perf "Output words per cycle") |
 | `synth_*_area_um2` | (placed + route tiles) × tile area: the CGRA area the app touches |
 | `utilization` | `mem_sram_busy_frac`: mean over placed MEM tiles of SRAM access cycles / kernel cycles; `mem_tile_utilization` = MEM tiles used / in array |
 | `app_energy_j`, `array_power_w`, `window_cycles`, `sram_power_w` | kept for later figures |

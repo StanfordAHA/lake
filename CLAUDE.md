@@ -149,12 +149,13 @@ python3 THESIS/generate_thesis_artifacts.py --only memtile_model_coeff memtile_m
 
 ### 1.7a Auto-generated LaTeX tables
 
-`THESIS/pipeline/tables.py` renders five thesis tables as
+`THESIS/pipeline/tables.py` renders six thesis tables as
 `\begin{tabular}` snippets under `THESIS/output/tables/`:
 
 | Table | Status | Source |
 | --- | --- | --- |
-| `tab:ul_ppa_summary` | data-driven (power col blank until sweep) | extractor DataFrame × `DesignPoint` list |
+| `tab:ul_ppa_summary` | data-driven (power col blank until thesis_dse is ingested) | extractor DataFrame × `DesignPoint` list; power: `tile_sweep.load()` (static thesis MemTile) |
+| `tab:ul_perf` | data-driven (BOGUS until app power is ingested) | static app results (`THESIS/data/apps`), one row per app |
 | `tab:ul_design_points` | data-driven | `THESIS/apps/design_points.DESIGNS_SINGLE_LEVEL` |
 | `tab:exploration_applications` | data-driven | `THESIS/apps/registry.APPS` |
 | `tab:lake_interfaces` | skeleton (prose TODO) | `lake/spec/*.py` `__init__` signatures |
@@ -219,11 +220,13 @@ never run; Milestone 1 wired as of 2026-09-28):
 ### 1.7b Appendix Halide code
 
 `python3 THESIS/generate_thesis_artifacts.py --only halide_appendix` writes
-`THESIS/output/listings/halide_appendix.tex`: the generator code of the six
+`THESIS/output/listings/halide_appendix.tex`: the generator code of the
 `tab:exploration_applications` apps at the Halide-to-Hardware commit aha pins,
 from the dirs the app bundles record (`THESIS/apps/registry.py`; matmul is
-`tests/matmul_rvtry3` at n=16, resnet `pondspec_e2e/resnet`, both in H2H thesis
-since 163a591a), with only the Clockwork schedule their args select. Paste it over the listings in the Overleaf appendix
+`tests/matmul_rvtry3` at n=16 and resnet `pondspec_e2e/resnet`, both in H2H thesis
+since 163a591a; resnet with a pond is `pondspec_e2e/resnet_pond`, since ff1435830),
+with only the Clockwork schedule their args select. Matmul is listed once (both
+entries run one generator), so there are seven listings. Paste it over the listings in the Overleaf appendix
 (`app:halide_code`). Details: `THESIS/PIPELINE.md` §4.
 
 ### 1.8 Memory-tile (Tile_MemCore) sweep figures
