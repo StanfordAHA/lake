@@ -88,8 +88,16 @@ The text's other axes (dims, ScheduleGenerator duration) have no design points.
     mflowgen/CLAUDE.md "No-pond matmul").
 - **resnet** is the copy that ran on both thesis fabrics: `apps/resnet` with the output
   channel innermost, run with `EXT=mat`. Stock `apps/resnet` stops in `parse_design_meta`.
-  No bundle of it exists yet. The stock app's `HL_TARGET` has no `enable_ponds`, so it's
-  listed as single level; check the copy's `design.place` for pond blocks after recording.
+  It is in H2H thesis since 163a591a (the appendix lists it) and recorded on every point
+  but the two 1-input specs (§4b). The stock app's `HL_TARGET` has no `enable_ponds`, so
+  it's listed as single level; check the copy's `design.place` for pond blocks.
+  - **`resnet_pond_agg` is a different app.** addon2's two RV cells on the 1-input specs
+    ran the untracked `probe_1fa8/resnet_pond` (source copy:
+    `/aha/sweep_out/app_bundles_thesis_dp_sources/resnet_pond/`). Its reduction is
+    innermost and accumulates in the pond, output channels are a loop, the output is
+    `(x, y, w)`, and its target has `enable_ponds`.
+  - lake's registry has no entry for it, so the ingest skips those rows. Don't
+    `--app-map resnet_pond_agg=resnet_agg`: the appendix's resnet listing is not their code.
 - A cgra_app_power row maps to an app by its variant name (the app id, as `--commands`
   names variants and bundle dirs), else by the Halide app's basename when only one app
   has it. `matmul_rvtry3` is shared by both matmuls, so older sets need `--app-map`
@@ -317,7 +325,10 @@ pre-fills; before it, camera_pipeline_2x2 balanced to 3/4 rate (§4b). Use GARNE
 - camera_pipeline_2x2 behaved as planned: 16×16 PnR failed, then it recorded at 28×16.
 - resnet can't map on the two 1-input specs: the MEM accumulator needs a second write
   port. Since clockwork 38ed931e the compile refuses it with that message. Those cells
-  stay empty; a pond-based fallback is blocked on garnet/thesis-unpacked-pond-output.
+  have no `resnet_agg`; addon2 records the pond-based fallback `resnet_pond_agg` (RV)
+  there, a different app (§1 resnet).
+- The bundle set is final at 72 of 84 cells with the add-ons (user 2026-10-29; garnet
+  6dd100a8, mflowgen/CLAUDE.md "Add-ons").
 - clockwork 38ed931e (`ready_valid_extract`, session 43d74890, 2026-10-28; aha mek 3eb16a4)
   fixes six static bundles: fw1 dp gaussian / unsharp / harris / camera (28×16), and the
   fw2 dp dw16 / dw32 resnet, which wasn't bit-accurate (RV passed). 1fa8a391 re-records
