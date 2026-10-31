@@ -130,7 +130,8 @@ APPS: list[AppSpec] = [
     # "Add-ons"); static outputs all zeros there, so those two cells are gaps (user
     # 2026-10-29). RV on the five 2-input points too, so every point where resnet_agg
     # maps has both levels for the two_level_* figures (user 2026-10-30); static there
-    # is untried. Recorded from an identical copy (manifest app probe_1fa8/resnet_pond);
+    # is untried; RV fw4_dw32 sp fails in clockwork and is a gap (addon4, 2026-10-31).
+    # Recorded from an identical copy (manifest app probe_1fa8/resnet_pond);
     # in H2H thesis since ff1435830. No app env: its bundles record app_env {} and ran
     # with hardware_targets.mk's default EXT=png, bit-accurate (unlike resnet_agg's
     # EXT=mat; /aha manifests, aha-08 2026-10-29).

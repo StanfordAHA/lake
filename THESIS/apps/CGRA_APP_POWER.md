@@ -105,6 +105,13 @@ The text's other axes (dims, ScheduleGenerator duration) have no design points.
     with resnet_agg's RV cells in `two_level_*` (/aha addon4, aha-08). Its static cells
     on the 1-input points output all zeros and stay gaps; static on the 2-input points
     is untried. Don't `--app-map resnet_pond_agg=resnet_agg`: they are different code.
+  - addon4 (aha-08, 2026-10-31; `/aha/sweep_out/app_bundles_thesis_dp_addon4.tgz`): four
+    of the five 2-input cells are bit-accurate, all at 177,697 ns (the same as on the
+    1-input points, so the pond's reduction sets the pace, not the MEM tile), with 7 MEM /
+    23 PE tiles, or 16 / 29 on fw2 dw32 dp (resnet_agg on fw4 dw16: 26 MEM / 52 PE).
+    fw4 dw32 sp fails to compile (clockwork `get_dim2denom`: "require quasi affine
+    accessor!") and stays a gap, so resnet_agg is alone there. Power is pending
+    (`thesis_final.sh` replays only the new cells).
 - A cgra_app_power row maps to an app by its variant name (the app id, as `--commands`
   names variants and bundle dirs), else by the Halide app's basename when only one app
   has it. `matmul_rvtry3` is shared by both matmuls, so older sets need `--app-map`
