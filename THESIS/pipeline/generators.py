@@ -12,6 +12,7 @@ on that module — the plot code here is small enough to inline.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from itertools import cycle
 from pathlib import Path
@@ -579,3 +580,119 @@ single_level_performance_LI = _li(single_level_performance)
 single_level_area_LI = _li(single_level_area)
 single_level_utilization_LI = _li(single_level_utilization)
 single_level_energy_efficiency_LI = _li(single_level_energy_efficiency)
+
+
+# ---- two_level_*: each two-level app against its single-level counterpart ----
+# A pond app and the same computation without the pond (AppSpec.single_level_app),
+# side by side on every design point: what the second level (the PE-tile pond) buys
+# (user 2026-10-30). RV only: resnet_pond_agg records RV only, and the no-pond matmul
+# maps in neither mode. A missing bar is drawn as an ×: no bit-accurate result there.
+# A pair need not do the same work (resnet_agg runs a tile=14 kernel, resnet_pond_agg
+# the whole 28x28 image; aha-08 2026-10-30), so performance and energy are per output
+# word.
+TWO_LEVEL_MODE = "rv"
+_LEVEL_LABELS = {"single": "Single level (MEM tiles)", "two": "Two level (+ PE-tile pond)"}
+
+
+def _level_pairs(required_col: str) -> pd.DataFrame:
+    """The RV rows of every (single-level, two-level) app pair, with ``pair`` (the
+    single-level app's name) and ``level`` (single | two) columns."""
+    from ..apps.registry import APPS, by_id
+    df = apps_query.load_app_results_df(mode=TWO_LEVEL_MODE, fabric=APP_FABRIC, level=None,
+                                        pond_id=apps_query.SINGLE_LEVEL_PONDS)
+    parts = []
+    for app in APPS:
+        if not app.single_level_app or df.empty:
+            continue
+        for level, app_id in (("single", app.single_level_app), ("two", app.id)):
+            rows = df[df["app_id"] == app_id]
+            parts.append(rows.assign(pair=by_id(app.single_level_app).display, level=level))
+    df = pd.concat(parts) if parts else pd.DataFrame()
+    if df.empty:
+        raise MissingDataError(
+            f"no PASS {TWO_LEVEL_MODE} {APP_FABRIC}-fabric rows of a two-level app or its "
+            "single-level counterpart in THESIS/data/apps — ingest garnet cgra_app_power.py "
+            "output (python3 -m THESIS.apps.cgra_power_ingest)"
+        )
+    if required_col not in df.columns or df[required_col].dropna().empty:
+        raise MissingDataError(f"{required_col!r} not populated in any two-level pair's results.json")
+    return df
+
+
+def _paired_bar(df: pd.DataFrame, *, y: str, ylabel: str, outpath: Path) -> None:
+    """One panel per app pair: the single- and two-level bar on each design point."""
+    import numpy as np
+    from matplotlib.lines import Line2D
+    from .tile_figures import FULL_W, MUTED, SERIES, _ax_style
+    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    seen = set(df["design_id"])
+    designs = [d.id for d in DESIGNS_SINGLE_LEVEL if d.id in seen]
+    designs += sorted(seen - set(designs))  # design_points order, then any others
+    # "PORT fw4 dw16 8KB SP 2x2 (baseline)" -> "fw4 dw16\n8KB SP\n2x2"
+    short = {d.id: re.sub(r"^\S+ | \(.*\)$", "", d.display) for d in DESIGNS_SINGLE_LEVEL}
+    ticks = [re.sub(r"^(\S+ \S+) (\S+ \S+) ", "\\1\n\\2\n", short.get(d, d)) for d in designs]
+    # pairs with a single-level result first: the ones the figure compares
+    pairs = sorted(dict.fromkeys(df["pair"]), key=lambda p: not (df[df["pair"] == p]["level"] == "single").any())
+    fig, axes = plt.subplots(len(pairs), 1, figsize=(FULL_W, 1.7 * len(pairs) + 1.1), sharex=True,
+                             squeeze=False)
+    idx = np.arange(len(designs))
+    for ax, pair in zip(axes[:, 0], pairs):
+        vals = (df[df["pair"] == pair].pivot_table(index="design_id", columns="level", values=y, aggfunc="mean")
+                .reindex(index=designs, columns=list(_LEVEL_LABELS)))
+        for i, (level, color) in enumerate(zip(_LEVEL_LABELS, SERIES)):
+            xs = idx + (i - 0.5) * 0.4
+            ax.bar(xs, vals[level].to_numpy(), width=0.4, color=color, label=_LEVEL_LABELS[level])
+            for x in xs[vals[level].isna().to_numpy()]:
+                ax.text(x, 0, "×", ha="center", va="bottom", color=MUTED, fontsize=12)
+        ax.set_title(pair, loc="left")
+        _ax_style(ax)
+    fig.supylabel(ylabel, fontsize=10.5, fontweight="bold")
+    axes[-1, 0].set_xticks(idx)
+    axes[-1, 0].set_xticklabels(ticks, fontsize=9)
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    handles.append(Line2D([], [], ls="", marker="$×$", color=MUTED, markersize=8))
+    labels.append("No result")
+    fig.legend(handles, labels, loc="upper center", ncol=3, bbox_to_anchor=(0.5, 1.0))
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    fig.savefig(outpath)
+    plt.close(fig)
+
+
+def two_level_power(ctx: GenContext, outpath: Path) -> None:
+    """Single- vs two-level synth power of each app pair on each design point."""
+    df = _level_pairs("synth_power_w")
+    _paired_bar(df.assign(power_mw=df["synth_power_w"] * 1000.0), y="power_mw",
+                ylabel="Power (mW)", outpath=outpath)
+
+
+def two_level_performance(ctx: GenContext, outpath: Path) -> None:
+    """Single- vs two-level output words per kernel cycle of each app pair on each
+    design point."""
+    _paired_bar(_level_pairs("output_per_cycle"), y="output_per_cycle",
+                ylabel="Output words / cycle", outpath=outpath)
+
+
+def two_level_area(ctx: GenContext, outpath: Path) -> None:
+    """Single- vs two-level synth area of the CGRA tiles each app touches."""
+    df = _level_pairs("synth_total_area_um2")
+    _paired_bar(df.assign(area_k=df["synth_total_area_um2"] / 1000.0), y="area_k",
+                ylabel="Area (10³ µm²)", outpath=outpath)
+
+
+def two_level_utilization(ctx: GenContext, outpath: Path) -> None:
+    """Single- vs two-level memory-tile utilization of each app pair."""
+    df = _level_pairs("utilization")
+    _paired_bar(df.assign(utilization_pct=df["utilization"] * 100.0), y="utilization_pct",
+                ylabel="Utilization (%)", outpath=outpath)
+
+
+def two_level_energy_efficiency(ctx: GenContext, outpath: Path) -> None:
+    """Single- vs two-level energy per output word (power x kernel time / output words)."""
+    df = _level_pairs("synth_power_w")
+    for col in ("total_cycles", "clock_period_ps", "output_words"):
+        if col not in df.columns or df[col].dropna().empty:
+            raise MissingDataError(f"{col} missing from the two-level pairs' results.json")
+    energy_pj = df["synth_power_w"] * df["total_cycles"] * df["clock_period_ps"] / df["output_words"]  # W x ps = pJ
+    _paired_bar(df.assign(energy_pj=energy_pj), y="energy_pj", ylabel="Energy / output word (pJ)",
+                outpath=outpath)

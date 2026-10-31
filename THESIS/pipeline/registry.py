@@ -278,22 +278,32 @@ EXPLORATION_APPS = [
           notes="Energy = synth_power_w * total_cycles * clock_period. "
                 "Needs both perf (util counter) and power (ptpx-synth) "
                 "landed — BOGUS until both flows have populated results.json."),
+    # Each two-level app against its single-level counterpart on every design point
+    # (user 2026-10-30), not a sweep of two-level design points.
     Entry("two_level_power", "fig:two_level_power",
           "figures/two_level_power.pdf", "figure",
-          "per-app power across two-level design points", "bogus", None,
-          notes="TODO: two-level design points aren't enumerated yet."),
+          "single- vs two-level (PE-tile pond) power of each app pair per design point",
+          "real", g.two_level_power,
+          notes="Reads the RV THESIS/data/apps results of each two-level app and its "
+                "registry single_level_app (resnet_pond_agg/resnet_agg, matmul_pond_agg/"
+                "matmul_agg); a cell without a result is drawn as an x."),
     Entry("two_level_performance", "fig:two_level_performance",
           "figures/two_level_performance.pdf", "figure",
-          "per-app perf across two-level design points", "bogus", None),
+          "single- vs two-level output words per cycle of each app pair per design point",
+          "real", g.two_level_performance),
     Entry("two_level_area", "fig:two_level_area",
           "figures/two_level_area.pdf", "figure",
-          "per-app area on two-level designs", "bogus", None),
+          "single- vs two-level area of the tiles each app pair touches", "real", g.two_level_area),
     Entry("two_level_utilization", "fig:two_level_utilization",
           "figures/two_level_utilization.pdf", "figure",
-          "per-app utilization on two-level designs", "bogus", None),
+          "single- vs two-level memory-tile utilization of each app pair", "real",
+          g.two_level_utilization),
     Entry("two_level_energy_efficiency", "fig:two_level_energy_efficiency",
           "figures/two_level_energy_efficiency.pdf", "figure",
-          "per-app energy efficiency on two-level designs", "bogus", None),
+          "single- vs two-level energy per output word of each app pair", "real",
+          g.two_level_energy_efficiency,
+          notes="synth_power_w * total_cycles * clock_period / output_words: per word, "
+                "since resnet_agg runs a tile=14 kernel and resnet_pond_agg the 28x28 image."),
 
     # Latency-insensitive variants
     Entry("single_level_power_LI", "fig:single_level_power_LI",

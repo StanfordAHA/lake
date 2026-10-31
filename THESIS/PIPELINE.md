@@ -169,7 +169,7 @@ manual (block diagram / curated table). Full breakdown: run
 | No dedicated per-stride / per-offset AFFINE sweep | `affine_{area,power}_vs_{stride,offset}` | **dropped** (2026-10-17): not separate hardware parameters (SG: `max_sequence_width`, AG: address width); figures removed from the tex and the registry |
 | No dedicated ScheduleGenerator sweep | `sched_gen_{dim,max_extent}` | open |
 | No LI ScheduleGenerator sweep in THESIS_BUILDS | `li_sched_{ports,loc}_{area,power}` | open |
-| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf` | **ingest written (2026-10-25), no data yet**: garnet `cgra_app_power.py` → `THESIS.apps.cgra_power_ingest` → `results.json`; `single_level_*`, `single_level_*_LI` and `tab:ul_perf` are real but draw BOGUS until thesis-fabric bundles for the design points are recorded and powered. Commands: `THESIS/apps/CGRA_APP_POWER.md` |
+| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf` | **ingest written (2026-10-25), no data yet**: garnet `cgra_app_power.py` → `THESIS.apps.cgra_power_ingest` → `results.json`; `single_level_*`, `single_level_*_LI`, `two_level_*` and `tab:ul_perf` are real but draw BOGUS until thesis-fabric bundles for the design points are recorded and powered. Commands: `THESIS/apps/CGRA_APP_POWER.md` |
 | No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — tile-sweep model (2026-10-24, §7); refit on the thesis-fabric design-space sweep once ingested |
 | No pre/post SB PPA numbers | `fig:interconnect_fork_ready_valid_data`, `fig:interconnect_fifo_replace_ff` | **build command exists, not run** (2026-10-17): garnet `sweep_specs.py --recipe fabric_mem` + `pe_tile` (static vs ready-valid fabric, hierarchy kept; garnet mflowgen/CLAUDE.md "Thesis data recipe"). No lake ingest for those zips yet |
 
@@ -229,7 +229,9 @@ Two writers fill `THESIS/data/apps/<cell>/<app_id>/results.json`:
 `mode` / `fabric` / `pond_id`. The 5 `single_level_*` generators plot static
 thesis-fabric rows, the 5 `single_level_*_LI` the RV ones (`generators.APP_FABRIC`),
 and raise `MissingDataError` (drawing BOGUS) while there are none.
-`two_level_*` are still `bogus`.
+The 5 `two_level_*` pair each two-level app with its single-level counterpart
+(`AppSpec.single_level_app`) on each design point, from the RV rows; performance and
+energy are per output word.
 
 `THESIS/apps/design_points.py` is the source of truth for the
 single-level design axis; `tab:ul_ppa_summary` and `tab:ul_design_points`

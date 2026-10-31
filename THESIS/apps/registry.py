@@ -49,6 +49,9 @@ class AppSpec:
             every mode).
         bundle_in_ports: record only on design points with this many input
             ports (0 = every point).
+        single_level_app: a two-level app's single-level counterpart (the same
+            computation without the pond), which the two_level_* figures pair it
+            with on each design point ("" = none).
     """
 
     id: str
@@ -63,6 +66,7 @@ class AppSpec:
     bundle_retry_array: str = ""
     bundle_modes: str = ""
     bundle_in_ports: int = 0
+    single_level_app: str = ""
 
 
 # TODO: verify each halide_app_dir / testname against the local
@@ -109,7 +113,8 @@ APPS: list[AppSpec] = [
             "aggressive",
             "GEMM; partial sums accumulate in the PE-tile pond, MEM tiles buffer the operands",
             level="two",
-            bundle_env="HL_TARGET=host-x86-64-enable_ponds HALIDE_GEN_ARGS=n=16 MATMUL_N=16"),
+            bundle_env="HL_TARGET=host-x86-64-enable_ponds HALIDE_GEN_ARGS=n=16 MATMUL_N=16",
+            single_level_app="matmul_agg"),
     # The resnet that ran end to end on both thesis fabrics (garnet mflowgen/CLAUDE.md
     # "Thesis fabrics"): a copy of apps/resnet with the output channel innermost; stock
     # apps/resnet stops in parse_design_meta. In H2H thesis since 163a591a.
@@ -123,7 +128,9 @@ APPS: list[AppSpec] = [
     # channels a loop and HL_TARGET -enable_ponds (its Makefile), at the default
     # tile=28. addon2 recorded it RV on the two 1-input points (garnet mflowgen/CLAUDE.md
     # "Add-ons"); static outputs all zeros there, so those two cells are gaps (user
-    # 2026-10-29). Recorded from an identical copy (manifest app probe_1fa8/resnet_pond);
+    # 2026-10-29). RV on the five 2-input points too, so every point where resnet_agg
+    # maps has both levels for the two_level_* figures (user 2026-10-30); static there
+    # is untried. Recorded from an identical copy (manifest app probe_1fa8/resnet_pond);
     # in H2H thesis since ff1435830. No app env: its bundles record app_env {} and ran
     # with hardware_targets.mk's default EXT=png, bit-accurate (unlike resnet_agg's
     # EXT=mat; /aha manifests, aha-08 2026-10-29).
@@ -133,7 +140,7 @@ APPS: list[AppSpec] = [
             "3×3 conv block; each output pixel's partial sums accumulate in the PE-tile pond",
             level="two",
             bundle_modes="rv",
-            bundle_in_ports=1),
+            single_level_app="resnet_agg"),
 
 ]
 

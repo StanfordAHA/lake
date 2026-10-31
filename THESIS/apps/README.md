@@ -114,11 +114,11 @@ power and energy figures also need `ptpx-synth` data.
   (already supported in `tests/test_spec/thesis_sweep.py:36`) and a new
   LI round-trip config. Flips `single_level_*_LI` and eventually the
   LI ScheduleGenerator characterization figures.
-- **Milestone 4 — Two-level (Pond).** Requires standing up a
-  `pond_sweep.py` sibling of `thesis_sweep.py` + a
-  `pd/thesis/pond/` mflowgen construct (or a `spec_role={memtile,petile}`
-  parameter reusing the existing construct). Then rerun the app matrix
-  with two-tier PPA composition. Flips all `two_level_*` figures.
+- **Milestone 4 — Two-level (Pond).** The `two_level_*` figures no longer
+  wait on it (user 2026-10-30): they compare each pond app with its
+  single-level counterpart on the single-level design points
+  (`CGRA_APP_POWER.md` §1). A sweep of pond design points (`pond_sweep.py`,
+  a `pd/thesis/pond/` construct) would feed new figures.
 - **Milestone 5 — PE-tile PPA + interconnect share.** Replace the
   placeholder constants in `compose.py` with real numbers from a
   `pd/thesis/pe-tile/` build. Also unlocks
