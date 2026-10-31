@@ -157,6 +157,7 @@ def _save(fig, outpath: Path):
     outpath.parent.mkdir(parents=True, exist_ok=True)
     if _wrap_labels(fig):
         fig.tight_layout()
+    _stack_above(fig)
     fig.savefig(outpath, bbox_inches="tight", dpi=200 if outpath.suffix == ".png" else "figure")
     plt.close(fig)
 
@@ -240,6 +241,7 @@ VIEWABLE: set = set()
 PCT_LBL = "Change per step (%)"
 _REF_STYLE = dict(color=MUTED, linestyle=":", linewidth=1.1, marker="x", markersize=3.5)
 _REF_OFF_SCALE: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()  # pax -> legend label
+_ABOVE: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()  # fig -> legends over it
 
 
 def _viewable(fn):
@@ -318,7 +320,8 @@ def _pct_axis(pax, xvals, pos=None, geo: bool = False):
     bottom, top = pax.get_ylim()
     for x, y, c in off:
         up = y > hi
-        pax.text(x, top if up else bottom, f"{'↑' if up else '↓'}{y:+.0f}%", ha="center",
+        # the arrow gives the sign; without it neighboring notes fit one step apart
+        pax.text(x, top if up else bottom, f"{'↑' if up else '↓'}{abs(y):.0f}%", ha="center",
                  va="top" if up else "bottom", fontsize=8.5, color=c)
     if off_ref and len(off_ref) == len(ref):  # noted in the legend's y ∝ x entry
         r0, r1 = min(ref), max(ref)
@@ -971,6 +974,16 @@ def _fit_legend(fig, entries: list, title, y: float, below: bool = False):
     return fig.legend(*zip(*entries), ncol=-(-len(entries) // rows), **kw)
 
 
+def _is_key(h) -> bool:
+    """Gray or black (active/idle, totals, y ∝ x): a style key, not a data series."""
+    get = getattr(h, "get_color", None) or getattr(h, "get_facecolor", None)  # line, scatter
+    c = get() if get else None
+    if c is not None and not isinstance(c, str):
+        c = np.atleast_2d(c)
+        c = c[0] if len(c) else None
+    return c is not None and matplotlib.colors.to_hex(c) in (MUTED, INK)
+
+
 def _legend_above(ax, handles=None, labels=None, title=None):
     """Legend above the whole figure: the data series (with ``title``) over the gray
     key (active/idle, y ∝ x, ...), each in as many columns as fit the width."""
@@ -984,14 +997,31 @@ def _legend_above(ax, handles=None, labels=None, title=None):
     order = sorted(range(len(labels)), key=lambda i: (labels[i].startswith("y ∝ x"),
                                                       labels[i].lower().startswith("idle")))
     entries = [(handles[i], labels[i]) for i in order]
-    is_key = [getattr(h, "get_color", lambda: None)() == MUTED for h, _ in entries]
+    is_key = [_is_key(h) for h, _ in entries]
     fig.tight_layout()
-    y = max(1.0, fig.get_tightbbox().y1 / fig.get_figheight())  # over anything poking out
-    for group, ttl in (([e for e, k in zip(entries, is_key) if k], None),
-                       ([e for e, k in zip(entries, is_key) if not k], title)):
-        if group:
-            leg = _fit_legend(fig, group, ttl, y)
-            y += leg.get_window_extent(fig.canvas.get_renderer()).height / fig.bbox.height
+    _ABOVE[fig] = [_fit_legend(fig, group, ttl, 1.0)
+                   for group, ttl in (([e for e, k in zip(entries, is_key) if k], None),
+                                      ([e for e, k in zip(entries, is_key) if not k], title))
+                   if group]
+    _stack_above(fig)
+
+
+def _stack_above(fig):
+    """Stack ``fig``'s _legend_above legends, key first, just over its tallest other
+    artist rather than the figure top, where tight_layout's top pad would sit between
+    them and the axes as blank space. _save calls it again after the last re-layout."""
+    legs = _ABOVE.get(fig, [])
+    for leg in legs:
+        leg.set_visible(False)
+    r = fig.canvas.get_renderer()
+    # get_tightbbox counts an axis label only at its middle, so add a y label taller
+    # than its axis (one long word) in full
+    y = max([fig.get_tightbbox(r).y1 * fig.dpi] + [a.yaxis.label.get_window_extent(r).y1
+                                                     for a in fig.axes]) / fig.bbox.height
+    for leg in legs:
+        leg.set_visible(True)
+        leg.set_bbox_to_anchor((0, y), fig.transFigure)  # as fig.legend does; tight savefig moves it
+        y += leg.get_window_extent(r).height / fig.bbox.height
 
 
 def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel: str,
