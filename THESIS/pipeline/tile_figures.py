@@ -74,8 +74,9 @@ K = 1000.0
 UW = 1e-6  # W per µW
 AREA_LBL = "Area (10³ µm²)"
 
-# Configs with any other data width have broken RTL (2026-10-06), so their
-# areas are meaningless; every figure drops them until that's fixed.
+# Every figure compares tiles at one data width, except the Port data-width
+# sweep (PORT_EXP), which the final run built at 8/16/32/64 bits, each width at
+# its own clock. (Before the 2026-10-06 RTL fix other widths were broken.)
 DATA_WIDTH = 16
 
 
@@ -162,9 +163,11 @@ def _save(fig, outpath: Path):
     plt.close(fig)
 
 
-def _load(mode: str | None = "static") -> pd.DataFrame:
+def _load(mode: str | None = "static", data_width: int | None = DATA_WIDTH) -> pd.DataFrame:
+    """The tile sweep at ``data_width`` (None: every width) and runtime ``mode``."""
     df = tile_sweep.load()
-    df = df[df["data_width"] == DATA_WIDTH]
+    if data_width is not None:
+        df = df[df["data_width"] == data_width]
     if mode:
         df = df[df["mode"] == mode]
     if df.empty:
@@ -794,12 +797,13 @@ _MODE_STYLE = {"static": (SERIES[0], "Static"), "rv": (SERIES[1], "RV")}
 
 
 def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, unit: str,
-                 note: str, one_line: bool) -> float:
+                 note: str, one_line: bool, counts: bool = True) -> float:
     """Scatter (fit = dots, held out = stars) with each mode's fit line on
     ``ax``; prediction error per build on ``rax``. Each fit's equation (R² on the
     same line if ``one_line``) and the held-out error (``note`` formats its mean
-    and max) are stacked above ``ax``; returns that block's height in points. The
-    series are labeled for one legend over the figure."""
+    and max, and ``n`` = held-out builds) are stacked above ``ax``; returns that
+    block's height in points. The series are labeled for one legend over the
+    figure, with their build counts unless ``counts`` is off."""
     lo, hi = p[xcol].min() / norm, p[xcol].max() / norm
     pad = (hi - lo) * 0.06
     errs, lines = [], []
@@ -818,8 +822,8 @@ def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, un
             [(eq, c), (f"{' ' * 4}$R^2 = {r2:.5f}$", c)]
         ex = np.array([min(lo - pad, fx[0]), max(hi + pad, fx[1])])
         ax.plot(ex, a * ex + b, color=c, linewidth=0.9, linestyle=":", zorder=1)
-        for sub, m, s, lab in ((f, "o", 26, f"{name}, fit set (n={len(f)})"),
-                               (v, "*", 110, f"{name}, held out (n={len(v)})")):
+        for sub, m, s, lab in ((f, "o", 26, f"{name}, fit set" + (f" (n={len(f)})" if counts else "")),
+                               (v, "*", 110, f"{name}, held out" + (f" (n={len(v)})" if counts else ""))):
             x, y = sub[xcol] / norm, sub[ycol] / norm
             e = (a * x + b - y) / y * 100
             ax.scatter(x, y, marker=m, s=s, color=c, edgecolor="white", linewidth=0.6, zorder=3,
@@ -837,7 +841,7 @@ def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, un
     _ax_style(ax, xgrid=True)
     _ax_style(rax, xgrid=True)
     ax.tick_params(labelbottom=False)
-    lines.append((note.format(np.mean(errs), max(errs)), INK2))
+    lines += [(t, INK2) for t in note.format(np.mean(errs), max(errs), n=len(errs)).split("\n")]
     for k, (text, c) in enumerate(reversed(lines)):
         ax.annotate(text, (0, 1), xycoords="axes fraction", xytext=(0, 4 + 12.5 * k),
                     textcoords="offset points", ha="left", va="bottom", fontsize=9, color=c)
@@ -887,7 +891,10 @@ def memtile_synth_vs_pnr_area(ctx, outpath: Path) -> None:
 
 def memtile_synth_vs_pnr_power(ctx, outpath: Path) -> None:
     """Synthesis -> PnR power model, idle and active, same layout as the area
-    figure (fit builds = dots, held-out builds = stars)."""
+    figure (fit builds = dots, held-out builds = stars). A build can lack one of
+    the two PnR power runs (in the final data one held-out RV build has no active
+    power), so the shared legend carries no counts; each panel's note gives its
+    own held-out count."""
     p = _pnr_builds()
     fig, axes = plt.subplots(2, 2, figsize=(FULL_W, 4.6), sharex="col",
                              gridspec_kw={"height_ratios": [3, 1.15], "hspace": 0.08,
@@ -898,13 +905,14 @@ def memtile_synth_vs_pnr_power(ctx, outpath: Path) -> None:
         norm, unit = _model_norm(q, x)
         ax, rax = axes[0, k], axes[1, k]
         block = _model_panel(ax, rax, q, x, y, norm, unit,
-                             "Held-out |error|: mean {:.1f}%, max {:.1f}%", one_line=False)
+                             "Held-out |error| (n={n}):\nmean {:.1f}%, max {:.1f}%",
+                             one_line=False, counts=False)
         ax.set_title(title, loc="left", fontsize=10.5, color=INK2, pad=block + 2)
         ax.set_ylabel(f"PnR power ({unit})")
         rax.set_xlabel(f"Synthesis power ({unit})")
     if axes[0, 0].get_legend_handles_labels()[1] != axes[0, 1].get_legend_handles_labels()[1]:
-        raise MissingDataError("idle and active PnR power have different builds; one legend "
-                               "can't label both panels")
+        raise MissingDataError("idle and active panels have different series; one legend "
+                               "can't label both")
     fig.align_ylabels(axes[:, 0])
     _legend_above(axes[0, 0])
     _save(fig, outpath)
@@ -1026,11 +1034,15 @@ def _stack_above(fig):
 
 def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel: str,
                blocks: list[str], ylabel: str, xfmt=_pow2_fmt, log2: bool = False,
-               metric: str = "area", mode: str = "static", view: str = "raw") -> None:
-    """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``."""
-    df = _exp(_load(mode), exp).dropna(subset=[x, hue])
+               metric: str = "area", mode: str = "static", view: str = "raw",
+               data_width: int | None = DATA_WIDTH, where: dict | None = None) -> None:
+    """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``;
+    ``where`` = {column: value} holds the other sweep axes fixed."""
+    df = _exp(_load(mode, data_width), exp).dropna(subset=[x, hue])
+    for col, val in (where or {}).items():
+        df = df[df[col] == val]
     if df[x].nunique() < 2:
-        raise MissingDataError(f"{exp}: {x} takes a single value at data_width={DATA_WIDTH}")
+        raise MissingDataError(f"{exp}: {x} takes a single value at data_width={data_width}")
     df = _metric(df, blocks, metric, ylabel)
     df["prefix"] = _rvnet_prefix(df) if mode == "rv" else False
     scale, unit = _units(df, metric)
@@ -1082,14 +1094,20 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
 
 
 def _port_data_width(ctx, outpath: Path, metric: str) -> None:
-    df = _exp(_load(), "PORT_EXP")
+    """Every data width the final run built, vc=2; each width synthesizes at its own
+    clock, so each tick names it."""
+    df = _exp(_load(data_width=None), "PORT_EXP")
+    df = df[df["vec_capacity"] == 2]
     if df["data_width"].nunique() < 2:
-        raise MissingDataError(
-            f"needs PORT_EXP tile builds at several data widths; only {DATA_WIDTH}-bit "
-            "configs are used (other widths have broken RTL)")
+        raise MissingDataError("needs PORT_EXP tile builds at several data widths")
+    mhz = df.groupby("data_width")["clock_mhz"].agg(["min", "max"])
+    if (mhz["min"] != mhz["max"]).any():
+        raise MissingDataError("PORT_EXP builds of one data width ran at different clocks")
     _sweep_fig(outpath, "PORT_EXP", "data_width", "vec_width", "fetch width",
-               "Port data width (bits)", ["c_port"], "4 Ports",
-               log2=True, metric=metric, view=_view(ctx))
+               "Port data width (bits) / clock (MHz)", ["c_port"], "4 Ports",
+               xfmt=lambda v: f"{v:g}\n{mhz.loc[v, 'min']:.0f}",
+               log2=True, metric=metric, view=_view(ctx), data_width=None,
+               where={"vec_capacity": 2})
 
 
 @_viewable

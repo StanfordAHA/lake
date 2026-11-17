@@ -111,8 +111,8 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
   - the Ch. 4 component **area and power** figures (same output paths as the
     old THESIS_BUILDS versions): port_{area,power}_vs_{data_width,vc},
     iter_dom_*, affine_*_vs_{dim,max_value}, memory_port_*, storage_*. Power =
-    active (solid) + idle (dashed). The data_width pair stays BOGUS until
-    non-16-bit builds work.
+    active (solid) + idle (dashed). The data_width pair takes every width the
+    final run built, each at its own clock.
   - PUB (controller + SRAM): pub_capacity_{area,power}, pub_bandwidth_{area,power}.
   - memory tile: memtile_interconnect_{area,power}, memtile_block_breakdown,
     memtile_rv_overhead_area, memtile_rv_energy_breakdown, and the synth->PnR model

@@ -246,10 +246,11 @@ hierarchy kept, the gated thesis tiles (`<geometry>_sharectr_portcg_thesis`,
 `<geometry>_nofp_portcg_thesis_rv`), each data width and mode at its own clock (dw16:
 static 600 MHz, RV 700 MHz), 38 through PnR. `tile_sweep.load()` renames the configs to
 the stock names the figures look up (`<geometry>`, `<geometry>_rv`) and keeps the garnet
-name in `garnet_config`. `memtile_synth_vs_pnr_power` is BOGUS on it: the RV
-`fw4_dw16_sc8192_dp_in4_out4_vc2` held-out build has no PnR active power (its gate-level
-active sim failed the activity check, one SB output never toggled, with ICG setup
-violations). Before, the dw16 hierarchy-kept sweep
+name in `garnet_config`. The RV `fw4_dw16_sc8192_dp_in4_out4_vc2` held-out build has no
+PnR active power (its gate-level active sim failed the activity check, one SB output never
+toggled, with ICG setup violations), so `memtile_synth_vs_pnr_power`'s active panel has 5
+held-out builds to the idle panel's 6: its legend carries no counts and each panel's note
+gives its own n. Before, the dw16 hierarchy-kept sweep
 `NEW_SWEEP_r8cad-gf12_20261009-213941_slim.zip` (172 configs, ungated stock tiles, 1.333 ns,
 12 through PnR; `HANDOFF.md`, `<sweep>/analysis/ANALYSIS.md` in the user's workspace).
 One command rebuilds the whole thesis data set (2026-10-17): garnet
@@ -295,12 +296,14 @@ The sweep's own `correlation.csv` / `memtile_power.csv` columns (PnR role,
 synth→PnR projections, PT WNS, power totals) are merged in by config.
 
 What the sweep feeds (registry `tf.*`; all `data_width == 16`,
-`tile_figures.DATA_WIDTH`):
+`tile_figures.DATA_WIDTH`, except the Port data-width pair):
 - Ch. 4 component **area and power** (replaced the THESIS_BUILDS versions, same
   output paths), each from its own blocks: Port = `c_port` (4 `port_inst`),
   IterationDomain = `c_id`, affine pattern generators = `c_ag + c_sg`,
   MemoryPort = `c_mp`, Storage = `sram`. Power = PT synth-level active (solid)
-  and idle (dashed). `port_{area,power}_vs_data_width` are BOGUS (dw16 only).
+  and idle (dashed). `port_{area,power}_vs_data_width` take every width the final run
+  built (PORT_EXP, vc2: fw2 at 8-64, fw4 at 8-32, fw8 at 8-16), each at its own clock,
+  which each x tick names (`_load(data_width=None)`).
 - PUB = `ctrl + sram`: `pub_capacity_*` (line per memory organization),
   `pub_bandwidth_*` (8 KB, SP vs DP, stacked SRAM / controller).
 - **Equal-bandwidth figures plot balanced organizations only** (user 2026-10-28): the
