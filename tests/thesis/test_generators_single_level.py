@@ -24,6 +24,7 @@ ALL_GENERATORS = [
     "single_level_area",
     "single_level_utilization",
     "single_level_energy_efficiency",
+    "single_level_pareto",
 ]
 
 
@@ -204,7 +205,7 @@ def test_area_is_relative_to_the_first_design_under_sram_nda(apps_root, empty_ct
 # ---------- static vs RV (LI) and fabrics stay apart ----------------------
 
 
-LI_GENERATORS = [f"{n}_LI" for n in ALL_GENERATORS]
+LI_GENERATORS = [f"{n}_LI" for n in ALL_GENERATORS if n != "single_level_pareto"]  # static only
 
 
 def _write_cell(root: Path, cell: str, app_id: str, **fields) -> None:
@@ -240,3 +241,34 @@ def test_static_figures_skip_rv_and_stock_rows(apps_root, empty_ctx, tmp_path, m
     monkeypatch.setattr(generators, "_app_bar", lambda df, **kw: seen.update(df=df))
     generators.single_level_performance(empty_ctx, tmp_path / "x.pdf")
     assert list(seen["df"]["total_cycles"]) == [100]
+
+
+# ---------- single_level_pareto -----------------------------------------------
+
+
+def test_design_ppa_is_the_geomean_over_apps_relative_to_the_baseline():
+    """Two apps on the baseline (port_fw4_dw16_sc8k_sp2x2, the first design point) and
+    on mem_fw2_dw16_sc2k_sp1x1, one of them also on port_fw4_dw8_sc8k_sp2x2. Runtime
+    counts the clock: the dw8 point's 2x clock halves runtime at equal cycles."""
+    rows = []
+    for d, area, power, period, apps in (
+            ("port_fw4_dw16_sc8k_sp2x2", 1.0, 1.0, 1000.0, ("a", "b")),
+            ("mem_fw2_dw16_sc2k_sp1x1", 2.0, 4.0, 1000.0, ("a", "b")),
+            ("port_fw4_dw8_sc8k_sp2x2", 0.5, 1.0, 500.0, ("a",))):
+        for i, a in enumerate(apps):
+            scale = 1 + i  # app b is twice app a everywhere: ratios are per app
+            rows.append({"app_id": a, "design_id": d, "synth_total_area_um2": area * scale,
+                         "synth_power_w": power * scale, "total_cycles": 100 * scale,
+                         "clock_period_ps": period})
+    pts = generators._design_ppa(pd.DataFrame(rows))
+    got = {d: (n, v) for d, _, n, v in pts}
+    assert pts[0][0] == "port_fw4_dw16_sc8k_sp2x2"
+    assert got["port_fw4_dw16_sc8k_sp2x2"] == (2, {"area": 1.0, "perf": 1.0, "power": 1.0})
+    assert got["mem_fw2_dw16_sc2k_sp1x1"] == (2, pytest.approx({"area": 2.0, "perf": 1.0, "power": 4.0}))
+    assert got["port_fw4_dw8_sc8k_sp2x2"] == (1, pytest.approx({"area": 0.5, "perf": 2.0, "power": 1.0}))
+
+
+def test_pareto_keeps_points_nothing_beats_on_both_axes():
+    pts = [(1.0, 1.0), (2.0, 3.0), (1.5, 0.5), (3.0, 2.0), (0.5, 0.8)]
+    assert generators._pareto(pts, higher=True) == [(0.5, 0.8), (1.0, 1.0), (2.0, 3.0)]
+    assert generators._pareto(pts, higher=False) == [(0.5, 0.8), (1.5, 0.5)]

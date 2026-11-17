@@ -549,6 +549,69 @@ def single_level_energy_efficiency(ctx: GenContext, outpath: Path, mode: str = "
     _app_bar(df, y="energy_uj", ylabel="Energy per run (µJ)", outpath=outpath)
 
 
+def _design_ppa(df: pd.DataFrame) -> list[tuple[str, str, int, dict]]:
+    """(design_id, label, n_apps, {area, perf, power}) per design point, in design order:
+    each app's value over the same app's on the first design point (the baseline), then
+    the geometric mean over the apps that ran on both. perf = 1 / kernel runtime
+    (cycles x that design point's clock period), so the clock counts, not just cycles."""
+    import numpy as np
+    df = df.assign(runtime_s=df["total_cycles"] * df["clock_period_ps"] * 1e-12)
+    cols = {"area": "synth_total_area_um2", "perf": "runtime_s", "power": "synth_power_w"}
+    df = df.dropna(subset=["app_id", "design_id", *cols.values()])
+    if df.empty:
+        raise MissingDataError("no app results with area, runtime and power")
+    designs = _app_designs(set(df["design_id"]))
+    base = designs[0][0]
+    rel = {}
+    for k, c in cols.items():
+        v = df.pivot_table(index="app_id", columns="design_id", values=c, aggfunc="mean")
+        rel[k] = v.div(v[base], axis=0)
+    rel["perf"] = 1 / rel["perf"]
+    out = []
+    for d, label in designs:
+        ok = rel["area"][d].notna() & rel["perf"][d].notna() & rel["power"][d].notna()
+        if ok.any():
+            out.append((d, label, int(ok.sum()),
+                        {k: float(np.exp(np.log(v[d][ok]).mean())) for k, v in rel.items()}))
+    return out
+
+
+def _pareto(pts: list[tuple[float, float]], higher: bool) -> list[tuple[float, float]]:
+    """The points no other point beats on both axes (smaller x, and larger y if
+    ``higher`` else smaller y), in x order."""
+    front = []
+    for x, y in sorted(pts, key=lambda p: (p[0], -p[1] if higher else p[1])):
+        if not front or (y > front[-1][1] if higher else y < front[-1][1]):
+            front.append((x, y))
+    return front
+
+
+def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
+    """Each single-level design point's (a) performance and (b) power against its area,
+    relative to the baseline (``_design_ppa``), with the Pareto front dashed. Area
+    includes the SRAM macros, so it is relative whether or not SRAM_NDA is set."""
+    from .tile_figures import FULL_W, INK2, MUTED, SERIES, _ax_style, _legend_above, _save
+    pts = _design_ppa(_load_apps_or_miss(required_col="synth_power_w", mode=mode))
+    n_base = pts[0][2]
+    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.7))
+    for ax, key, title, higher in ((axes[0], "perf", "(a) Performance", True),
+                                   (axes[1], "power", "(b) Power", False)):
+        for i, ((_, label, n, v), c) in enumerate(zip(pts, SERIES * 2)):
+            note = " (baseline)" if i == 0 else "" if n == n_base else f" ({n} of {n_base} apps)"
+            ax.scatter(v["area"], v[key], s=50, color=c, edgecolor="white", linewidth=0.6,
+                       zorder=3, label=label + note)
+        front = _pareto([(v["area"], v[key]) for *_, v in pts], higher)
+        ax.plot(*zip(*front), color=MUTED, linestyle="--", linewidth=1.1, zorder=2,
+                label="Pareto front")
+        ax.set_title(title, loc="left", fontsize=10.5, color=INK2)
+        ax.set_xlabel("Area (× baseline)")
+        ax.set_ylabel(f"{title[4:]} (× baseline)")
+        _ax_style(ax, xgrid=True)
+    fig.tight_layout()
+    _legend_above(axes[0])
+    _save(fig, outpath)
+
+
 def ul_perf(ctx: GenContext, outpath: Path) -> None:
     """Per-app UL memories, output rate and runtime over the single-level design
     points: the static app results, every app of the run (the pond matmul too)."""

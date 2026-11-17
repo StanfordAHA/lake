@@ -275,6 +275,12 @@ EXPLORATION_APPS = [
           "per-app energy per completed run on single-level designs",
           "real", g.single_level_energy_efficiency,
           notes="Energy = synth_power_w * total_cycles * clock_period."),
+    Entry("single_level_pareto", "fig:pareto_single_level",
+          "figures/single_level_pareto.pdf", "figure",
+          "single-level design points: performance and power vs area, Pareto front",
+          "real", g.single_level_pareto,
+          notes="Per app relative to the baseline design point, then the geometric mean over "
+                "the apps that ran on both; performance = 1 / (kernel cycles x clock period)."),
     # Each two-level app against its single-level counterpart on every design point
     # (user 2026-10-30), not a sweep of two-level design points.
     Entry("two_level_power", "fig:two_level_power",
