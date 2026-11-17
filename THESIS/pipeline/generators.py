@@ -683,7 +683,8 @@ def _paired_bar(df: pd.DataFrame, *, y: str, ylabel: str, outpath: Path,
     ticks = [re.sub(r"^(\S+ \S+) (\S+ \S+) ", "\\1\n\\2\n", label) for _, label in designs]
     # pairs with a single-level result first: the ones the figure compares
     pairs = sorted(dict.fromkeys(df["pair"]), key=lambda p: not (df[df["pair"] == p]["level"] == "single").any())
-    fig, axes = plt.subplots(len(pairs), 1, figsize=(FULL_W, 1.6 * len(pairs) + 0.8), sharex=True,
+    # 1.3 in per panel: two of these figures fit a page at full \textwidth
+    fig, axes = plt.subplots(len(pairs), 1, figsize=(FULL_W, 1.3 * len(pairs) + 0.8), sharex=True,
                              squeeze=False)
     idx = np.arange(len(designs))
     for ax, pair in zip(axes[:, 0], pairs):
