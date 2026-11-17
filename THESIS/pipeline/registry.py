@@ -370,7 +370,8 @@ LI_CHARACTERIZATION = [
     Entry("interconnect_fork_ready_valid_data", "fig:interconnect_fork_ready_valid_data",
           "figures/cgra_interconnect_fork_ready_valid_data.pdf", "figure",
           "SB PPA before/after ready/valid forking logic", "bogus", None,
-          notes="TODO: needs pre/post SB PPA numbers from CGRA builds."),
+          notes="Data exists in the final run, no lake extractor yet (2026-11-16): PE Tile SB from "
+                "thesis_tiles_pe signoff.area.rpt, Memory Tile SB from thesis_dse (PIPELINE.md §5)."),
 ]
 
 # ---------------------------------------------------------------------------
