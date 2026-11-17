@@ -27,6 +27,7 @@ python3 -m pytest --confcutdir=tests/thesis tests/thesis/
 | `test_generators_two_level.py` | The 5 `two_level_*` generators: single- vs two-level pairs from RV results, per-output-word metrics, relative area. |
 | `test_tile_sweep_load.py` | `tile_sweep.load()`: thesis-fabric config names mapped to the stock names the tile figures use. |
 | `test_filter_path_ab.py` | `THESIS/pipeline/filter_path_ab.py` (standalone figure, not in the thesis): ff8-over-nofp deltas, app power as % of A0, zip/dir reading. |
+| `test_sb_ppa.py` | `THESIS/pipeline/sb_ppa.py` + `sb_figures.py`: switch-box parts from Genus area reports, fork-logic arithmetic, both interconnect figures. |
 
 The regression module (`THESIS/pipeline/regression.py`) and the sweep
 figure generators have no unit tests. Check them by running

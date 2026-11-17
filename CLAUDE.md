@@ -222,6 +222,14 @@ never run; Milestone 1 wired as of 2026-09-28):
   PE-tile numbers.
 - Tests: `python3 -m pytest --confcutdir=tests/thesis tests/thesis/`.
 
+### 1.7c Switch-box figures (interconnect, Ch. 4)
+
+`fig:interconnect_fifo_replace_ff` and `fig:interconnect_fork_ready_valid_data` (2026-11-16):
+`python3 -m THESIS.pipeline.sb_ppa` ingests the static / RV PE and Memory Tile switch boxes
+of the final run (Genus `final_area.rpt`, dw 8-64) into `THESIS/data/sb_ppa/sb_area.csv`;
+`THESIS/pipeline/sb_figures.py` draws them. Part names, the fork-logic definition and why
+synthesis: `sb_ppa.py` docstring and `THESIS/PIPELINE.md` §5.
+
 ### 1.7b Appendix Halide code
 
 `python3 THESIS/generate_thesis_artifacts.py --only halide_appendix` writes

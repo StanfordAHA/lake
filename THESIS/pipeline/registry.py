@@ -34,6 +34,7 @@ from typing import Callable, Optional
 from . import generators as g
 from . import halide_appendix as ha
 from . import tile_figures as tf
+from . import sb_figures as sbf
 
 Generator = Callable[["g.GenContext", "object"], None]
 
@@ -367,11 +368,20 @@ LI_CHARACTERIZATION = [
           "figure", "Tile_MemCore sweep (dw16, RV): LI SG active/idle power vs levels of comparison",
           "real", tf.li_sched_loc_power,
           view="both"),
+    # Switch boxes of the final run's static and RV PE / Memory Tiles by part (sb_ppa.py;
+    # ingest: python3 -m THESIS.pipeline.sb_ppa), user 2026-11-16.
     Entry("interconnect_fork_ready_valid_data", "fig:interconnect_fork_ready_valid_data",
           "figures/cgra_interconnect_fork_ready_valid_data.pdf", "figure",
-          "SB PPA before/after ready/valid forking logic", "bogus", None,
-          notes="Data exists in the final run, no lake extractor yet (2026-11-16): PE Tile SB from "
-                "thesis_tiles_pe signoff.area.rpt, Memory Tile SB from thesis_dse (PIPELINE.md §5)."),
+          "PE / Memory Tile switch box static vs RV by part, and the RV fork logic alone "
+          "(ready reduction, valid gating, loopbacks), dw 8-64", "real", sbf.interconnect_fork_ready_valid_data,
+          notes="Synthesis cell area (Genus, hierarchy kept). Area only: app power flattens the fork "
+                "logic and the Memory Tile power test never drives the switch box."),
+    Entry("interconnect_fifo_replace_ff", "fig:interconnect_fifo_replace_ff",
+          "figures/cgra_interconnect_fifo_replace_ff.pdf", "figure",
+          "track register as flip-flop vs depth-2 FIFO by width, and each switch box before / after "
+          "that swap, PE and Memory Tile", "real", sbf.interconnect_fifo_replace_ff,
+          notes="After = the static SB with its track registers replaced by the RV build's FIFOs "
+                "(measured parts); the rest of the RV SB is in fig:interconnect_fork_ready_valid_data."),
 ]
 
 # ---------------------------------------------------------------------------
