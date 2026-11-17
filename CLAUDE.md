@@ -156,7 +156,7 @@ python3 THESIS/generate_thesis_artifacts.py --only memtile_model_coeff memtile_m
 
 | Table | Status | Source |
 | --- | --- | --- |
-| `tab:ul_ppa_summary` | data-driven (power from thesis_dse since 2026-11-16) | extractor DataFrame × `DesignPoint` list; power: `tile_sweep.load()` (static thesis MemTile) |
+| `tab:ul_ppa_summary` | data-driven (all from thesis_dse since 2026-11-16) | `DesignPoint` list × `tile_sweep.load()` (static thesis MemTile): std-cell area, tile area and power relative to the baseline (SRAM_NDA), clock, synth slack |
 | `tab:ul_perf` | data-driven (final app power since 2026-11-16) | static app results (`THESIS/data/apps`), one row per app |
 | `tab:ul_design_points` | data-driven | `THESIS/apps/design_points.DESIGNS_SINGLE_LEVEL` |
 | `tab:exploration_applications` | data-driven | `THESIS/apps/registry.APPS` |

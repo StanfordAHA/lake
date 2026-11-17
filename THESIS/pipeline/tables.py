@@ -80,74 +80,63 @@ def _memtile_power_row(memtile: pd.DataFrame | None, dp, mode: str = "static") -
 
 
 def emit_ul_ppa_summary(df: pd.DataFrame, outpath: Path, memtile: pd.DataFrame | None = None) -> None:
-    """PPA per design point: area and timing from the standalone builds (df), power
-    from the final run's in-CGRA MemTile sweep (memtile, ``tile_sweep.load()`` of
-    thesis_dse): the static thesis tile's synth-level active power at its clock."""
+    """PPA per design point, all from the final run's in-CGRA MemTile sweep (memtile,
+    ``tile_sweep.load()`` of thesis_dse): each design point's static thesis tile, synth
+    level, at its own clock. Std-cell area and timing are absolute; under SRAM_NDA the
+    values that include the SRAM macros (tile area, active power) are relative to the
+    first design point (the baseline). ``df`` (the standalone builds, which predate the
+    final run and lack one design point) is no longer read."""
     from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    from .tile_figures import SRAM_NDA
 
     if not DESIGNS_SINGLE_LEVEL:
         raise MissingDataError("DESIGNS_SINGLE_LEVEL is empty — populate it first")
 
+    rows = [(dp, _memtile_power_row(memtile, dp)) for dp in DESIGNS_SINGLE_LEVEL]
+    base = rows[0][1]
+    rel = SRAM_NDA
+    if rel and base is None:
+        raise MissingDataError(f"no thesis_dse row for the baseline {DESIGNS_SINGLE_LEVEL[0].id}")
+
+    def cell(v, f):
+        return "--" if v is None or pd.isna(v) else f(v)
+
     header = [
         "Design",
-        r"Logic area (\si{\micro\meter\squared})",
-        r"SRAM area (\si{\micro\meter\squared})",
-        r"Total area (\si{\micro\meter\squared})",
-        r"$f_{\mathrm{max}}$-slack (\si{\pico\second})",
-        r"Crit-path (\si{\pico\second})",
-        r"MemTile power (\si{\milli\watt})",
-        r"MemTile clock (\si{\mega\hertz})",
+        r"\makecell{Std-cell area\\(10$^3$\,\textmu m$^2$)}",
+        r"\makecell{Tile area\\(\texttimes{} baseline)}" if rel else
+        r"\makecell{Tile area\\(10$^3$\,\textmu m$^2$)}",
+        r"\makecell{Active power\\(\texttimes{} baseline)}" if rel else
+        r"\makecell{Active power\\(mW)}",
+        r"\makecell{Clock\\(MHz)}",
+        r"\makecell{Synth.\ slack\\(ps)}",
     ]
-    lines = [
-        r"\begin{tabular}{lrrrrrrr}",
-        r"\toprule",
-        " & ".join(header) + r" \\",
-        r"\midrule",
-    ]
-
-    missing_rows: list[str] = []
-    missing_power: list[str] = []
-    for dp in DESIGNS_SINGLE_LEVEL:
-        row = _find_design_row(df, dp)
-        if row is None:
-            missing_rows.append(dp.id)
-            cells = [_fmt(dp.display)] + [_fmt(None)] * 5
-        else:
-            logic = None
-            if pd.notna(row.get("synth_total_area_um2")) and pd.notna(row.get("synth_storage_area_um2")):
-                logic = float(row["synth_total_area_um2"]) - float(row["synth_storage_area_um2"])
-            cells = [
-                _fmt(dp.display),
-                _fmt(logic),
-                _fmt(row.get("synth_storage_area_um2")),
-                _fmt(row.get("synth_total_area_um2")),
-                _fmt(row.get("wns_ps")),
-                _fmt(row.get("crit_path_delay_ps")),
-            ]
-        tile = _memtile_power_row(memtile, dp)
-        if tile is None:
-            missing_power.append(dp.id)
-            cells += [_fmt(None)] * 2
-        else:
-            mhz = tile.get("clock_mhz")
-            if pd.isna(mhz) and pd.notna(tile.get("clock_period_ps")):
-                mhz = 1e6 / float(tile["clock_period_ps"])
-            cells += [_fmt(float(tile["synth_active_total_power"]) * 1000),
-                      _fmt(None if pd.isna(mhz) else round(float(mhz)))]
-        lines.append(" & ".join(cells) + r" \\")
-
+    lines = [r"\begin{tabular}{lrrrrr}", r"\toprule", " & ".join(header) + r" \\", r"\midrule"]
+    missing = []
+    for dp, t in rows:
+        if t is None:
+            missing.append(dp.id)
+            lines.append(" & ".join([_fmt(dp.display)] + ["--"] * 5) + r" \\")
+            continue
+        area = t.get("syn_std", float("nan")) + t.get("syn_sram", float("nan"))
+        power = float(t["synth_active_total_power"])
+        mhz = t.get("clock_mhz")
+        if pd.isna(mhz) and pd.notna(t.get("clock_period_ps")):
+            mhz = 1e6 / float(t["clock_period_ps"])
+        b_area = base.get("syn_std", float("nan")) + base.get("syn_sram", float("nan")) if rel else 1
+        lines.append(" & ".join([
+            _fmt(dp.display),
+            cell(t.get("syn_std"), lambda v: f"{v / 1000:.2f}"),
+            cell(area, (lambda v: f"{v / b_area:.2f}") if rel else (lambda v: f"{v / 1000:.2f}")),
+            f"{power / float(base['synth_active_total_power']):.2f}" if rel else f"{power * 1000:.3g}",
+            cell(mhz, lambda v: f"{v:.0f}"),
+            cell(t.get("tile_synth_wns_ps", t.get("syn_wns_ps")), lambda v: f"{v:.1f}"),
+        ]) + r" \\")
     lines.extend([r"\bottomrule", r"\end{tabular}"])
     body = "\n".join(lines) + "\n"
-
-    notes = []
-    if missing_rows:
-        notes.append(f"missing extractor rows for: {', '.join(missing_rows)}")
-    if missing_power:
-        notes.append(f"TODO: MemTile power blank for {', '.join(missing_power)} -- no thesis_dse "
-                     "row (python3 -m THESIS.pipeline.tile_sweep <thesis_dse zip>)")
-    if notes:
-        body = "% " + " | ".join(notes) + "\n" + body
-
+    if missing:
+        body = (f"% TODO: blank for {', '.join(missing)} -- no thesis_dse row "
+                "(python3 -m THESIS.pipeline.tile_sweep <thesis_dse zip>)\n" + body)
     outpath.parent.mkdir(parents=True, exist_ok=True)
     outpath.write_text(body)
 

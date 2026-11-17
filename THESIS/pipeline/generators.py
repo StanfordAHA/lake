@@ -370,8 +370,8 @@ def memtile_model_verif(ctx: GenContext, outpath: Path) -> None:
 
 
 def ul_ppa_summary(ctx: GenContext, outpath: Path) -> None:
-    """PPA rollup per DesignPoint: area + timing from the standalone builds, power
-    from the in-CGRA MemTile sweep (the final run's thesis_dse, tile_sweep.load())."""
+    """PPA rollup per DesignPoint, all from the in-CGRA MemTile sweep (the final
+    run's thesis_dse, tile_sweep.load())."""
     from . import tile_sweep
     try:
         memtile = tile_sweep.load()

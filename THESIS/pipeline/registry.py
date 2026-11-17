@@ -433,12 +433,12 @@ TABLES = [
                 "design points it ran on (the final run's app power, ingested 2026-11-16)."),
     Entry("ul_ppa_summary", "tab:ul_ppa_summary",
           "tables/ul_ppa_summary.tex", "table",
-          "PPA summary per single-level design point (area+timing from the standalone builds; "
-          "power from the in-CGRA MemTile sweep)",
+          "PPA summary per single-level design point, all from the in-CGRA MemTile sweep",
           "real", g.ul_ppa_summary,
-          notes="Power: the static thesis MemTile of each design point, synth-level active power "
-                "at its clock (the final run's thesis_dse memtile_power.csv, via tile_sweep.load()). "
-                "Ingested 2026-11-16."),
+          notes="The static thesis MemTile of each design point, synth level at its own clock "
+                "(the final run's thesis_dse, via tile_sweep.load(); ingested 2026-11-16): std-cell "
+                "area, tile area and active power (relative to the baseline under SRAM_NDA), clock, "
+                "synth slack. Pasted inline into main.tex (Overleaf)."),
 ]
 
 

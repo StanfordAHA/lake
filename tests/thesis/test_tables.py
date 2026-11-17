@@ -85,70 +85,76 @@ def test_find_design_row_returns_none_when_no_match():
 # ---------- emit_ul_ppa_summary --------------------------------------------
 
 
+def _fake_memtile(skip=()):
+    """Static thesis-tile rows of the final sweep for every design point (index i:
+    std-cell (1 + i) * 1000 um2, SRAM 1000 um2, 10 + i mW, 600 MHz), plus the first
+    one's RV tile first, which the table must skip."""
+    from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
+    from THESIS.apps.garnet_configs import garnet_config
+    rows = [{"config": garnet_config(DESIGNS_SINGLE_LEVEL[0], "rv", "thesis"), "syn_std": 1.0,
+             "syn_sram": 1.0, "synth_active_total_power": 0.5, "clock_period_ps": 1428.57}]
+    rows += [{"config": garnet_config(dp, "static", "thesis"), "syn_std": (1 + i) * 1000.0,
+              "syn_sram": 1000.0, "synth_active_total_power": (10 + i) * 1e-3,
+              "clock_period_ps": 1666.67, "tile_synth_wns_ps": 0.5}
+             for i, dp in enumerate(DESIGNS_SINGLE_LEVEL) if dp.id not in skip]
+    return pd.DataFrame(rows)
+
+
+def _ppa_row(out, dp):
+    return next(ln for ln in out.read_text().splitlines() if ln.startswith(tables._fmt(dp.display) + " &"))
+
+
 def test_ul_ppa_summary_writes_valid_tabular(tmp_path):
-    df = _fake_extractor_df()
     out = tmp_path / "ppa.tex"
-    tables.emit_ul_ppa_summary(df, out)
+    tables.emit_ul_ppa_summary(_fake_extractor_df(), out, _fake_memtile())
     body = out.read_text()
     assert r"\begin{tabular}" in body
     assert r"\end{tabular}" in body
     assert r"\toprule" in body and r"\bottomrule" in body
+    assert r"\si{" not in body  # main.tex does not load siunitx
 
 
-def test_ul_ppa_summary_flags_missing_power_in_comment(tmp_path):
-    """Without the MemTile sweep, a % TODO header names the blank power rows."""
+def test_ul_ppa_summary_flags_missing_rows_in_comment(tmp_path):
+    """A design point without a thesis_dse row is blank and named in a % TODO header."""
+    from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
+    dp = DESIGNS_SINGLE_LEVEL[1]
     out = tmp_path / "ppa.tex"
-    tables.emit_ul_ppa_summary(_fake_extractor_df(), out)
+    tables.emit_ul_ppa_summary(_fake_extractor_df(), out, _fake_memtile(skip={dp.id}))
     body = out.read_text()
     assert body.startswith("%")
-    assert "MemTile power blank for port_fw4_dw16_sc8k_sp2x2" in body and "thesis_dse" in body
+    assert f"blank for {dp.id}" in body and "thesis_dse" in body
+    assert _ppa_row(out, dp).endswith(r" & -- & -- & -- & -- & -- \\")
 
 
-def test_ul_ppa_summary_power_from_the_memtile_sweep(tmp_path):
-    """Power is the static thesis MemTile's synth active power at its clock, not
-    the standalone build's synth_power_w."""
+def test_ul_ppa_summary_from_the_final_memtile_sweep(tmp_path):
+    """Every column comes from the static thesis MemTile: std-cell area absolute,
+    tile area and power relative to the baseline (SRAM_NDA), its clock and slack."""
+    from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
+    out = tmp_path / "ppa.tex"
+    tables.emit_ul_ppa_summary(_fake_extractor_df(), out, _fake_memtile())
+    assert _ppa_row(out, DESIGNS_SINGLE_LEVEL[0]).endswith(r" & 1.00 & 1.00 & 1.00 & 600 & 0.5 \\")
+    # index 1: (2000 + 1000) / (1000 + 1000) area, 11 / 10 mW
+    assert _ppa_row(out, DESIGNS_SINGLE_LEVEL[1]).endswith(r" & 2.00 & 1.50 & 1.10 & 600 & 0.5 \\")
+
+
+def test_ul_ppa_summary_raises_without_the_baseline(tmp_path):
     from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
     from THESIS.apps.garnet_configs import garnet_config
-    dp = DESIGNS_SINGLE_LEVEL[0]
-    memtile = pd.DataFrame([
-        {"config": garnet_config(dp, "static", "thesis"), "synth_active_total_power": 0.0123,
-         "clock_period_ps": 1666.67},
-        {"config": garnet_config(dp, "rv", "thesis"), "synth_active_total_power": 0.0456,
-         "clock_period_ps": 1428.57},
-        {"config": garnet_config(dp, "static"), "synth_active_total_power": 0.0789,  # stock fabric
-         "clock_period_ps": 1333.0},
-    ])
-    out = tmp_path / "ppa.tex"
-    tables.emit_ul_ppa_summary(_fake_extractor_df(), out, memtile)
-    row = next(ln for ln in out.read_text().splitlines() if ln.startswith(tables._fmt(dp.display) + " &"))
-    assert row.endswith(r" & 12.3 & 600 \\")
-    assert "MemTile power blank for port_fw4_dw16_sc8k_sp2x2" not in out.read_text()
-
-
-def test_ul_ppa_summary_flags_missing_extractor_rows(tmp_path):
-    """When no extractor rows are found for any DesignPoint, the % header
-    lists them."""
-    out = tmp_path / "ppa.tex"
-    tables.emit_ul_ppa_summary(pd.DataFrame(columns=[
-        "experiment", "storage_cap", "data_width", "fw", "inp", "outp",
-        "synth_total_area_um2", "synth_storage_area_um2", "synth_power_w",
-        "wns_ps", "crit_path_delay_ps",
-    ]), out)
-    body = out.read_text()
-    assert body.startswith("%")
-    assert "missing extractor rows" in body
+    base = garnet_config(DESIGNS_SINGLE_LEVEL[0], "static", "thesis")
+    # the MEM fw4 dw16 8KB point is the same tile as the baseline
+    same = {dp.id for dp in DESIGNS_SINGLE_LEVEL if garnet_config(dp, "static", "thesis") == base}
+    with pytest.raises(MissingDataError, match="baseline"):
+        tables.emit_ul_ppa_summary(_fake_extractor_df(), tmp_path / "x.tex", _fake_memtile(skip=same))
 
 
 def test_ul_ppa_summary_row_count_matches_designs(tmp_path):
     from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
-    df = _fake_extractor_df()
     out = tmp_path / "ppa.tex"
-    tables.emit_ul_ppa_summary(df, out)
+    tables.emit_ul_ppa_summary(_fake_extractor_df(), out, _fake_memtile())
     data_lines = [ln for ln in out.read_text().splitlines()
                   if ln.endswith(r" \\") and not ln.strip().startswith("%")]
-    header_and_body = data_lines
     # 1 header row + N design rows
-    assert len(header_and_body) == 1 + len(DESIGNS_SINGLE_LEVEL)
+    assert len(data_lines) == 1 + len(DESIGNS_SINGLE_LEVEL)
 
 
 def test_ul_ppa_summary_raises_when_no_designs(tmp_path, monkeypatch):
@@ -290,9 +296,10 @@ def test_ul_ppa_summary_power_from_a_loaded_thesis_sweep(tmp_path):
     csv = tmp_path / "sweep.csv"
     pd.DataFrame([
         {"config": garnet_config(dp, "static", "thesis"), "status": "PASS", "syn_cell": 1.0,
-         "synth_active_total_power": 0.0123, "clock_period_ps": 1666.67},
+         "syn_std": 1000.0, "syn_sram": 1000.0, "synth_active_total_power": 0.0123,
+         "clock_period_ps": 1666.67},
     ]).to_csv(csv, index=False)
     out = tmp_path / "ppa.tex"
     tables.emit_ul_ppa_summary(_fake_extractor_df(), out, tile_sweep.load(csv))
     row = next(ln for ln in out.read_text().splitlines() if ln.startswith(tables._fmt(dp.display) + " &"))
-    assert row.endswith(r" & 12.3 & 600 \\")
+    assert row.endswith(r" & 1.00 & 1.00 & 1.00 & 600 & -- \\")

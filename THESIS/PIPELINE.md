@@ -140,10 +140,10 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
   Clockwork schedule those args select (`pipeline/halide_appendix.py`). Checkouts default to
   `../aha` and `../Halide-to-Hardware`; override with `AHA_DIR` / `H2H_DIR`.
   The snippet is pasted inline into the appendix of main.tex (Overleaf).
-- **THESIS_BUILDS** (standalone lakespec) → the area and timing columns of
-  `tab:ul_ppa_summary`. Its power column comes from the tile sweep
-  (`tile_sweep.load()`): each design point's static thesis MemTile, synth-level active
-  power at that tile's clock (the final run's `thesis_dse` `memtile_power.csv`; 2026-10-29).
+- **Tile sweep** (`tile_sweep.load()`) → every column of `tab:ul_ppa_summary` since
+  2026-11-16: each design point's static thesis MemTile from the final run's `thesis_dse`,
+  synth level at that tile's clock (std-cell area; tile area and active power relative to
+  the baseline under SRAM_NDA; clock; synth slack). It no longer reads THESIS_BUILDS.
   (`tab:memtile_model_*` fit the tile sweep since 2026-10-24: §7; thesis_dse since 2026-11-16.)
 - **App results** (`data/apps`, `THESIS.apps.cgra_power_ingest`) → `tab:ul_perf`
   (`tables.emit_ul_perf`): one row per app of the static run, aggressive schedules
@@ -248,10 +248,9 @@ artifacts (invoked by generators in `pipeline/generators.py`). Two
 tiers:
 
 - **Fully data-driven** (populate now from existing state):
-  - `emit_ul_ppa_summary` — per-`DesignPoint` PPA rollup. Area+timing
-    from THESIS_BUILDS; power + its clock from the in-CGRA MemTile sweep
-    (thesis_dse, ingested 2026-11-16). Missing rows and power
-    are called out in a `%`-comment header.
+  - `emit_ul_ppa_summary` — per-`DesignPoint` PPA rollup, all from the
+    in-CGRA MemTile sweep (thesis_dse, ingested 2026-11-16). Design points
+    without a row are called out in a `%`-comment header.
   - `emit_ul_perf` — per-app UL memories, output rate and runtime over
     the design points (app results).
   - `emit_ul_design_points` — DesignPoint axis enumeration with a
