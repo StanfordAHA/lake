@@ -103,10 +103,11 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
 
 - **garnet Tile_MemCore sweep** (not THESIS_BUILDS; ingest with
   `python3 -m THESIS.pipeline.tile_sweep <sweep.zip>`), all in
-  `pipeline/tile_figures.py`, 16-bit-data configs only (other widths have
-  broken RTL as of 2026-10-06). From the hierarchy-kept dw16 sweep
-  (2026-10-09) each figure plots its own blocks (`blk_*` area, `pw_synth_*`
-  power; CLAUDE.md §1.8):
+  `pipeline/tile_figures.py`, 16-bit-data configs only (`tile_figures.DATA_WIDTH`;
+  other widths had broken RTL as of 2026-10-06, but the final run's thesis_dse builds
+  dw8/32/64 too). From the final run's hierarchy-kept thesis_dse sweep (2026-11-16;
+  the dw16 NEW_SWEEP before) each figure plots its own blocks (`blk_*` area,
+  `pw_synth_*` power; CLAUDE.md §1.8):
   - the Ch. 4 component **area and power** figures (same output paths as the
     old THESIS_BUILDS versions): port_{area,power}_vs_{data_width,vc},
     iter_dom_*, affine_*_vs_{dim,max_value}, memory_port_*, storage_*. Power =
@@ -143,15 +144,16 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
   `tab:ul_ppa_summary`. Its power column comes from the tile sweep
   (`tile_sweep.load()`): each design point's static thesis MemTile, synth-level active
   power at that tile's clock (the final run's `thesis_dse` `memtile_power.csv`; 2026-10-29).
-  (`tab:memtile_model_*` fit the tile sweep since 2026-10-24: §7.)
+  (`tab:memtile_model_*` fit the tile sweep since 2026-10-24: §7; thesis_dse since 2026-11-16.)
 - **App results** (`data/apps`, `THESIS.apps.cgra_power_ingest`) → `tab:ul_perf`
   (`tables.emit_ul_perf`): one row per app of the static run, aggressive schedules
   only. Each row gives the UL memories (`tile_count`), output words per cycle and kernel
   cycles, as a range over the design points the app ran on. Pond apps are included.
 - **PE tile pitch** → `fig:pe_tile_height` (`tile_figures.pe_tile_pitch`): each
   fabric's PE and Memory Tile PnR area from `data/pe_tile/thesis_tiles.csv`
-  (copied by hand from garnet mflowgen/CLAUDE.md, the 2026-10-22 thesis tile set at
-  400 MHz; refresh from the newest `thesis_tiles` run). A Memory Tile spans the
+  (copied by hand 2026-11-16 from the final run: PE tiles from `thesis_tiles_pe`, Memory
+  Tiles from `thesis_dse` `correlation.csv` `tile_pnr_total_area`; static 600 MHz, RV
+  700 MHz). A Memory Tile spans the
   fewest unit heights k with width area/k <= `MEM_MAX_WIDTH` (1.5) PE tiles. The standalone area/power generators remain in
   `generators.py` but are no longer registered for the component figures.
 
@@ -169,8 +171,8 @@ manual (block diagram / curated table). Full breakdown: run
 | No dedicated per-stride / per-offset AFFINE sweep | `affine_{area,power}_vs_{stride,offset}` | **dropped** (2026-10-17): not separate hardware parameters (SG: `max_sequence_width`, AG: address width); figures removed from the tex and the registry |
 | No dedicated ScheduleGenerator sweep | `sched_gen_{dim,max_extent}` | open |
 | No LI ScheduleGenerator sweep in THESIS_BUILDS | `li_sched_{ports,loc}_{area,power}` | open |
-| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf` | **ingest written (2026-10-25), no data yet**: garnet `cgra_app_power.py` → `THESIS.apps.cgra_power_ingest` → `results.json`; `single_level_*`, `single_level_*_LI`, `two_level_*` and `tab:ul_perf` are real but draw BOGUS until thesis-fabric bundles for the design points are recorded and powered. Commands: `THESIS/apps/CGRA_APP_POWER.md` |
-| No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — tile-sweep model (2026-10-24, §7); refit on the thesis-fabric design-space sweep once ingested |
+| No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf` | **DONE** (2026-11-16): the final run's garnet `cgra_app_power.py` zip → `THESIS.apps.cgra_power_ingest` → `results.json` (76 rows). Commands: `THESIS/apps/CGRA_APP_POWER.md` |
+| No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — tile-sweep model (2026-10-24, §7); refit on thesis_dse 2026-11-16 (larger held-out errors: CLAUDE.md §1.6) |
 | No pre/post SB PPA numbers | `fig:interconnect_fork_ready_valid_data`, `fig:interconnect_fifo_replace_ff` | **build command exists, not run** (2026-10-17): garnet `sweep_specs.py --recipe fabric_mem` + `pe_tile` (static vs ready-valid fabric, hierarchy kept; garnet mflowgen/CLAUDE.md "Thesis data recipe"). No lake ingest for those zips yet |
 
 Each TODO is also captured in the corresponding `Entry.notes` in
@@ -248,7 +250,7 @@ tiers:
 - **Fully data-driven** (populate now from existing state):
   - `emit_ul_ppa_summary` — per-`DesignPoint` PPA rollup. Area+timing
     from THESIS_BUILDS; power + its clock from the in-CGRA MemTile sweep
-    (blank until the thesis_dse zip is ingested). Missing rows and power
+    (thesis_dse, ingested 2026-11-16). Missing rows and power
     are called out in a `%`-comment header.
   - `emit_ul_perf` — per-app UL memories, output rate and runtime over
     the design points (app results).

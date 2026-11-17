@@ -139,9 +139,11 @@ If a new `THESIS_BUILDS/<EXP>/` directory shows up:
 non-SRAM area and idle/active power to its spec parameters, one LassoCV per runtime
 mode, on `THESIS/data/tile_sweep/latest.csv`, and checks it on held-out configs.
 Design notes: `THESIS/PIPELINE.md` §7. The tables are pasted inline into main.tex
-(Overleaf), so regenerate and re-paste after a new sweep is ingested. They currently
-come from the stock-fabric dw16 sweep; refit them from the thesis-fabric
-design-space sweep once lake ingests it.
+(Overleaf), so regenerate and re-paste after a new sweep is ingested. Since 2026-11-16
+they fit the final run's thesis_dse (§1.8), every data width at its own clock. Held-out
+errors are larger than on the old dw16 sweep (held-out builds: area 9.4% mean vs 3.1%;
+max extent 4096 active 52% vs 17%), likely because log2(data width) also carries the
+per-width clock. Not re-pasted yet.
 
 ```bash
 python3 THESIS/generate_thesis_artifacts.py --only memtile_model_coeff memtile_model_verif
@@ -154,8 +156,8 @@ python3 THESIS/generate_thesis_artifacts.py --only memtile_model_coeff memtile_m
 
 | Table | Status | Source |
 | --- | --- | --- |
-| `tab:ul_ppa_summary` | data-driven (power col blank until thesis_dse is ingested) | extractor DataFrame × `DesignPoint` list; power: `tile_sweep.load()` (static thesis MemTile) |
-| `tab:ul_perf` | data-driven (BOGUS until app power is ingested) | static app results (`THESIS/data/apps`), one row per app |
+| `tab:ul_ppa_summary` | data-driven (power from thesis_dse since 2026-11-16) | extractor DataFrame × `DesignPoint` list; power: `tile_sweep.load()` (static thesis MemTile) |
+| `tab:ul_perf` | data-driven (final app power since 2026-11-16) | static app results (`THESIS/data/apps`), one row per app |
 | `tab:ul_design_points` | data-driven | `THESIS/apps/design_points.DESIGNS_SINGLE_LEVEL` |
 | `tab:exploration_applications` | data-driven | `THESIS/apps/registry.APPS` |
 | `tab:lake_interfaces` | skeleton (prose TODO) | `lake/spec/*.py` `__init__` signatures |
@@ -188,8 +190,11 @@ SRAM busy fraction for utilization). Results land in
 `single_level_*` plot static thesis-fabric rows, `_LI` the RV ones
 (`generators.APP_FABRIC`, `apps_query.select`). The bundle matrix uses the 8
 `DESIGNS_SINGLE_LEVEL` points as they are, duplicate and dual-port points included (user,
-2026-10-25). No data yet: the existing thesis-fabric bundles are all on the design point
-`fw4_dw16_sc4096`, which isn't one of the 8, so the whole matrix has to be recorded.
+2026-10-25). **Ingested 2026-11-16:** the final run's `cgra_app_power_thesis_dp_latest.zip`
+(76 rows, kernel stats from the manifests: 89 `results.json`, since the PORT and MEM fw4
+dw16 8KB points are one config). The user's final data set is unpacked in
+`../thesis_final_data/` (`CONTENTS.txt`, `app_bundles_thesis_dp_STATUS.txt` for the gaps).
+The figures draw each distinct config once and an × where an app has no result.
 Apps (`registry.APPS`, user 2026-10-25): the 4 image apps, matmul single level
 (`matmul_agg`, blocked: the no-pond `matmul_rvtry3 sched=1` does not map on 16x16) and
 two level (`matmul_pond_agg`, pond accumulation; `level="two"`, not in `single_level_*`),
@@ -235,13 +240,18 @@ The garnet lake-spec sweep (`garnet/mflowgen/sweep_specs.py --spec-set
 thesis --zip`) is a second data source, separate from THESIS_BUILDS: whole
 CGRA memory tiles (lakespec + MemCore wrapper + SB/CB) for every thesis spec,
 static + RV, Genus synth (+ Innovus/PT for the PnR configs), idle/active power.
-As of 2026-10-09 the figures come from the **dw16 hierarchy-kept sweep**
-`NEW_SWEEP_r8cad-gf12_20261009-213941_slim.zip` (garnet `mflowgen/CLAUDE.md`
-"dw16 synth sweep + held-out PnR validation"): 172 configs (89 static + 83 RV),
-`--flatten-effort 0`, 1.333 ns, 12 through PnR (8 fit + 4 held out), power at
-synth level for all and PnR level for the 12. Its build-side handoff and the
-analysis (model checks, per-block breakdown, RV overhead) sit next to the
-extracted zip in the user's workspace: `HANDOFF.md`, `<sweep>/analysis/ANALYSIS.md`.
+**Since 2026-11-16 the figures come from the final run's `thesis_dse_mem_latest_slim.zip`**
+(`../thesis_final_data/`): 246 configs (132 static + 114 RV; 172 at dw16, plus dw8/32/64),
+hierarchy kept, the gated thesis tiles (`<geometry>_sharectr_portcg_thesis`,
+`<geometry>_nofp_portcg_thesis_rv`), each data width and mode at its own clock (dw16:
+static 600 MHz, RV 700 MHz), 38 through PnR. `tile_sweep.load()` renames the configs to
+the stock names the figures look up (`<geometry>`, `<geometry>_rv`) and keeps the garnet
+name in `garnet_config`. `memtile_synth_vs_pnr_power` is BOGUS on it: the RV
+`fw4_dw16_sc8192_dp_in4_out4_vc2` held-out build has no PnR active power (its gate-level
+active sim failed the activity check, one SB output never toggled, with ICG setup
+violations). Before, the dw16 hierarchy-kept sweep
+`NEW_SWEEP_r8cad-gf12_20261009-213941_slim.zip` (172 configs, ungated stock tiles, 1.333 ns,
+12 through PnR; `HANDOFF.md`, `<sweep>/analysis/ANALYSIS.md` in the user's workspace).
 One command rebuilds the whole thesis data set (2026-10-17): garnet
 `sweep_specs.py --recipe thesis`. This sweep is its `memtile` part, now at every
 data width; the other parts are the switch-box A/B, PE tiles and app power. See
@@ -250,7 +260,7 @@ ingest so far.
 
 ```bash
 # Ingest a sweep zip (or extracted dir) -> THESIS/data/tile_sweep/{<sweep>,latest}.csv
-python3 -m THESIS.pipeline.tile_sweep ../NEW_SWEEP_<host>_<ts>_slim.zip
+python3 -m THESIS.pipeline.tile_sweep ../thesis_final_data/thesis_dse_mem_latest_slim.zip
 # Regenerate every tile-sweep figure (zsh: ${=IDS} to word-split a variable)
 python3 THESIS/generate_thesis_artifacts.py --only \
     port_area_vs_data_width port_power_vs_data_width port_area_vs_vc port_power_vs_vc \
@@ -330,9 +340,9 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
   - `_save` wraps an axis label that would overflow its axis (`_wrap_labels`).
   - Check a figure's PNG before shipping it: `--preview-views`, or a generator called
     with a `.png` path.
-  - The Ch. 5 app figures (`generators._grouped_bar`, `single_level_area`) still use
-    the old 6×4 in style. Restyle them once app data exists: 8 long design ids don't
-    fit a half-width legend.
+  - The Ch. 5 app figures use it too since 2026-11-16 (`generators._app_bar`,
+    `_paired_bar`): FULL_W, one group per app, one bar per distinct design point. Their
+    area figures are relative under `SRAM_NDA` (CGRA area includes the macros).
 Placement + captions for main.tex (the Overleaf project "Thesis Rough Draft" is
 the live copy; local `main_thesis.tex` is stale):
 `THESIS/output/snippets/memtile_figures.tex` (EDIT 1–7).

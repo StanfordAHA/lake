@@ -240,44 +240,40 @@ COMPONENT_CHARACTERIZATION = [
 ]
 
 # ---------------------------------------------------------------------------
-# Ch. 5 Application exploration figures — BOGUS until app-mapping data lands.
+# Ch. 5 Application exploration figures: garnet whole-CGRA app power of the final run
+# (cgra_app_power_thesis_dp, ingested 2026-11-16 with THESIS.apps.cgra_power_ingest).
 # ---------------------------------------------------------------------------
 EXPLORATION_APPS = [
     Entry("single_level_power", "fig:single_level_power",
           "figures/single_level_power.pdf", "figure",
           "per-app power across single-level design points",
           "real", g.single_level_power,
-          notes="Reads THESIS/data/apps/**/results.json. Needs "
-                "synth_power_w populated — falls back to BOGUS until "
-                "ptpx-synth per-app sweep completes."),
+          notes="Reads THESIS/data/apps/**/results.json (static rows): synth-level power of "
+                "the tiles the app places and routes through, over the kernel."),
     Entry("single_level_performance", "fig:single_level_performance",
           "figures/single_level_performance.pdf", "figure",
-          "per-app perf (cycles-to-complete) on single-level designs",
+          "per-app perf (kernel cycles) on single-level designs",
           "real", g.single_level_performance,
-          notes="Reads THESIS/data/apps/**/results.json. Needs total_cycles "
-                "from tb.sv util counter — falls back to BOGUS until "
-                "run_matrix has run per (design, app) cell."),
+          notes="Reads THESIS/data/apps/**/results.json: total_cycles = aha test's kernel "
+                "cycles (the bundle manifest's kernel entry)."),
     Entry("single_level_area", "fig:single_level_area",
           "figures/single_level_area.pdf", "figure",
-          "synth area per design point (logic + SRAM stacked)",
+          "per-app synth area of the CGRA tiles the app touches, per design point",
           "real", g.single_level_area,
-          notes="Design-level metric derived from extractor rows; averaged "
-                "across per-app cells since area doesn't vary with app. "
-                "BOGUS until at least one cell has PPA-lookup populated."),
+          notes="(placed + route tiles) x tile area. It includes the SRAM macros, so with "
+                "tile_figures.SRAM_NDA each app's bars are relative to its first design point "
+                "(the baseline)."),
     Entry("single_level_utilization", "fig:single_level_utilization",
           "figures/single_level_utilization.pdf", "figure",
           "per-app memtile utilization on single-level designs",
           "real", g.single_level_utilization,
-          notes="active handshake cycles / total sim cycles per tile, "
-                "summed across tiles for each (design, app) cell. Source: "
-                "tb.sv util counter, aggregated in run_matrix."),
+          notes="utilization = garnet's SRAM busy fraction: mean over the placed MEM tiles "
+                "of SRAM access cycles / kernel cycles."),
     Entry("single_level_energy_efficiency", "fig:single_level_energy_efficiency",
           "figures/single_level_energy_efficiency.pdf", "figure",
           "per-app energy per completed run on single-level designs",
           "real", g.single_level_energy_efficiency,
-          notes="Energy = synth_power_w * total_cycles * clock_period. "
-                "Needs both perf (util counter) and power (ptpx-synth) "
-                "landed — BOGUS until both flows have populated results.json."),
+          notes="Energy = synth_power_w * total_cycles * clock_period."),
     # Each two-level app against its single-level counterpart on every design point
     # (user 2026-10-30), not a sweep of two-level design points.
     Entry("two_level_power", "fig:two_level_power",
@@ -334,9 +330,9 @@ EVALUATION_SETUP = [
           "figures/pe_tile_height.pdf", "figure",
           "PE tile physical-design area -> unit tile pitch; MEM tile as 1-4 unit heights "
           "(width <= 1.5 unit tiles)", "real", tf.pe_tile_pitch,
-          notes="Reads THESIS/data/pe_tile/thesis_tiles.csv (PnR areas copied by hand from garnet "
-                "mflowgen/CLAUDE.md, the 2026-10-22 400 MHz thesis tile set). Refresh from the "
-                "newest thesis_tiles run (each fabric at its own clock)."),
+          notes="Reads THESIS/data/pe_tile/thesis_tiles.csv (PnR areas copied by hand, 2026-11-16, "
+                "from the final run: PE tiles from thesis_tiles_pe, Memory Tiles from thesis_dse "
+                "correlation.csv; static 600 MHz, RV 700 MHz)."),
     Entry("evaluation_cgra_layout", "fig:evaluation_cgra_layout",
           "figures/evaluation_cgra_layout.pdf", "figure",
           "hand-drawn 8x16 CGRA, every fourth column MEM (3:1 PE:MEM), global buffer on top",
@@ -403,9 +399,8 @@ TABLES = [
           "Memory Tile non-SRAM area / idle / active power vs spec parameters, per runtime "
           "mode (LassoCV), fit on the tile sweep (tile_sweep.load())",
           "real", g.memtile_model_coeff,
-          notes="Pasted inline into main.tex (Overleaf). Fit on the stock-fabric dw16 sweep "
-                "(2026-10-24): regenerate from the thesis-fabric design-space sweep "
-                "(garnet --recipe thesis_dse) once it is ingested."),
+          notes="Pasted inline into main.tex (Overleaf). Fit on the final run's thesis_dse "
+                "(ingested 2026-11-16; every data width, each at its own clock): re-paste."),
     Entry("memtile_model_verif", "tab:memtile_model_verif",
           "tables/memtile_model_verif.tex", "table",
           "Memory Tile model: error on held-out configs (held-out PnR builds + 3 extrapolations)",
@@ -424,7 +419,7 @@ TABLES = [
           "per-app perf + memory usage on single-level designs", "real", g.ul_perf,
           notes="Static app results (THESIS/data/apps), aggressive schedules only: per app the "
                 "UL memories, output words per cycle and kernel cycles, each a range over the "
-                "design points it ran on. BOGUS until the final run's app power is ingested."),
+                "design points it ran on (the final run's app power, ingested 2026-11-16)."),
     Entry("ul_ppa_summary", "tab:ul_ppa_summary",
           "tables/ul_ppa_summary.tex", "table",
           "PPA summary per single-level design point (area+timing from the standalone builds; "
@@ -432,7 +427,7 @@ TABLES = [
           "real", g.ul_ppa_summary,
           notes="Power: the static thesis MemTile of each design point, synth-level active power "
                 "at its clock (the final run's thesis_dse memtile_power.csv, via tile_sweep.load()). "
-                "Blank until that zip is ingested with THESIS.pipeline.tile_sweep."),
+                "Ingested 2026-11-16."),
 ]
 
 

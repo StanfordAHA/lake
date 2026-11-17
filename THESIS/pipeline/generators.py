@@ -409,7 +409,6 @@ def compiler_info(ctx: GenContext, outpath: Path) -> None:
 # The fabric the app figures plot (user 2026-10-20: thesis results come from the
 # thesis fabrics); results without a fabric field (run_matrix) also count.
 APP_FABRIC = "thesis"
-_MODE_TITLE = {"static": "Single-level", "rv": "Single-level LI"}
 
 
 def _load_apps_or_miss(required_col: str | None = None, mode: str = "static",
@@ -431,116 +430,111 @@ def _load_apps_or_miss(required_col: str | None = None, mode: str = "static",
     return df
 
 
-def _grouped_bar(
-    df: pd.DataFrame,
-    *,
-    x: str,       # e.g. "app_id" — categorical
-    hue: str,     # e.g. "design_id" — bars grouped per x value
-    y: str,       # value column
-    title: str,
-    xlabel: str,
-    ylabel: str,
-    outpath: Path,
-) -> None:
-    """Grouped bar chart. One bar per (hue) value, grouped along x."""
-    df = df.dropna(subset=[x, hue, y])
-    if df.empty:
-        raise MissingDataError(f"no non-null rows for {y} by ({x}, {hue})")
+def _app_designs(ids) -> list[tuple[str, str]]:
+    """(design_id, label) of the design points among ``ids``, in design_points order,
+    one per config: "PORT fw4 dw16 8KB SP 2x2 (baseline)" -> "fw4 dw16 8KB SP 2x2", and
+    the MEM point with the same config (the same results) is drawn once. Unknown ids last."""
+    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    out, labels = [], set()
+    for d in DESIGNS_SINGLE_LEVEL:
+        label = re.sub(r"^\S+ | \(.*\)$", "", d.display)
+        if d.id in ids and label not in labels:
+            out.append((d.id, label))
+            labels.add(label)
+    known = {d.id for d in DESIGNS_SINGLE_LEVEL}
+    return out + [(d, d) for d in sorted(set(ids) - known)]
 
-    pivot = df.pivot_table(index=x, columns=hue, values=y, aggfunc="mean").sort_index()
-    hues = list(pivot.columns)
-    xs = list(pivot.index)
-    n_hue = max(len(hues), 1)
-    bar_w = 0.8 / n_hue
 
+def _missing_mark(ax, xs, fontsize: float) -> None:
+    from .tile_figures import MUTED
+    for x in xs:
+        ax.text(x, 0, "×", ha="center", va="bottom", color=MUTED, fontsize=fontsize)
+
+
+def _missing_handle():
+    from matplotlib.lines import Line2D
+    from .tile_figures import MUTED
+    return Line2D([], [], ls="", marker="$×$", color=MUTED, markersize=8)
+
+
+def _app_bar(df: pd.DataFrame, *, y: str, ylabel: str, outpath: Path,
+             relative: bool = False) -> None:
+    """One group per app (registry order), one bar per design point; × where the app
+    has no result there. ``relative``: each app's bars over its first design point's."""
     import numpy as np
-    fig, ax = plt.subplots(figsize=(max(6.0, 0.9 * len(xs) + 2.5), 4.0))
-    idx = np.arange(len(xs))
-    for i, h in enumerate(hues):
-        offsets = idx - 0.4 + bar_w * (i + 0.5)
-        ax.bar(offsets, pivot[h].to_numpy(), width=bar_w, label=str(h))
+    from .tile_figures import FULL_W, SERIES, _ax_style, _legend_above, _save
+    from ..apps.registry import APPS
+    df = df.dropna(subset=["app_id", "design_id", y])
+    if df.empty:
+        raise MissingDataError(f"no non-null {y} values in the app results")
+    designs = _app_designs(set(df["design_id"]))
+    order = [a.id for a in APPS if a.id in set(df["app_id"])]
+    apps = order + sorted(set(df["app_id"]) - set(order))
+    names = {a.id: a.display for a in APPS}
+    vals = (df.pivot_table(index="app_id", columns="design_id", values=y, aggfunc="mean")
+            .reindex(index=apps, columns=[d for d, _ in designs]))
+    if relative:
+        vals = vals.div(vals.iloc[:, 0], axis=0)
+    fig, ax = plt.subplots(figsize=(FULL_W, 2.6))
+    idx = np.arange(len(apps))
+    w = 0.84 / len(designs)
+    for i, ((d, label), color) in enumerate(zip(designs, SERIES * 2)):
+        xs = idx - 0.42 + w * (i + 0.5)
+        col = vals[d].to_numpy(dtype=float)
+        ax.bar(xs, col, width=w, color=color, label=label)
+        _missing_mark(ax, xs[np.isnan(col)], 8)
     ax.set_xticks(idx)
-    ax.set_xticklabels(xs, rotation=30, ha="right", fontsize=8)
-    ax.set_xlabel(xlabel)
+    # "Camera Pipeline 2x2" -> "Camera\nPipeline 2x2": five names side by side fit on two lines
+    ax.set_xticklabels([n.replace(" ", "\n", 1) if len(n) > 10 else n
+                        for n in (names.get(a, a) for a in apps)])
     ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.legend(fontsize=7, loc="best", title=hue)
-    ax.grid(True, axis="y", alpha=0.3)
-    outpath.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
-    fig.savefig(outpath, dpi=150)
-    plt.close(fig)
+    _ax_style(ax)
+    handles, labels = ax.get_legend_handles_labels()
+    if vals.isna().to_numpy().any():
+        handles.append(_missing_handle())
+        labels.append("No result")
+    _legend_above(ax, handles, labels)
+    _save(fig, outpath)
 
 
 def single_level_power(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
     """Per-app synth power on each single-level design point."""
     df = _load_apps_or_miss(required_col="synth_power_w", mode=mode)
-    df = df.assign(power_mw=df["synth_power_w"] * 1000.0)
-    _grouped_bar(
-        df, x="app_id", hue="design_id", y="power_mw",
-        title=f"{_MODE_TITLE[mode]}: per-app power",
-        xlabel="App", ylabel="Synth power (mW)",
-        outpath=outpath,
-    )
+    _app_bar(df.assign(power_mw=df["synth_power_w"] * 1000.0), y="power_mw",
+             ylabel="Power (mW)", outpath=outpath)
 
 
 def single_level_performance(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
-    """Per-app cycles-to-complete on each single-level design point."""
+    """Per-app kernel cycles on each single-level design point."""
     df = _load_apps_or_miss(required_col="total_cycles", mode=mode)
-    _grouped_bar(
-        df, x="app_id", hue="design_id", y="total_cycles",
-        title=f"{_MODE_TITLE[mode]}: per-app cycles to complete",
-        xlabel="App", ylabel="Total cycles",
-        outpath=outpath,
-    )
+    _app_bar(df.assign(kcycles=df["total_cycles"] / 1000.0), y="kcycles",
+             ylabel="Kernel cycles (10³)", outpath=outpath)
 
 
 def single_level_area(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
-    """Per-design synth area, averaged across apps. A run_matrix cell carries
-    the design's own area (the same for every app); a cgra_power_ingest cell
-    the CGRA area its app touches, so this is the mean over the apps."""
+    """Per-app synth area of the CGRA tiles the app touches (a run_matrix cell: the
+    design's own area) on each single-level design point. It includes the SRAM macros,
+    so with tile_figures.SRAM_NDA each app's bars are relative to its first design point."""
+    from .tile_figures import SRAM_NDA
     df = _load_apps_or_miss(required_col="synth_total_area_um2", mode=mode)
-    per_design = (
-        df.groupby("design_id", as_index=False)[["synth_total_area_um2",
-                                                 "synth_logic_area_um2",
-                                                 "synth_storage_area_um2"]]
-          .mean()
-          .sort_values("synth_total_area_um2")
-    )
-    import numpy as np
-    fig, ax = plt.subplots(figsize=(max(6.0, 0.9 * len(per_design) + 2.5), 4.0))
-    idx = np.arange(len(per_design))
-    logic = per_design["synth_logic_area_um2"].fillna(0).to_numpy()
-    storage = per_design["synth_storage_area_um2"].fillna(0).to_numpy()
-    ax.bar(idx, logic, label="Logic", color="tab:blue")
-    ax.bar(idx, storage, bottom=logic, label="SRAM", color="tab:orange")
-    ax.set_xticks(idx)
-    ax.set_xticklabels(per_design["design_id"], rotation=30, ha="right", fontsize=8)
-    ax.set_xlabel("Design point")
-    ax.set_ylabel("Synth area (µm²)")
-    ax.set_title(f"{_MODE_TITLE[mode]}: synth area by design point")
-    ax.legend(fontsize=8, loc="best")
-    ax.grid(True, axis="y", alpha=0.3)
-    outpath.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
-    fig.savefig(outpath, dpi=150)
-    plt.close(fig)
+    if SRAM_NDA:
+        ref = _app_designs(set(df.dropna(subset=["synth_total_area_um2"])["design_id"]))[0][1]
+        _app_bar(df, y="synth_total_area_um2", ylabel=f"Area (× {ref})", outpath=outpath,
+                 relative=True)
+    else:
+        _app_bar(df.assign(area_k=df["synth_total_area_um2"] / 1000.0), y="area_k",
+                 ylabel="Area (10³ µm²)", outpath=outpath)
 
 
 def single_level_utilization(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
-    """Per-app memory-tile utilization (active handshake cycles / total)."""
+    """Per-app memory-tile utilization (SRAM busy cycles / kernel cycles)."""
     df = _load_apps_or_miss(required_col="utilization", mode=mode)
-    df = df.assign(utilization_pct=df["utilization"] * 100.0)
-    _grouped_bar(
-        df, x="app_id", hue="design_id", y="utilization_pct",
-        title=f"{_MODE_TITLE[mode]}: memtile utilization per app",
-        xlabel="App", ylabel="Utilization (%)",
-        outpath=outpath,
-    )
+    _app_bar(df.assign(utilization_pct=df["utilization"] * 100.0), y="utilization_pct",
+             ylabel="Utilization (%)", outpath=outpath)
 
 
 def single_level_energy_efficiency(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
-    """Per-app energy-per-op (lower is better). Requires both power and
+    """Per-app energy per run (lower is better). Requires both power and
     total_cycles; raises MissingDataError until ptpx-synth data lands."""
     df = _load_apps_or_miss(required_col="synth_power_w", mode=mode)
     if "total_cycles" not in df.columns or df["total_cycles"].dropna().empty:
@@ -552,12 +546,7 @@ def single_level_energy_efficiency(ctx: GenContext, outpath: Path, mode: str = "
         runtime_s=df["total_cycles"] * df["clock_period_ps"] * 1e-12,
     )
     df = df.assign(energy_uj=df["synth_power_w"] * df["runtime_s"] * 1e6)
-    _grouped_bar(
-        df, x="app_id", hue="design_id", y="energy_uj",
-        title=f"{_MODE_TITLE[mode]}: energy per app run (lower is better)",
-        xlabel="App", ylabel="Energy (µJ)",
-        outpath=outpath,
-    )
+    _app_bar(df, y="energy_uj", ylabel="Energy per run (µJ)", outpath=outpath)
 
 
 def ul_perf(ctx: GenContext, outpath: Path) -> None:
@@ -619,44 +608,40 @@ def _level_pairs(required_col: str) -> pd.DataFrame:
     return df
 
 
-def _paired_bar(df: pd.DataFrame, *, y: str, ylabel: str, outpath: Path) -> None:
-    """One panel per app pair: the single- and two-level bar on each design point."""
+def _paired_bar(df: pd.DataFrame, *, y: str, ylabel: str, outpath: Path,
+                relative: bool = False) -> None:
+    """One panel per app pair: the single- and two-level bar on each design point.
+    ``relative``: each panel over its first design point's single-level bar (the
+    two-level one where there is none)."""
     import numpy as np
-    from matplotlib.lines import Line2D
-    from .tile_figures import FULL_W, MUTED, SERIES, _ax_style
-    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
-    seen = set(df["design_id"])
-    designs = [d.id for d in DESIGNS_SINGLE_LEVEL if d.id in seen]
-    designs += sorted(seen - set(designs))  # design_points order, then any others
-    # "PORT fw4 dw16 8KB SP 2x2 (baseline)" -> "fw4 dw16\n8KB SP\n2x2"
-    short = {d.id: re.sub(r"^\S+ | \(.*\)$", "", d.display) for d in DESIGNS_SINGLE_LEVEL}
-    ticks = [re.sub(r"^(\S+ \S+) (\S+ \S+) ", "\\1\n\\2\n", short.get(d, d)) for d in designs]
+    from .tile_figures import FULL_W, SERIES, _ax_style, _legend_above, _save
+    designs = _app_designs(set(df["design_id"]))
+    # "fw4 dw16 8KB SP 2x2" -> "fw4 dw16\n8KB SP\n2x2"
+    ticks = [re.sub(r"^(\S+ \S+) (\S+ \S+) ", "\\1\n\\2\n", label) for _, label in designs]
     # pairs with a single-level result first: the ones the figure compares
     pairs = sorted(dict.fromkeys(df["pair"]), key=lambda p: not (df[df["pair"] == p]["level"] == "single").any())
-    fig, axes = plt.subplots(len(pairs), 1, figsize=(FULL_W, 1.7 * len(pairs) + 1.1), sharex=True,
+    fig, axes = plt.subplots(len(pairs), 1, figsize=(FULL_W, 1.6 * len(pairs) + 0.8), sharex=True,
                              squeeze=False)
     idx = np.arange(len(designs))
     for ax, pair in zip(axes[:, 0], pairs):
         vals = (df[df["pair"] == pair].pivot_table(index="design_id", columns="level", values=y, aggfunc="mean")
-                .reindex(index=designs, columns=list(_LEVEL_LABELS)))
+                .reindex(index=[d for d, _ in designs], columns=list(_LEVEL_LABELS)))
+        if relative:
+            first = vals.iloc[0].dropna()
+            vals = vals / (first.iloc[0] if not first.empty else np.nan)
         for i, (level, color) in enumerate(zip(_LEVEL_LABELS, SERIES)):
             xs = idx + (i - 0.5) * 0.4
-            ax.bar(xs, vals[level].to_numpy(), width=0.4, color=color, label=_LEVEL_LABELS[level])
-            for x in xs[vals[level].isna().to_numpy()]:
-                ax.text(x, 0, "×", ha="center", va="bottom", color=MUTED, fontsize=12)
+            col = vals[level].to_numpy(dtype=float)
+            ax.bar(xs, col, width=0.4, color=color, label=_LEVEL_LABELS[level])
+            _missing_mark(ax, xs[np.isnan(col)], 11)
         ax.set_title(pair, loc="left")
         _ax_style(ax)
     fig.supylabel(ylabel, fontsize=10.5, fontweight="bold")
     axes[-1, 0].set_xticks(idx)
-    axes[-1, 0].set_xticklabels(ticks, fontsize=9)
+    axes[-1, 0].set_xticklabels(ticks, fontsize=8.5)
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    handles.append(Line2D([], [], ls="", marker="$×$", color=MUTED, markersize=8))
-    labels.append("No result")
-    fig.legend(handles, labels, loc="upper center", ncol=3, bbox_to_anchor=(0.5, 1.0))
-    outpath.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout(rect=(0, 0, 1, 0.92))
-    fig.savefig(outpath)
-    plt.close(fig)
+    _legend_above(axes[0, 0], handles + [_missing_handle()], labels + ["No result"])
+    _save(fig, outpath)
 
 
 def two_level_power(ctx: GenContext, outpath: Path) -> None:
@@ -674,10 +659,17 @@ def two_level_performance(ctx: GenContext, outpath: Path) -> None:
 
 
 def two_level_area(ctx: GenContext, outpath: Path) -> None:
-    """Single- vs two-level synth area of the CGRA tiles each app touches."""
+    """Single- vs two-level synth area of the CGRA tiles each app touches. It includes
+    the SRAM macros, so with tile_figures.SRAM_NDA each panel is relative to its
+    leftmost bar."""
+    from .tile_figures import SRAM_NDA
     df = _level_pairs("synth_total_area_um2")
-    _paired_bar(df.assign(area_k=df["synth_total_area_um2"] / 1000.0), y="area_k",
-                ylabel="Area (10³ µm²)", outpath=outpath)
+    if SRAM_NDA:
+        _paired_bar(df, y="synth_total_area_um2", ylabel="Area (× leftmost bar)", outpath=outpath,
+                    relative=True)
+    else:
+        _paired_bar(df.assign(area_k=df["synth_total_area_um2"] / 1000.0), y="area_k",
+                    ylabel="Area (10³ µm²)", outpath=outpath)
 
 
 def two_level_utilization(ctx: GenContext, outpath: Path) -> None:

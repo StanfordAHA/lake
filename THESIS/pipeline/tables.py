@@ -73,7 +73,8 @@ def _memtile_power_row(memtile: pd.DataFrame | None, dp, mode: str = "static") -
 
     if memtile is None or "config" not in memtile or "synth_active_total_power" not in memtile:
         return None
-    hits = memtile[memtile["config"] == garnet_config(dp, mode, "thesis")]
+    names = memtile["garnet_config"] if "garnet_config" in memtile else memtile["config"]
+    hits = memtile[names == garnet_config(dp, mode, "thesis")]
     hits = hits.dropna(subset=["synth_active_total_power"])
     return None if hits.empty else hits.iloc[0]
 

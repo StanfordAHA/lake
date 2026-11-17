@@ -455,6 +455,21 @@ def ingest(src_path: Path) -> pd.DataFrame:
     return df
 
 
+# A thesis-fabric sweep (garnet --recipe thesis_dse) names each config after its garnet
+# tile, <geometry>_sharectr_portcg_thesis (static) or <geometry>_nofp_portcg_thesis_rv (RV).
+# load() renames them to the stock names the figures look configs up by (<geometry>,
+# <geometry>_rv) and keeps the garnet name in garnet_config.
+THESIS_SUFFIXES = {"_sharectr_portcg_thesis": "", "_nofp_portcg_thesis_rv": "_rv"}
+
+
+def stock_name(name: str) -> str:
+    """fw4_..._vc2_nofp_portcg_thesis_rv -> fw4_..._vc2_rv; other names unchanged."""
+    for suffix, repl in THESIS_SUFFIXES.items():
+        if name.endswith(suffix):
+            return name[:-len(suffix)] + repl
+    return name
+
+
 def load(path: Path | None = None) -> pd.DataFrame:
     path = Path(path) if path else LATEST
     if not path.is_file():
@@ -462,7 +477,14 @@ def load(path: Path | None = None) -> pd.DataFrame:
             f"no tile sweep data at {path} -- run "
             "`python3 -m THESIS.pipeline.tile_sweep <sweep.zip>` first")
     df = pd.read_csv(path)
-    return df[df["status"] != "FAIL"].dropna(subset=["syn_cell"])
+    df = df[df["status"] != "FAIL"].dropna(subset=["syn_cell"]).copy()
+    df["garnet_config"] = df["config"]
+    df["config"] = df["config"].map(stock_name)
+    dup = df.loc[df["config"].duplicated(), "config"]
+    if not dup.empty:
+        raise ValueError(f"{path}: {', '.join(sorted(set(dup)))} appear under a thesis and a stock name")
+    df["base_config"] = df["config"].str.replace(r"_rv$", "", regex=True)
+    return df
 
 
 def main(argv: list[str] | None = None) -> int:

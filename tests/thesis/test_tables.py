@@ -278,3 +278,21 @@ def test_emitters_create_parent_dirs(tmp_path):
     deep = tmp_path / "a" / "b" / "c" / "out.tex"
     tables.emit_lake_interfaces(deep)
     assert deep.is_file()
+
+
+def test_ul_ppa_summary_power_from_a_loaded_thesis_sweep(tmp_path):
+    """tile_sweep.load() renames thesis configs to stock names; the table looks the
+    design point up by the garnet name it keeps in garnet_config."""
+    from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
+    from THESIS.apps.garnet_configs import garnet_config
+    from THESIS.pipeline import tile_sweep
+    dp = DESIGNS_SINGLE_LEVEL[0]
+    csv = tmp_path / "sweep.csv"
+    pd.DataFrame([
+        {"config": garnet_config(dp, "static", "thesis"), "status": "PASS", "syn_cell": 1.0,
+         "synth_active_total_power": 0.0123, "clock_period_ps": 1666.67},
+    ]).to_csv(csv, index=False)
+    out = tmp_path / "ppa.tex"
+    tables.emit_ul_ppa_summary(_fake_extractor_df(), out, tile_sweep.load(csv))
+    row = next(ln for ln in out.read_text().splitlines() if ln.startswith(tables._fmt(dp.display) + " &"))
+    assert row.endswith(r" & 12.3 & 600 \\")

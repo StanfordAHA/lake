@@ -163,19 +163,42 @@ def test_fail_rows_are_excluded(apps_root, empty_ctx, tmp_path):
     generators.single_level_utilization(empty_ctx, tmp_path / "x.pdf")
 
 
-# ---------- _grouped_bar helper edge cases --------------------------------
+# ---------- _app_bar helper edge cases ------------------------------------
 
 
-def test_grouped_bar_raises_when_all_rows_null(tmp_path, empty_ctx):
+def test_app_bar_raises_when_all_rows_null(tmp_path, empty_ctx):
     """A partially-populated column that's all-NaN after dropna must raise."""
     df = pd.DataFrame([
         {"app_id": "a", "design_id": "d", "x_val": None},
     ])
     with pytest.raises(MissingDataError):
-        generators._grouped_bar(
-            df, x="app_id", hue="design_id", y="x_val",
-            title="t", xlabel="x", ylabel="y", outpath=tmp_path / "x.pdf",
-        )
+        generators._app_bar(df, y="x_val", ylabel="y", outpath=tmp_path / "x.pdf")
+
+
+def test_app_designs_draw_one_bar_per_config():
+    """The PORT and MEM fw4 dw16 8KB SP 2x2 points are one config: one bar, the
+    first in design_points order; unknown ids follow."""
+    ids = {"mem_fw4_dw16_sc8k_sp2x2", "port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc2k_sp1x1", "zz"}
+    assert generators._app_designs(ids) == [
+        ("port_fw4_dw16_sc8k_sp2x2", "fw4 dw16 8KB SP 2x2"),
+        ("mem_fw2_dw16_sc2k_sp1x1", "fw2 dw16 2KB SP 1x1"),
+        ("zz", "zz"),
+    ]
+    assert generators._app_designs({"mem_fw4_dw16_sc8k_sp2x2"}) == [
+        ("mem_fw4_dw16_sc8k_sp2x2", "fw4 dw16 8KB SP 2x2")]
+
+
+def test_area_is_relative_to_the_first_design_under_sram_nda(apps_root, empty_ctx, tmp_path, monkeypatch):
+    from THESIS.pipeline import tile_figures
+    _seed_full_matrix(apps_root)
+    calls = []
+    monkeypatch.setattr(generators, "_app_bar", lambda df, **kw: calls.append(kw))
+    monkeypatch.setattr(tile_figures, "SRAM_NDA", True)
+    generators.single_level_area(empty_ctx, tmp_path / "x.pdf")
+    monkeypatch.setattr(tile_figures, "SRAM_NDA", False)
+    generators.single_level_area(empty_ctx, tmp_path / "x.pdf")
+    assert calls[0]["relative"] and calls[0]["ylabel"] == "Area (× mem_small_sp)"
+    assert calls[1]["y"] == "area_k" and not calls[1].get("relative")
 
 
 # ---------- static vs RV (LI) and fabrics stay apart ----------------------
@@ -214,6 +237,6 @@ def test_static_figures_skip_rv_and_stock_rows(apps_root, empty_ctx, tmp_path, m
     _write_cell(apps_root, "d__static__thesis", "mm_pond", mode="static", fabric="thesis", level="two",
                 total_cycles=30_000)
     seen = {}
-    monkeypatch.setattr(generators, "_grouped_bar", lambda df, **kw: seen.update(df=df))
+    monkeypatch.setattr(generators, "_app_bar", lambda df, **kw: seen.update(df=df))
     generators.single_level_performance(empty_ctx, tmp_path / "x.pdf")
     assert list(seen["df"]["total_cycles"]) == [100]

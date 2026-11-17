@@ -112,3 +112,20 @@ def test_performance_and_energy_are_per_output_word(apps_root, ctx, tmp_path, mo
     assert seen["output_per_cycle"]["two"] == pytest.approx(2352 / 177697)
     assert seen["energy_pj"]["single"] == pytest.approx(0.02 * 11661 * 1000.0 / 588)
     assert seen["energy_pj"]["two"] == pytest.approx(0.01 * 177697 * 1000.0 / 2352)
+
+
+def test_area_is_relative_to_the_leftmost_bar_under_sram_nda(apps_root, ctx, tmp_path, monkeypatch):
+    from THESIS.pipeline import tile_figures
+    _seed(apps_root)
+    calls = []
+    monkeypatch.setattr(generators, "_paired_bar", lambda df, **kw: calls.append(kw))
+    monkeypatch.setattr(tile_figures, "SRAM_NDA", True)
+    generators.two_level_area(ctx, tmp_path / "x.pdf")
+    monkeypatch.setattr(tile_figures, "SRAM_NDA", False)
+    generators.two_level_area(ctx, tmp_path / "x.pdf")
+    assert calls[0]["relative"] and calls[0]["y"] == "synth_total_area_um2"
+    assert calls[1]["y"] == "area_k" and not calls[1].get("relative")
+    monkeypatch.undo()
+    monkeypatch.setattr(apps_query, "DEFAULT_RESULTS_ROOT", apps_root)
+    generators.two_level_area(ctx, tmp_path / "x.pdf")  # draws, with SRAM_NDA's default
+    assert (tmp_path / "x.pdf").stat().st_size > 1000

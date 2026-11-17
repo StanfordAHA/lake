@@ -245,6 +245,24 @@ python3 THESIS/generate_thesis_artifacts.py --only \
 design-space sweep. It also adds `mem_tile_pnr_area_um2` where the sweep has PnR. Without
 it, the areas come from the zip's own Genus reports (the tiles the power came from).
 
+**Final run, ingested 2026-11-16** (user's `thesis_final_data.zip`, unpacked in
+`../thesis_final_data/`): `cgra_app_power_thesis_dp_latest.zip`, 76 rows (72 + addon4),
+10,160/10,160 tiles exact. Its manifests carry the kernel entry, so no `--kernel-stats`:
+
+```bash
+python3 -m THESIS.apps.cgra_power_ingest ../thesis_final_data/cgra_app_power_thesis_dp_latest.zip
+```
+
+89 `results.json` (the fw4 dw16 8KB rows go under both the PORT and MEM design ids), areas
+from the zip's own Genus reports (no `--tile-sweep`). Everything in `single_level_*`,
+`single_level_*_LI`, `two_level_*` and `tab:ul_perf` is drawn from it. What the figures
+show (2026-11-16):
+- `two_level_*` ResNet: the pond version uses far fewer tiles (7 MEM / 23 PE vs 26 MEM /
+  52 PE; area about 0.3x) but delivers about 15x fewer output words per cycle (0.013 vs
+  0.20), so its energy per output word is about 3x higher.
+- `cgra_app_power_thesis_fp_ab_latest.zip` (conv_3_3 A0/A/B) is not ingested: it feeds
+  only the standalone filter-path A/B figure, which waits on the user's go-ahead.
+
 ## 3. What results.json gets
 
 The ingest writes one file per `cgra_power.csv` row (config × app), at
