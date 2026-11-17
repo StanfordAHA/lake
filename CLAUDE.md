@@ -1146,7 +1146,12 @@ garnet's default MEM spec is `build_four_port_wide_fetch_rv(4096,16,4)`
 - **Decision (user, 2026-10-26, relayed by session bc48e85f): the standalone RV filter path is not
   kept.** The thesis RV MemTile is `add_filter_path=False`; `add_filter_path` and `filter_fifo_depth`
   stay as options. Its thesis A/B: garnet 9573a704 `sweep_specs.py --recipe thesis_filter_ab`
-  (5 RV geometries x {nofp, ff8}) and 1fa8a391's conv_3_3 A0/A/B bundles.
+  (5 RV geometries x {nofp, ff8}) and 1fa8a391's conv_3_3 A0/A/B bundles. Standalone figure of it, **not in
+  the thesis** (user 2026-11-16; no registry entry, nothing in main.tex):
+  `python3 -m THESIS.pipeline.filter_path_ab` -> `THESIS/output/standalone/filter_path_ab.pdf`, from the
+  final run's two zips in `../thesis_final_data/`. FIFO-8 vs none after PnR: area +6.4 to +15.8%,
+  idle +6 to +23%, active -1 to +4%. conv_3_3 power vs A0: A +5.0/+5.5%, B +24.7/+24.4% (4 KB / 8 KB),
+  same 4,150 kernel cycles; B's extra is mostly routing tiles.
 - **Filter path as a FIFO: `build_spec_rv(filter_fifo_depth=N)` (2026-10-13, opt-in;
   default None = the general buffer, byte-identical RTL + bitstreams).** User
   direction: keep the iteration domains, make the rest a FIFO. Each side keeps its ID

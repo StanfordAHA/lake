@@ -24,6 +24,9 @@ python3 -m pytest --confcutdir=tests/thesis tests/thesis/
 | `test_roundtrip_sim.py` | `parse_util_txt` in `pd/thesis/clockwork-roundtrip-common/run_roundtrip_sim.py`. |
 | `test_garnet_configs.py` | `THESIS/apps/garnet_configs.py`: config-name parse/compose round trip, design-point matching, the bundle script. |
 | `test_cgra_power_ingest.py` | `THESIS/apps/cgra_power_ingest.py` on a made-up cgra_app_power out-dir and zip: mapping, skips, kernel stats, areas, CLI. |
+| `test_generators_two_level.py` | The 5 `two_level_*` generators: single- vs two-level pairs from RV results, per-output-word metrics, relative area. |
+| `test_tile_sweep_load.py` | `tile_sweep.load()`: thesis-fabric config names mapped to the stock names the tile figures use. |
+| `test_filter_path_ab.py` | `THESIS/pipeline/filter_path_ab.py` (standalone figure, not in the thesis): ff8-over-nofp deltas, app power as % of A0, zip/dir reading. |
 
 The regression module (`THESIS/pipeline/regression.py`) and the sweep
 figure generators have no unit tests. Check them by running
