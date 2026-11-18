@@ -371,6 +371,12 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
   - `_save` wraps an axis label that would overflow its axis (`_wrap_labels`).
   - Check a figure's PNG before shipping it: `--preview-views`, or a generator called
     with a `.png` path.
+  - **Printed text says "ready/valid", never "RV"** (user 2026-11-18: the thesis spells it
+    out everywhere). That covers legends, axis labels, keys, titles and table headers
+    (`regression.TILE_MODES`, `tile_figures._MODE_STYLE`). Code, config names and
+    `mode == "rv"` stay. Where "ready/valid" is wider than its slot, use a key instead:
+    `memtile_rv_energy_breakdown` has no per-bar tick labels; "left bar: static, right
+    bar: ready/valid" sits in panel (b)'s title row.
   - The Ch. 5 app figures use it too since 2026-11-16 (`generators._app_bar`,
     `_paired_bar`): FULL_W, one group per app, one bar per distinct design point. Their
     area figures are relative under `SRAM_NDA` (CGRA area includes the macros).

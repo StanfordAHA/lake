@@ -150,8 +150,8 @@ def interconnect_fork_ready_valid_data(ctx, outpath: Path) -> None:
                             color=SERIES[1])
         ax.set_xticks(np.arange(len(dws)))
         ax.set_xticklabels([str(dw) for dw in dws])
-        ax.text(0.02, 0.98, "left: static\nright: RV", transform=ax.transAxes, ha="left", va="top",
-                fontsize=8.5, color=INK2)
+        ax.text(0.02, 0.98, "left: static\nright: ready/valid", transform=ax.transAxes, ha="left", va="top",
+                fontsize=8, color=INK2, bbox=dict(facecolor="white", edgecolor="none", pad=0.5))
         ax.set_xlabel("Data width (bits)", fontsize=9.5)
         ax.set_title(f"({'a' if tile == 'PE' else 'b'}) {name}", loc="left")
         _ax_style(ax)
@@ -176,7 +176,7 @@ def interconnect_fork_ready_valid_data(ctx, outpath: Path) -> None:
     ax.set_xticklabels([str(dw) for dw in dws])
     ax.set_xlabel("Data width (bits)", fontsize=9.5)
     ax.set_ylabel("Fork logic area (µm²)")
-    ax.set_title("(c) RV fork logic", loc="left")
+    ax.set_title("(c) Ready/valid fork logic", loc="left")
     _ax_style(ax)
     handles, labels = axes[0].get_legend_handles_labels()
     h3, l3 = ax.get_legend_handles_labels()

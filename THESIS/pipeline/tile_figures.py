@@ -581,7 +581,7 @@ def memtile_rv_overhead_area(ctx, outpath: Path) -> None:
     ax.set_yticks(range(len(order)))
     ax.set_yticklabels([g.replace(" (", "\n(") for g in order], linespacing=1.0)
     ax.invert_yaxis()
-    ax.set_xlabel("RV std-cell area vs static (%)")
+    ax.set_xlabel("Ready/valid std-cell area\nvs static (%)")
     ax.set_xlim(min(-5, j["pct"].min() - 2), j["pct"].max() + 3)
     _ax_style(ax, ygrid=False, xgrid=True)
     fig.tight_layout()
@@ -667,7 +667,7 @@ def memtile_block_breakdown(ctx, outpath: Path) -> None:
     """Share of tile area, idle power and active power per block (synthesis),
     static vs RV, for three tile sizes."""
     df = _load(mode=None).set_index("config")
-    rows = [(f"{lab}, {'RV' if rv else 'static'}", name + ("_rv" if rv else ""))
+    rows = [(f"{lab}, {'ready/valid' if rv else 'static'}", name + ("_rv" if rv else ""))
             for name, lab in _BREAKDOWN_CONFIGS for rv in (False, True)]
     missing = [c for _, c in rows if c not in df.index]
     if missing:
@@ -696,10 +696,10 @@ def memtile_block_breakdown(ctx, outpath: Path) -> None:
         ax.set_title(title, loc="left", fontsize=10.5, color=INK2)
         _ax_style(ax, ygrid=False)
     axes[0].set_yticks(range(len(rows)))
-    axes[0].set_yticklabels(["RV" if c.endswith("_rv") else "static" for _, c in rows])
+    axes[0].set_yticklabels(["ready/valid" if c.endswith("_rv") else "static" for _, c in rows])
     axes[0].invert_yaxis()
     axes[1].set_xlabel("Share of tile (%)")  # once, under the middle panel
-    fig.tight_layout(w_pad=0.6)
+    fig.tight_layout(w_pad=1.2)
     r = fig.canvas.get_renderer()
     tick_w = axes[0].get_window_extent(r).x0 - min(
         t.get_window_extent(r).x0 for t in axes[0].get_yticklabels())
@@ -711,7 +711,7 @@ def memtile_block_breakdown(ctx, outpath: Path) -> None:
             xycoords=("axes fraction", "data"), xytext=(-(tick_w + 10) * 72 / fig.dpi, 0),
             textcoords="offset points", ha="right", va="center", fontsize=9.5))
     group_w = max(g.get_window_extent(r).width for g in groups)
-    fig.tight_layout(rect=((group_w + 10) / fig.bbox.width, 0, 1, 1), w_pad=0.6)
+    fig.tight_layout(rect=((group_w + 10) / fig.bbox.width, 0, 1, 1), w_pad=1.2)
     for ax, x, t in nums:  # a segment's share only where the number fits inside it
         if t.get_window_extent(r).width + 2 > ax.transData.transform((x, 0))[0] - \
                 ax.transData.transform((0, 0))[0]:
@@ -764,14 +764,14 @@ def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
         raise MissingDataError(f"RV breakdown configs not in the tile sweep: {', '.join(missing)}")
     _blocks(df.reset_index(), [f"pw_synth_{v}_{b}" for v in ("active", "idle")
                                for _, bs, _ in _RV_GROUPS for b in bs if b not in ("c_rvnet", "c_storage", "c_rdbuf")],
-            "RV energy breakdown")
+            "ready/valid energy breakdown")
     bw = _bw_gbps(df)
     fig, axes = plt.subplots(2, 1, figsize=(FULL_W, 4.4), sharex=True)
     w = 0.38
     for ax, var in zip(axes, ("active", "idle")):
-        ticks, labels = [], []
+        ticks = []
         for i, (cfg, lab) in enumerate(_RV_CONFIGS):
-            for j, (suffix, mode) in enumerate((("", "Static"), ("_rv", "RV"))):
+            for j, (suffix, mode) in enumerate((("", "Static"), ("_rv", "Ready/valid"))):
                 r = df.loc[cfg + suffix]
                 x = i + (j - 0.5) * (w + 0.04)
                 scale = 1e12 / (bw[cfg + suffix] * 1e9) if var == "active" else 1e3  # pJ/bit or mW
@@ -789,13 +789,12 @@ def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
                     note = f"{bottom:.2f}"
                 ax.text(x, bottom, note, ha="center", va="bottom", fontsize=9, color=INK2)
                 ticks.append(x)
-                labels.append("S" if mode == "Static" else "RV")
             if var == "idle":
-                ax.annotate(lab, (i, 0), xycoords=("data", "axes fraction"), xytext=(0, -19),
+                ax.annotate(lab, (i, 0), xycoords=("data", "axes fraction"), xytext=(0, -4),
                             textcoords="offset points", ha="center", va="top", fontsize=9.5,
                             color=INK2)
-        ax.set_xticks(ticks)
-        ax.set_xticklabels(labels)
+        ax.set_xticks(ticks)  # no labels: "ready/valid" is wider than a bar; the key is in (b)'s title row
+        ax.set_xticklabels([])
         ax.tick_params(axis="x", length=0)
         ax.set_ylim(0, ax.get_ylim()[1] * 1.12)
         _ax_style(ax)
@@ -804,6 +803,7 @@ def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
                       "(a) Active per bit (top: SRAM pJ/bit)", loc="left", fontsize=9.5, color=INK2)
     axes[1].set_ylabel("Non-SRAM idle power (mW)")
     axes[1].set_title("(b) Idle (top: total)", loc="left", fontsize=9.5, color=INK2)
+    axes[1].set_title("left bar: static, right bar: ready/valid", loc="right", fontsize=9.5, color=INK2)
     fig.tight_layout()
     fig.subplots_adjust(bottom=0.2, hspace=0.25)
     h, l = axes[0].get_legend_handles_labels()
@@ -817,7 +817,7 @@ def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
 # existed. Each runtime mode gets its own linear fit pnr = a * synth + b, as in
 # garnet sweep_specs.py (correlation_fit.csv / memtile_power_fit.csv).
 
-_MODE_STYLE = {"static": (SERIES[0], "Static"), "rv": (SERIES[1], "RV")}
+_MODE_STYLE = {"static": (SERIES[0], "Static"), "rv": (SERIES[1], "Ready/valid")}
 
 
 def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, unit: str,
@@ -1533,7 +1533,7 @@ def _li_ports(outpath: Path, metric: str, view: str = "raw") -> None:
         idle = g["y2"].median().loc[ports] / scale
     if ax is not None:
         ax.bar(xs, net, 0.55, color=SERIES[0], label="Comparison network")
-        ax.bar(xs, sg, 0.55, bottom=net, color=SERIES[1], label="RV ScheduleGenerators")
+        ax.bar(xs, sg, 0.55, bottom=net, color=SERIES[1], label="Ready/valid ScheduleGenerators")
         ax.errorbar(xs, (net + sg).values, yerr=[(tot["median"] - tot["min"]).loc[ports] / scale,
                                                  (tot["max"] - tot["median"]).loc[ports] / scale],
                     fmt="none", ecolor=MUTED, elinewidth=0.8, capsize=2)
@@ -1546,7 +1546,7 @@ def _li_ports(outpath: Path, metric: str, view: str = "raw") -> None:
     step_handles = []
     if pax is not None:  # each part and the stacked total (the bar top), step by step
         for y, c, name in ((net, SERIES[0], "Comparison network"),
-                           (sg, SERIES[1], "RV ScheduleGenerators"),
+                           (sg, SERIES[1], "Ready/valid ScheduleGenerators"),
                            (net + sg, INK, "Total (step)")):
             step_handles.append(_pct_line(pax, xs, y, color=c, label=name))
         if metric == "power":

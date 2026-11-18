@@ -326,7 +326,7 @@ TILE_TARGETS = {
     "idle": ("Idle", r"\textmu W"),
     "active": ("Active", r"\textmu W"),
 }
-TILE_MODES = {"static": "Static", "rv": "RV"}
+TILE_MODES = {"static": "Static", "rv": "Ready/valid"}
 # lake build_spec defaults when a spec leaves them out: 11-bit iteration
 # domains, 16-bit schedule strides.
 _DEFAULT_LOG2_ME = 11
