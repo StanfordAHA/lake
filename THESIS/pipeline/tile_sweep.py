@@ -15,6 +15,12 @@ Ingest once, then the generators in ``generators.py`` read the cached CSV::
 writes ``THESIS/data/tile_sweep/<sweep>.csv`` and copies it to
 ``THESIS/data/tile_sweep/latest.csv`` (what ``load()`` reads).
 
+A full-rate sweep (garnet ``--recipe thesis_id_fullrate``: every row's
+``power_program`` is ``full_rate``, so every measured port fires on every cycle
+of the active power window) is copied to ``full_rate.csv`` instead
+(``FULL_RATE``, read with ``load(FULL_RATE)``), and ``latest.csv`` keeps the
+main sweep. The figures that need full-rate power read it explicitly.
+
 Area columns are µm² from Genus ``final_gates.rpt`` (``syn_*``) and Innovus
 ``signoff.area.rpt`` (``pnr_*``). ``*_std`` = cell area minus that tool's own
 SRAM macro area. ``syn_cb``/``syn_sb``/``syn_memcore`` split the tile by its
@@ -39,6 +45,7 @@ from .errors import MissingDataError
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "tile_sweep"
 LATEST = DATA_DIR / "latest.csv"
+FULL_RATE = DATA_DIR / "full_rate.csv"
 
 GATE_TYPES = {
     "timing_model": "sram", "sequential": "seq", "logic": "logic",
@@ -496,20 +503,36 @@ def load(path: Path | None = None) -> pd.DataFrame:
     return df
 
 
+def figure_source(df: pd.DataFrame) -> Path:
+    """Where an ingested sweep goes for the figures: FULL_RATE when every config ran
+    the full-rate power program, else LATEST. A sweep that mixes both raises: its
+    configs would feed different figures."""
+    if "power_program" not in df.columns:
+        return LATEST
+    full = df["power_program"].fillna("default") == "full_rate"
+    if full.all():
+        return FULL_RATE
+    if full.any():
+        raise ValueError(f"{full.sum()} of {len(df)} configs ran power_program=full_rate; "
+                         "ingest full-rate and default-program sweeps separately")
+    return LATEST
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("src", type=Path, help="sweep zip or extracted sweep dir")
     ap.add_argument("-o", "--out", type=Path, help="CSV path (default: data/tile_sweep/<sweep>.csv)")
     args = ap.parse_args(argv)
     df = ingest(args.src)
+    dest = figure_source(df)
     out = args.out or DATA_DIR / f"{df['sweep'].iloc[0]}.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out, index=False)
-    if out.resolve() != LATEST.resolve():
-        shutil.copyfile(out, LATEST)
+    if out.resolve() != dest.resolve():
+        shutil.copyfile(out, dest)
     ok = df["syn_cell"].notna().sum()
     print(f"{len(df)} configs ({ok} with synthesis, {df.get('pnr_cell', pd.Series()).notna().sum()} "
-          f"with PnR) -> {out}", file=sys.stderr)
+          f"with PnR) -> {out}, figures read it as {dest.name}", file=sys.stderr)
     return 0
 
 

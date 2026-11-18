@@ -270,10 +270,13 @@ ingest so far.
 ```bash
 # Ingest a sweep zip (or extracted dir) -> THESIS/data/tile_sweep/{<sweep>,latest}.csv
 python3 -m THESIS.pipeline.tile_sweep ../thesis_final_data/thesis_dse_mem_latest_slim.zip
+# The full-rate sweep goes to full_rate.csv instead (latest.csv is left alone)
+python3 -m THESIS.pipeline.tile_sweep thesis_id_fullrate_mem_r8cad-gf12_20261118-030117_slim.zip
 # Regenerate every tile-sweep figure (zsh: ${=IDS} to word-split a variable)
 python3 THESIS/generate_thesis_artifacts.py --only \
     port_area_vs_data_width port_power_vs_data_width port_area_vs_vc port_power_vs_vc \
     iter_dom_area_vs_dim iter_dom_power_vs_dim iter_dom_area_vs_max_extent iter_dom_power_vs_max_extent \
+    sched_gen_area_vs_dim sched_gen_power_vs_dim sched_gen_area_vs_max_extent sched_gen_power_vs_max_extent \
     affine_area_vs_dim affine_power_vs_dim affine_area_vs_max_value affine_power_vs_max_value \
     memory_port_area_vs_interface_width memory_port_power_vs_interface_width \
     storage_area_vs_capacity storage_power_vs_capacity \
@@ -286,7 +289,10 @@ python3 THESIS/generate_thesis_artifacts.py --only \
 
 Every ingest overwrites `THESIS/data/tile_sweep/latest.csv` (what the figures
 read), so the last sweep ingested is the figure source; each sweep also keeps
-its own `<sweep>.csv`. The older flattened 196-config sweep
+its own `<sweep>.csv`. Exception: a full-rate sweep (every config's
+`power_program` is `full_rate`) is copied to `full_rate.csv` instead
+(`tile_sweep.figure_source`), and only the figures below that pass
+`source="full_rate"` read it. The older flattened 196-config sweep
 (`tile_memcore_thesis_r8cad-gf12_20261006-221414.csv`) is superseded: it used
 older RTL with lakespec flattened (its RV overheads were roughly half the
 current ones), so don't quote or mix it.
@@ -333,12 +339,20 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
   macro), `memtile_block_breakdown` (fw1 4 KB 1x1 swapped for fw2 4 KB 1x1),
   `memtile_rv_energy_breakdown` (`_RV_CONFIGS`: fw1 8 KB 2x2 me1024 and fw1 4 KB 1x1 swapped for
   fw2 4 KB 1x1 and DP fw1 8 KB 1x1).
-  - Static ID/APG figures are unaffected and stay: their blocks step once per SRAM word, every
-    P = max(fw, in+out) cycles, and the fw1 2x2 base has P = 4 like the full-rate fw4 2x2 tile.
-    Equal-P fw2 and fw4 tiles draw equal ID/AG/SG power.
-  - RV blocks step per element, so `li_sched_loc_*` (fw1 2x2 RV, 1/4 rate) is understated. A
-    full-rate rebuild (fw4 SP 2x2 vc2 RV, dims 1-6 x max extent 64-4096) is with session
-    1fa8a391.
+  - **Full-rate sweep** (user 2026-11-18, session 1fa8a391): garnet `--recipe thesis_id_fullrate`,
+    lake `power_test_programs` `program="full_rate"` (garnet mflowgen/CLAUDE.md "Full-rate
+    programs"); zip `thesis_id_fullrate_mem_r8cad-gf12_20261118-030117_slim.zip`, 48 configs.
+    Static fw1 2x2 ID-sweep tiles (port 0 alone fires every cycle) and RV fw4 SP 2x2 vc2 tiles
+    (all four ports every cycle), dims 1-6 x max extent 64-4096. Read with `source="full_rate"`:
+    - `iter_dom_power_*` (area figures stay on latest.csv: same hardware, same area). Under the
+      default program a static port steps once per P = max(fw, in+out) = 4 cycles: ID x2.3-2.9 less.
+    - `sched_gen_{area,power}_vs_{dim,max_extent}` (new 2026-11-18; one ScheduleGenerator,
+      `c_sg0`, without the cycle counter, which share_clk_ctr puts at the spec top in `c_other`).
+    - `li_sched_loc_*`, area and power: the fw1 2x2 RV points ran each port at 1/4 (power x2.7-4.3
+      less); their area matches fw4 within synthesis noise (0.93-1.11).
+    - The APG (`affine_*`) figures stay on the default program's rate (once per SRAM word, P = 4):
+      the full-rate sweep doesn't vary max sequence width. Equal-P fw2 and fw4 tiles draw equal
+      ID/AG/SG power there.
   - Write-up: `../POWER_FIGURE_PORT_RATE_NOTE.md` (workspace, not in the repo).
 - Memory tile: `memtile_interconnect_{area,power}` (CB/SB/glue vs ports),
   `memtile_block_breakdown` (area/idle/active share per block, 3 fit
@@ -350,9 +364,9 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
   (reproduces garnet `correlation_fit.csv` / `memtile_power_fit.csv`), R² in the
   legend, per-build prediction error below.
 - LI ScheduleGenerator (RV) = `c_rvnet + c_sg`: `li_sched_ports_*` (dims-6 RV
-  configs by port count), `li_sched_loc_*` (ITERATION_DOMAIN RV, "levels of
-  comparison" read as dims; pre-`8748240d` RTL drawn hollow via the
-  `rtl_lake_commit` ingest column).
+  configs by port count), `li_sched_loc_*` (full-rate sweep, fw4 RV, "levels of
+  comparison" read as dims; RTL before `8748240d` would be drawn hollow via the
+  `rtl_lake_commit` ingest column, and the full-rate RTL has none).
 - `tile_figures.SRAM_NDA = True` (the thesis says the GF12 macro numbers are
   under NDA): Storage, PUB and model values are relative to a reference config
   (`NDA_REF`, or the smallest fit tile for the model). Set False for µm²/mW.

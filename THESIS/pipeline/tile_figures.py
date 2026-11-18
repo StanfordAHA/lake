@@ -167,9 +167,12 @@ def _save(fig, outpath: Path):
     plt.close(fig)
 
 
-def _load(mode: str | None = "static", data_width: int | None = DATA_WIDTH) -> pd.DataFrame:
-    """The tile sweep at ``data_width`` (None: every width) and runtime ``mode``."""
-    df = tile_sweep.load()
+def _load(mode: str | None = "static", data_width: int | None = DATA_WIDTH,
+          source: str = "latest") -> pd.DataFrame:
+    """The tile sweep at ``data_width`` (None: every width) and runtime ``mode``.
+    ``source="full_rate"``: the full-rate sweep (``tile_sweep.FULL_RATE``), whose
+    active power test fires every measured port on every cycle."""
+    df = tile_sweep.load(tile_sweep.FULL_RATE if source == "full_rate" else None)
     if data_width is not None:
         df = df[df["data_width"] == data_width]
     if mode:
@@ -1061,14 +1064,19 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
                metric: str = "area", mode: str = "static", view: str = "raw",
                data_width: int | None = DATA_WIDTH, where: dict | None = None,
                hue_fmt=lambda v: f"{v:g}", full_rate: bool = False,
-               extra: list[str] | None = None) -> None:
+               extra: list[str] | None = None, source: str = "latest") -> None:
     """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``
     (legend labels ``hue_fmt(v)``); ``where`` = {column: value} holds the other
     sweep axes fixed; ``full_rate`` keeps only `_full_rate` configs; ``extra`` adds
-    configs from outside the experiment by name."""
-    df = _exp(_load(mode, data_width), exp).dropna(subset=[x, hue])
+    configs from outside the experiment by name. ``source="full_rate"`` reads the
+    full-rate sweep, which is a single dims x max-extent grid per mode, so every
+    config of the mode is used (its RV tiles are fw4 and match no experiment spec)."""
+    df = _load(mode, data_width, source)
+    if source != "full_rate":
+        df = _exp(df, exp)
+    df = df.dropna(subset=[x, hue])
     if extra:
-        allc = _load(mode, data_width)
+        allc = _load(mode, data_width, source)
         df = pd.concat([df, allc[allc["config"].isin(extra)].dropna(subset=[x, hue])])
     for col, val in (where or {}).items():
         df = df[df[col] == val]
@@ -1187,8 +1195,12 @@ def iter_dom_area_vs_dim(ctx, outpath: Path) -> None:
 
 @_viewable
 def iter_dom_power_vs_dim(ctx, outpath: Path) -> None:
+    """Power from the full-rate sweep (user 2026-11-18): the same static fw1 2x2 tiles,
+    with port 0 alone firing every cycle (lake static_single_port_program). Under the
+    default program each port steps once per 4-cycle SRAM period (2.3-2.9x less)."""
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
-               "Dimensionality", ["c_id0"], "one IterationDomain", metric="power", view=_view(ctx))
+               "Dimensionality", ["c_id0"], "one IterationDomain", metric="power", view=_view(ctx),
+               source="full_rate")
 
 
 @_viewable
@@ -1199,8 +1211,42 @@ def iter_dom_area_vs_max_extent(ctx, outpath: Path) -> None:
 
 @_viewable
 def iter_dom_power_vs_max_extent(ctx, outpath: Path) -> None:
+    """Full-rate power, as iter_dom_power_vs_dim."""
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
-               "Maximum extent", ["c_id0"], "one IterationDomain", log2=True, metric="power", view=_view(ctx))
+               "Maximum extent", ["c_id0"], "one IterationDomain", log2=True, metric="power", view=_view(ctx),
+               source="full_rate")
+
+
+# ScheduleGenerator vs the iteration-domain axes (user 2026-11-18), area and power from the
+# full-rate sweep: static fw1 2x2 tiles, port 0 alone firing every cycle. With share_clk_ctr
+# the cycle counter is one shared_clk_ctr at the spec top (c_other), so one SG here is its
+# own logic without a counter. The Affine Pattern Generator figures plot the same block vs
+# max sequence width, at the default program's rate (once per 4-cycle SRAM period).
+@_viewable
+def sched_gen_area_vs_dim(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
+               "Dimensionality", ["c_sg0"], "one ScheduleGenerator", view=_view(ctx), source="full_rate")
+
+
+@_viewable
+def sched_gen_power_vs_dim(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
+               "Dimensionality", ["c_sg0"], "one ScheduleGenerator", metric="power", view=_view(ctx),
+               source="full_rate")
+
+
+@_viewable
+def sched_gen_area_vs_max_extent(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
+               "Maximum extent", ["c_sg0"], "one ScheduleGenerator", log2=True, view=_view(ctx),
+               source="full_rate")
+
+
+@_viewable
+def sched_gen_power_vs_max_extent(ctx, outpath: Path) -> None:
+    _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
+               "Maximum extent", ["c_sg0"], "one ScheduleGenerator", log2=True, metric="power",
+               view=_view(ctx), source="full_rate")
 
 
 @_viewable
@@ -1582,18 +1628,20 @@ def li_sched_ports_power(ctx, outpath: Path) -> None:
 
 @_viewable
 def li_sched_loc_area(ctx, outpath: Path) -> None:
-    """ITERATION_DOMAIN_EXP, RV: LI ScheduleGenerator vs levels of comparison
-    (iteration-domain dimensionality), one line per maximum extent."""
+    """RV: LI ScheduleGenerator vs levels of comparison (iteration-domain dimensionality),
+    one line per maximum extent. From the full-rate sweep (user 2026-11-18): fw4 SP 2x2 vc2
+    RV tiles whose four ports fire every cycle. The fw1 2x2 ITERATION_DOMAIN_EXP RV points
+    run each port at 1/4 (one SRAM slot per 4 cycles), which understated power 2.7-4.3x."""
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
                "Levels of comparison (dimensionality)", ["c_rvnet", "c_sg"],
-               "LI SG", mode="rv", view=_view(ctx))
+               "LI SG", mode="rv", view=_view(ctx), source="full_rate")
 
 
 @_viewable
 def li_sched_loc_power(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
                "Levels of comparison (dimensionality)", ["c_rvnet", "c_sg"],
-               "LI SG", mode="rv", metric="power", view=_view(ctx))
+               "LI SG", mode="rv", metric="power", view=_view(ctx), source="full_rate")
 
 
 # ---- PE tile pitch (fig:pe_tile_height) ----------------------------------------

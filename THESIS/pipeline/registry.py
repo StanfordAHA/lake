@@ -164,7 +164,8 @@ COMPONENT_CHARACTERIZATION = [
           view="both"),
     Entry("iter_dom_power_vs_dim", "fig:iteration_domain_characterization_dimensionality_power",
           "figures/iteration_domain_characterization_dimensionality_power.pdf",
-          "figure", "Tile_MemCore sweep (dw16, static): one IterationDomain (port_id_0) active/idle power vs dim, line per max extent",
+          "figure", "Full-rate sweep (dw16, static fw1 2x2, port 0 alone fires every cycle): one IterationDomain "
+          "(port_id_0) active/idle power vs dim, line per max extent",
           "real", tf.iter_dom_power_vs_dim,
           view="both"),
     Entry("iter_dom_area_vs_max_extent", "fig:iteration_domain_characterization_max_extent_area",
@@ -174,7 +175,8 @@ COMPONENT_CHARACTERIZATION = [
           view="both"),
     Entry("iter_dom_power_vs_max_extent", "fig:iteration_domain_characterization_max_extent_power",
           "figures/iteration_domain_characterization_max_extent_power.pdf",
-          "figure", "Tile_MemCore sweep (dw16, static): one IterationDomain (port_id_0) active/idle power vs max extent, line per dim",
+          "figure", "Full-rate sweep (dw16, static fw1 2x2, port 0 alone fires every cycle): one IterationDomain "
+          "(port_id_0) active/idle power vs max extent, line per dim",
           "real", tf.iter_dom_power_vs_max_extent,
           view="both"),
 
@@ -205,16 +207,34 @@ COMPONENT_CHARACTERIZATION = [
     # the storage's address width.
 
     # Schedule Generator (commented out in tex — kept in registry for future).
-    Entry("sched_gen_dim", "fig:schedule_generator_characterization_dimensionality",
-          "figures/schedule_generator_characterization_dimensionality.pdf",
-          "figure", "ScheduleGenerator area/power vs dim",
-          "bogus", None,
-          notes="TODO: dedicated SG sweep — currently rolled into affine PG."),
-    Entry("sched_gen_max_extent", "fig:schedule_generator_characterization_max_extent",
-          "figures/schedule_generator_characterization_max_extent.pdf",
-          "figure", "ScheduleGenerator area/power vs max extent",
-          "bogus", None,
-          notes="TODO: dedicated SG sweep."),
+    # ScheduleGenerator vs the iteration-domain axes, from the full-rate sweep (user 2026-11-18;
+    # tile_sweep.FULL_RATE). Were one bogus figure per axis; now area/power subfigures like the
+    # IterationDomain ones.
+    Entry("sched_gen_area_vs_dim", "fig:schedule_generator_characterization_dimensionality_area",
+          "figures/schedule_generator_characterization_dimensionality_area.pdf",
+          "figure", "Full-rate sweep (dw16, static fw1 2x2): one ScheduleGenerator (port_sg_0) area vs dim, "
+          "line per max extent",
+          "real", tf.sched_gen_area_vs_dim,
+          notes="The cycle counter is shared at the spec top (share_clk_ctr), so not in port_sg_0.",
+          view="both"),
+    Entry("sched_gen_power_vs_dim", "fig:schedule_generator_characterization_dimensionality_power",
+          "figures/schedule_generator_characterization_dimensionality_power.pdf",
+          "figure", "Full-rate sweep (dw16, static fw1 2x2, port 0 alone fires every cycle): one "
+          "ScheduleGenerator (port_sg_0) active/idle power vs dim, line per max extent",
+          "real", tf.sched_gen_power_vs_dim,
+          view="both"),
+    Entry("sched_gen_area_vs_max_extent", "fig:schedule_generator_characterization_max_extent_area",
+          "figures/schedule_generator_characterization_max_extent_area.pdf",
+          "figure", "Full-rate sweep (dw16, static fw1 2x2): one ScheduleGenerator (port_sg_0) area vs max "
+          "extent, line per dim",
+          "real", tf.sched_gen_area_vs_max_extent,
+          view="both"),
+    Entry("sched_gen_power_vs_max_extent", "fig:schedule_generator_characterization_max_extent_power",
+          "figures/schedule_generator_characterization_max_extent_power.pdf",
+          "figure", "Full-rate sweep (dw16, static fw1 2x2, port 0 alone fires every cycle): one "
+          "ScheduleGenerator (port_sg_0) active/idle power vs max extent, line per dim",
+          "real", tf.sched_gen_power_vs_max_extent,
+          view="both"),
 
     # Memory Port + Storage
     Entry("memory_port_area_vs_interface_width",
@@ -365,14 +385,16 @@ LI_CHARACTERIZATION = [
           view="both"),
     Entry("li_sched_loc_area", "fig:latency_insensitive_schedule_generator_characterization_loc_area",
           "figures/latency_insensitive_schedule_generator_characterization_loc_area.pdf",
-          "figure", "Tile_MemCore sweep (dw16, RV): LI SG area vs levels of comparison (ID dims), "
+          "figure", "Full-rate sweep (dw16, RV fw4 SP 2x2 vc2): LI SG area vs levels of comparison (ID dims), "
           "line per max extent",
           "real", tf.li_sched_loc_area,
-          notes="Levels of comparison read as iteration-domain dims. Pre-8748240d RTL (dims 2/4) hollow.",
+          notes="Levels of comparison read as iteration-domain dims. Since 2026-11-18 from the full-rate "
+          "sweep (all RTL after 8748240d); the fw1 2x2 RV points ran each port at 1/4.",
           view="both"),
     Entry("li_sched_loc_power", "fig:latency_insensitive_schedule_generator_characterization_loc_power",
           "figures/latency_insensitive_schedule_generator_characterization_loc_power.pdf",
-          "figure", "Tile_MemCore sweep (dw16, RV): LI SG active/idle power vs levels of comparison",
+          "figure", "Full-rate sweep (dw16, RV fw4 SP 2x2 vc2, every port fires every cycle): LI SG "
+          "active/idle power vs levels of comparison",
           "real", tf.li_sched_loc_power,
           view="both"),
     # Switch boxes of the final run's static and RV PE / Memory Tiles by part (sb_ppa.py;
