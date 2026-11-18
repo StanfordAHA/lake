@@ -745,9 +745,10 @@ _RV_GROUPS = [
     ("Config registers", ["cfg_regs"], MUTED),
     ("MemoryPort, StencilValid, ROM", ["c_mp", "stencil", "rom"], SERIES[4]),
 ]
-_RV_CONFIGS = [
-    ("fw1_dw16_sc8192_sp_in2_out2_me1024", "fw1 8 KB\n6-D\n2 in, 2 out"),
-    ("fw1_dw16_sc4096_sp_in1_out1", "fw1 4 KB\n1 in, 1 out"),
+_RV_CONFIGS = [  # full-throughput tiles only (`_full_rate`; were fw1 8 KB 2x2 me1024, 1/4
+    # rate, and fw1 4 KB 1x1, 1/2 rate)
+    ("fw2_dw16_sc4096_sp_in1_out1_vc2", "fw2 4 KB\n1 in, 1 out"),
+    ("fw1_dw16_sc8192_dp_in1_out1", "DP fw1\n8 KB\n1 in, 1 out"),
     ("fw4_dw16_sc8192_sp_in2_out2_vc2", "fw4 8 KB\n2 in, 2 out"),
     ("fw8_dw16_sc32768_sp_in4_out4_vc2", "fw8 32 KB\n4 in, 4 out"),
     ("fw4_dw16_sc8192_dp_in4_out4_vc2", "DP fw4\n8 KB\n4 in, 4 out"),
@@ -1059,11 +1060,16 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
                blocks: list[str], ylabel: str, xfmt=_pow2_fmt, log2: bool = False,
                metric: str = "area", mode: str = "static", view: str = "raw",
                data_width: int | None = DATA_WIDTH, where: dict | None = None,
-               hue_fmt=lambda v: f"{v:g}", full_rate: bool = False) -> None:
+               hue_fmt=lambda v: f"{v:g}", full_rate: bool = False,
+               extra: list[str] | None = None) -> None:
     """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``
     (legend labels ``hue_fmt(v)``); ``where`` = {column: value} holds the other
-    sweep axes fixed; ``full_rate`` keeps only `_full_rate` configs."""
+    sweep axes fixed; ``full_rate`` keeps only `_full_rate` configs; ``extra`` adds
+    configs from outside the experiment by name."""
     df = _exp(_load(mode, data_width), exp).dropna(subset=[x, hue])
+    if extra:
+        allc = _load(mode, data_width)
+        df = pd.concat([df, allc[allc["config"].isin(extra)].dropna(subset=[x, hue])])
     for col, val in (where or {}).items():
         df = df[df[col] == val]
     if full_rate:
@@ -1120,12 +1126,19 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
     _save(fig, outpath)
 
 
+# PORT_EXP is all 8 KB, and at 8 KB fw4 dw64 (a 256-bit word, 256 deep) has no GF SRAM macro
+# at any column split, so the final run built only fw2 at 64 bits, which runs at half rate.
+# This 16 KB tile (512 x 256-bit) is in thesis_dse and gives the fw4 line its 64-bit point.
+_PORT_DW64_FW4 = "fw4_dw64_sc16384_sp_in2_out2_vc2"
+
+
 def _port_data_width(ctx, outpath: Path, metric: str) -> None:
     """Every data width the final run built, vc=2, full-throughput configs only (the fw2
-    2-in/2-out ports run at half rate in the active test, so the fw2 line and with it
-    the 64-bit point are gone); each width synthesizes at its own clock, so each tick
-    names it."""
-    df = _full_rate(_exp(_load(data_width=None), "PORT_EXP"))
+    2-in/2-out ports run at half rate in the active test, so the fw2 line is gone); each
+    width synthesizes at its own clock, so each tick names it. The fw4 line's 64-bit
+    point is `_PORT_DW64_FW4` (16 KB: 8 KB has no 256-bit SRAM macro)."""
+    allc = _load(data_width=None)
+    df = _full_rate(pd.concat([_exp(allc, "PORT_EXP"), allc[allc["config"] == _PORT_DW64_FW4]]))
     df = df[df["vec_capacity"] == 2]
     if df["data_width"].nunique() < 2:
         raise MissingDataError("needs PORT_EXP tile builds at several data widths")
@@ -1136,7 +1149,7 @@ def _port_data_width(ctx, outpath: Path, metric: str) -> None:
                "Port data width (bits) / clock (MHz)", ["c_port0"], "one input Port",
                xfmt=lambda v: f"{v:g}\n{mhz.loc[v, 'min']:.0f}",
                log2=True, metric=metric, view=_view(ctx), data_width=None,
-               where={"vec_capacity": 2}, full_rate=True)
+               where={"vec_capacity": 2}, full_rate=True, extra=[_PORT_DW64_FW4])
 
 
 @_viewable
