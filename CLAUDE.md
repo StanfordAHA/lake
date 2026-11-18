@@ -320,6 +320,16 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
   (`tile_figures._balanced`, applied in `_exp`). All 26 dw16 MEMORY_EXP configs pass. The x axis
   is SRAM bandwidth (read + write bits per cycle) and legends name the SRAM word width
   ("DP 16b (fw1)" sits at 32 b/cycle beside "SP 32b (fw2)").
+- **Only configs that sustain full throughput on every port** (user 2026-11-17): fetch width
+  >= in + out ports (single-port) or >= ports per direction (dual-port), `tile_figures._full_rate`.
+  The active power test gives each port its own SRAM slot, so on a narrower SRAM every port
+  streams at fw / (ports sharing the memory port): fw1 SP 2x2 at 1/4, fw2 SP 2x2 at 1/2. Applied
+  to `memtile_interconnect_{area,power}` (n = 10 / 14 / 7 at 1,1 / 2,2 / 4,4; before, 54 of the
+  71 2,2 configs ran at 1/4 and the 2,2 switch box matched 1,1). Each full-rate output adds about
+  25 µW of SB power; CB power is equal idle and active (same input stream in both tests).
+  Not yet applied, user to decide: ITERATION_DOMAIN_EXP and AFFINE_PATTERN_GENERATOR_EXP are all
+  fw1 SP 2x2 (1/4 rate, so filtering would empty them), PORT_EXP's fw2 line (1/2 rate), and
+  `memtile_block_breakdown`'s fw1 SP 1x1 tile (1/2 rate).
 - Memory tile: `memtile_interconnect_{area,power}` (CB/SB/glue vs ports),
   `memtile_block_breakdown` (area/idle/active share per block, 3 fit
   geometries × static/RV), `memtile_rv_overhead_area`, `memtile_rv_energy_breakdown`

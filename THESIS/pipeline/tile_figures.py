@@ -187,6 +187,21 @@ def _balanced(df: pd.DataFrame) -> np.ndarray:
     return np.where(df["dual_port"], (fw == n_in) & (fw == n_out), fw == n_in + n_out)
 
 
+def _full_rate(df: pd.DataFrame) -> pd.DataFrame:
+    """Static configs whose SRAM lets every port stream one element per cycle:
+    fetch width >= in + out ports (single-port) or >= the ports per direction
+    (dual-port). A narrower SRAM shares its accesses, so the active power test
+    (lake/utils/power_test_programs.py static_active_program) can run each port only
+    at fw / (ports sharing the memory port), and a figure grouped by port count would
+    compare different traffic (user 2026-11-17: show only configs that sustain full
+    throughput on each port)."""
+    fw, n_in, n_out = df["vec_width"], df["in_ports"], df["out_ports"]
+    ok = np.where(df["dual_port"], (fw >= n_in) & (fw >= n_out), fw >= n_in + n_out)
+    if not ok.any():
+        raise MissingDataError("tile sweep has no full-throughput configs")
+    return df[ok]
+
+
 def _exp(df: pd.DataFrame, exp: str) -> pd.DataFrame:
     sub = df[df["experiments"].fillna("").str.contains(exp)]
     if exp == "MEMORY_EXP":  # compared at equal SRAM bandwidth: balanced organizations only
@@ -432,8 +447,9 @@ def memtile_bandwidth_area(ctx, outpath: Path) -> None:
 
 @_viewable
 def memtile_interconnect_area(ctx, outpath: Path) -> None:
-    """CB / SB / other-top-level area vs Lake port count (16-bit data)."""
-    df = _load()
+    """CB / SB / other-top-level area vs Lake port count (16-bit data), full-throughput
+    configs only (the same set as the power panel)."""
+    df = _full_rate(_load())
     parts = [("syn_cb", "Connection boxes"), ("syn_sb", "Switch box"),
              ("syn_top", "Other top level")]
     cols = [c for c, _ in parts]
@@ -580,8 +596,11 @@ def memtile_interconnect_power(ctx, outpath: Path) -> None:
     No "other top level" bar: tile_glue power is the tile total minus its
     children, and PT prints each to 3 significant digits, so that remainder is
     rounding noise (it comes out negative on most configs).
+
+    Full-throughput configs only (`_full_rate`): the active test runs every port of
+    those at one element per cycle.
     """
-    df = _load()
+    df = _full_rate(_load())
     parts = [("cb", "Connection boxes"), ("sb", "Switch box")]
     act = [f"pw_synth_active_{b}" for b, _ in parts]
     idle = [f"pw_synth_idle_{b}" for b, _ in parts]
