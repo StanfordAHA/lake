@@ -1039,9 +1039,11 @@ def _stack_above(fig):
 def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel: str,
                blocks: list[str], ylabel: str, xfmt=_pow2_fmt, log2: bool = False,
                metric: str = "area", mode: str = "static", view: str = "raw",
-               data_width: int | None = DATA_WIDTH, where: dict | None = None) -> None:
-    """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``;
-    ``where`` = {column: value} holds the other sweep axes fixed."""
+               data_width: int | None = DATA_WIDTH, where: dict | None = None,
+               hue_fmt=lambda v: f"{v:g}") -> None:
+    """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``
+    (legend labels ``hue_fmt(v)``); ``where`` = {column: value} holds the other
+    sweep axes fixed."""
     df = _exp(_load(mode, data_width), exp).dropna(subset=[x, hue])
     for col, val in (where or {}).items():
         df = df[df[col] == val]
@@ -1056,7 +1058,7 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
     for v, c in zip(vals, _ramp(len(vals))):
         g = df[df[hue] == v].sort_values(x)
         style = dict(color=c, marker="o", markersize=4, markeredgecolor="white",
-                     markeredgewidth=0.6, label=f"{v:g}")
+                     markeredgewidth=0.6, label=hue_fmt(v))
         if ax is not None:
             h, = ax.plot(g[x], g["y"] / scale, **style)
             if metric == "power":
@@ -1167,27 +1169,28 @@ def iter_dom_power_vs_max_extent(ctx, outpath: Path) -> None:
 @_viewable
 def affine_area_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "dims", "max_sequence_width",
-               "maximum value", "Dimensionality", ["c_sg0"], "one ScheduleGenerator", view=_view(ctx))
+               "maximum value", "Dimensionality", ["c_sg0"], "one ScheduleGenerator", view=_view(ctx),
+               hue_fmt=_pow2_fmt)
 
 
 @_viewable
 def affine_power_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "dims", "max_sequence_width",
                "maximum value", "Dimensionality", ["c_sg0"], "one ScheduleGenerator",
-               metric="power", view=_view(ctx))
+               metric="power", view=_view(ctx), hue_fmt=_pow2_fmt)
 
 
 @_viewable
 def affine_area_vs_max_value(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "max_sequence_width", "dims",
-               "dimensionality", "Maximum value (max sequence width)", ["c_sg0"],
+               "dimensionality", "Maximum value", ["c_sg0"],
                "one ScheduleGenerator", log2=True, view=_view(ctx))
 
 
 @_viewable
 def affine_power_vs_max_value(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "max_sequence_width", "dims",
-               "dimensionality", "Maximum value (max sequence width)", ["c_sg0"],
+               "dimensionality", "Maximum value", ["c_sg0"],
                "one ScheduleGenerator", log2=True, metric="power", view=_view(ctx))
 
 
