@@ -11,12 +11,25 @@ same port programs and the same input words in each:
 idle   = the empty application: every port controller cleared, nothing fires.
 active = the most traffic the spec can sustain (static_active_program /
          rv_active_program).
+active, program="full_rate" (opt-in, the THESIS module-characterization
+         sweeps): every measured port's controllers fire on every cycle of the
+         window (rv_active_program full_rate, static_single_port_program).
 Both variants get the SAME input stimulus (input_streams: a fresh random word
 per input port per cycle, valids high), so active minus idle is the memory's
 own work. Programs are Spec.gen_bitstream(app, over=True) inputs.
 """
 
 import random
+
+# full_rate RV: cycles kept off the stall-free stretch on top of the readers'
+# lag (lake SpecSim, fw4 2x2: all ports fire from the readers' first word to
+# margin + 2 (multi-dim) / + 4 (1-D) cycles before a writer's first row ends;
+# the tile testbench opens the window on its output pins, a few cycles later).
+FULL_RATE_GUARD = 10
+# full_rate static: schedule offset of the single writer, and the testbench's
+# window start (cycles after the first counted cycle), so the window opens
+# after the writer's first fire.
+STATIC_FULL_RATE_T0 = 4
 
 
 def port_limits(spec):
@@ -160,7 +173,7 @@ def static_active_program(spec, in_ports, out_ports, fw, dual_port, words, windo
     return app, min(covered) if covered else 0, period
 
 
-def rv_active_program(spec, in_ports, out_ports, fw, words, window, limits):
+def rv_active_program(spec, in_ports, out_ports, fw, words, window, limits, full_rate=False):
     """Free-flowing RV streams: writer i writes linear addresses, reader i
     reads them back (tests/spec_unit_tests/test_spec_rv_programs.py).
 
@@ -174,6 +187,18 @@ def rv_active_program(spec, in_ports, out_ports, fw, words, window, limits):
     its writer has finished -- with both phases sized to fit the window (all
     ports share the memory port(s) at fw=1, which every 1-D thesis spec has).
 
+    full_rate (opt-in): every port fires every cycle of the window. 1-D
+    domains stream as well (the barrier above predates lake 8748240d; lake
+    SpecSim RTL sims, 2026-11-17: a 1-D stream reads back correctly at one
+    word per cycle). The window is the stretch where every port fires: from
+    the readers' first word (the tile testbench opens the window there,
+    window_start "outputs") until a writer reaches the end of its first row.
+    Then a multi-dimensional reader stalls until its writer has finished
+    (the level-0 dependence across the row wrap), and a 1-D writer is done.
+    So the window is the writers' first-row extent minus the readers' lag
+    (margin) and FULL_RATE_GUARD, in whole memory-port rounds, at most
+    `window`: one row for max_extent 64 / 256, `window` from 1024 up.
+
     words: elements. Returns (app, window)."""
     from lake.utils.spec_enum import LFComparisonOperator
     LT = LFComparisonOperator.LT.value
@@ -182,16 +207,18 @@ def rv_active_program(spec, in_ports, out_ports, fw, words, window, limits):
     region = words // max(pairs, 1)
     region -= region % max(fw, 1)
     margin = 2 * fw * (2 if fw > 1 else 1) + 4
-    phased = min(lim["dims"] for lim in limits.values()) < 2
+    phased = not full_rate and min(lim["dims"] for lim in limits.values()) < 2
     n = -(-window // max(in_ports + out_ports, 1)) if phased else window + 64
     app = {"constraints": []}
-    covered = []
+    covered, rows = [], []
 
     def port(name, base):
         idx = spec.port_name_to_int(name)
         lim = limits[idx]
         ext, addr, _, cov = linear_domain(n, lim["dims"], lim["ext_cap"], 0, 0)
         covered.append(cov)
+        if name.startswith("port_w"):
+            rows.append(ext[0])
         c = spec.get_base_port_config(name)
         c["config"] = {"dimensionality": len(ext), "extents": ext,
                        "address": {"strides": addr, "offset": base},
@@ -211,20 +238,72 @@ def rv_active_program(spec, in_ports, out_ports, fw, words, window, limits):
     if phased:
         # Writers, then readers, each phase sharing the memory port(s).
         return app, min(window, (in_ports + out_ports) * cov + 16)
+    if full_rate:
+        rounds = max(fw, in_ports + out_ports, 1)
+        stall_free = min(rows) - margin - FULL_RATE_GUARD if rows else cov
+        return app, max(rounds, min(window, stall_free) // rounds * rounds)
     # Free flow moves at most one item per cycle per port.
     return app, min(window, cov)
 
 
+def static_single_port_program(spec, fw, window, limits):
+    """Static full rate (opt-in): one port's controllers fire every cycle.
+
+    A static port steps once per SRAM word, and the ports of a memory port
+    share its cycles, so with all ports streaming none fires every cycle
+    (static_active_program: once per period P). Here only port_w0 is
+    configured: at fw 1 it writes one word every cycle, and every other port
+    stays cleared (clock-gated with clock_gate_ports). So each block's active
+    power is one port's ID / SG / AG firing every cycle; the reader side and
+    the data outputs stay quiet. fw > 1 fills a word in fw cycles, so no
+    static port fires every cycle there.
+
+    Returns (app, window, window_start): the window opens window_start
+    cycles into the testbench's count, after the writer's first fire."""
+    from lake.utils.spec_enum import Direction
+    if fw != 1:
+        raise ValueError(f"static full-rate program: fw={fw}; only fw 1 fires a static port every cycle")
+    idx = spec.port_name_to_int("port_w0")
+    lim = limits[idx]
+    t0 = STATIC_FULL_RATE_T0
+    ext, addr, sched, cov = linear_domain(window + t0 + 8, lim["dims"], lim["ext_cap"], 1,
+                                          lim["stride_cap"])
+    cfg = {'dimensionality': len(ext), 'extents': ext,
+           'address': {'strides': addr, 'offset': 0},
+           'schedule': {'strides': sched, 'offset': t0}}
+    port = {'type': Direction.IN, 'name': 'port_w0', 'config': cfg, 'vec_constraints': [],
+            'vec_in_config': cfg, 'vec_out_config': cfg}
+    return {"constraints": [], idx: port}, min(window, cov - 2 * t0), t0
+
+
 def active_program(spec, in_ports, out_ports, fw, data_width, storage_capacity,
-                   dual_port, window):
+                   dual_port, window, program="default"):
     """The active program for this spec (static or RV, from the generated HW).
 
     Returns {"app", "window": cycles to measure (<= window: shortened when
     the spec cannot keep its ports busy that long), "min_output_changes": the
     least value changes a word-wide output must show in the window (half the
-    elements the program delivers; a coarse floor for RV)}."""
+    elements the program delivers; a coarse floor for RV)}.
+
+    program="full_rate" (opt-in): every measured port fires on every cycle
+    of the window (RV: rv_active_program full_rate, every port; static:
+    static_single_port_program, port_w0 alone). The result then also has
+    "window_start": "outputs" (RV: the testbench opens the window when every
+    routed output has delivered a word) or a cycle count (static), and RV
+    outputs must change on 90% of the window's cycles. Only the CGRA tile
+    testbench (gen_memtile_power_tests.py) honors window_start."""
     limits = port_limits(spec)
     elements = storage_capacity * 8 // data_width
+    if program not in ("default", "full_rate"):
+        raise ValueError(f"active_program: unknown program {program!r}")
+    if program == "full_rate":
+        if spec.any_rv_sg:
+            app, w = rv_active_program(spec, in_ports, out_ports, fw, elements, window, limits,
+                                       full_rate=True)
+            return {"app": app, "window": w, "min_output_changes": max(1, w * 9 // 10),
+                    "window_start": "outputs"}
+        app, w, start = static_single_port_program(spec, fw, window, limits)
+        return {"app": app, "window": w, "min_output_changes": 0, "window_start": start}
     if spec.any_rv_sg:
         app, w = rv_active_program(spec, in_ports, out_ports, fw, elements, window, limits)
         return {"app": app, "window": w, "min_output_changes": max(1, w // 16)}
