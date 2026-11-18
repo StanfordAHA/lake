@@ -234,6 +234,12 @@ _LEVELS = {
 }
 _REST = {"tile": "tile_glue", "memcore": "mc_glue", "inner": "inner_glue", "ctrl": "c_other"}
 BLOCKS = [b for lvl in _LEVELS for b in [n for n, _ in _LEVELS[lvl]] + [_REST[lvl]]]
+# One instance of each per-port controller block: <block>0 = the instance with
+# index 0 (port 0, an input port), so a component figure can show a single
+# module rather than the sum over the tile's ports. Instances of one block are
+# nearly identical in area (within ~1-2%); an output Port draws less idle power
+# than an input Port, which samples the tile's input stream.
+INSTANCE0 = {"c_port": "port_inst_0", "c_id": "port_id_0", "c_sg": "port_sg_0", "c_ag": "port_ag_0"}
 
 
 def _indent_tree(text: str, row_re: str, value_group: int) -> dict[str, float]:
@@ -301,6 +307,9 @@ def _tree_blocks(vals: dict[str, float]) -> dict[str, float]:
                     used += vals[c]
                     break
         out[_REST[level]] = total - used
+    for name, leaf in INSTANCE0.items():
+        if f"{inst}/{leaf}" in vals:
+            out[f"{name}0"] = vals[f"{inst}/{leaf}"]
     return out
 
 

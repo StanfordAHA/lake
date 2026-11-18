@@ -11,10 +11,14 @@ on the same random input stream (garnet --memtile-power). Groups:
               power, which replace the standalone-lakespec (THESIS_BUILDS)
               versions. From a hierarchy-kept sweep (garnet --flatten-effort 0)
               each plots its own block of the lake controller (tile_sweep
-              BLOCKS, ``blk_*`` / ``pw_*``): Port = port_inst, IterationDomain =
-              port_id, affine pattern generators = port_ag + port_sg,
-              MemoryPort = memory-port muxes/arbiters/decoders, Storage = the
-              SRAM block.
+              BLOCKS, ``blk_*`` / ``pw_*``). The per-port blocks plot a single
+              instance, port 0 (tile_sweep INSTANCE0, user 2026-11-17): Port =
+              port_inst_0 (an input Port), IterationDomain = port_id_0, Affine
+              Pattern Generator = port_sg_0 (the ScheduleGenerator, whose maximum
+              value the sweep varies; an AddressGenerator's is set by the address
+              width). MemoryPort = all memory-port muxes/arbiters/decoders of the
+              Storage (one MemoryPort single-port, a read and a write one
+              dual-port), Storage = the SRAM block.
   pub_*       the Physical Unified Buffer = lake controller + SRAM block.
   memtile_*   the whole CGRA memory tile (lakespec + MemCore wrapper + SB/CB
               interconnect) unless noted, including the synthesis -> PnR model
@@ -1104,7 +1108,7 @@ def _port_data_width(ctx, outpath: Path, metric: str) -> None:
     if (mhz["min"] != mhz["max"]).any():
         raise MissingDataError("PORT_EXP builds of one data width ran at different clocks")
     _sweep_fig(outpath, "PORT_EXP", "data_width", "vec_width", "fetch width",
-               "Port data width (bits) / clock (MHz)", ["c_port"], "4 Ports",
+               "Port data width (bits) / clock (MHz)", ["c_port0"], "one input Port",
                xfmt=lambda v: f"{v:g}\n{mhz.loc[v, 'min']:.0f}",
                log2=True, metric=metric, view=_view(ctx), data_width=None,
                where={"vec_capacity": 2})
@@ -1123,68 +1127,68 @@ def port_power_vs_data_width(ctx, outpath: Path) -> None:
 
 @_viewable
 def port_area_vs_vc(ctx, outpath: Path) -> None:
-    """PORT_EXP: Port area (the 4 port_inst blocks) vs vectorization capacity,
+    """PORT_EXP: area of one input Port (port_inst_0) vs vectorization capacity,
     one line per fetch width."""
     _sweep_fig(outpath, "PORT_EXP", "vec_capacity", "vec_width", "fetch width",
-               "Vectorization capacity (entries)", ["c_port"], "4 Ports", log2=True, view=_view(ctx))
+               "Vectorization capacity (entries)", ["c_port0"], "one input Port", log2=True, view=_view(ctx))
 
 
 @_viewable
 def port_power_vs_vc(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "PORT_EXP", "vec_capacity", "vec_width", "fetch width",
-               "Vectorization capacity (entries)", ["c_port"], "4 Ports", log2=True,
+               "Vectorization capacity (entries)", ["c_port0"], "one input Port", log2=True,
                metric="power", view=_view(ctx))
 
 
 @_viewable
 def iter_dom_area_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
-               "Dimensionality", ["c_id"], "4 IterationDomains", view=_view(ctx))
+               "Dimensionality", ["c_id0"], "one IterationDomain", view=_view(ctx))
 
 
 @_viewable
 def iter_dom_power_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "dims", "max_extent", "maximum extent",
-               "Dimensionality", ["c_id"], "4 IterationDomains", metric="power", view=_view(ctx))
+               "Dimensionality", ["c_id0"], "one IterationDomain", metric="power", view=_view(ctx))
 
 
 @_viewable
 def iter_dom_area_vs_max_extent(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
-               "Maximum extent", ["c_id"], "4 IterationDomains", log2=True, view=_view(ctx))
+               "Maximum extent", ["c_id0"], "one IterationDomain", log2=True, view=_view(ctx))
 
 
 @_viewable
 def iter_dom_power_vs_max_extent(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "ITERATION_DOMAIN_EXP", "max_extent", "dims", "dimensionality",
-               "Maximum extent", ["c_id"], "4 IterationDomains", log2=True, metric="power", view=_view(ctx))
+               "Maximum extent", ["c_id0"], "one IterationDomain", log2=True, metric="power", view=_view(ctx))
 
 
 @_viewable
 def affine_area_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "dims", "max_sequence_width",
-               "maximum value", "Dimensionality", ["c_ag", "c_sg"], "4 AGs + 4 SGs", view=_view(ctx))
+               "maximum value", "Dimensionality", ["c_sg0"], "one ScheduleGenerator", view=_view(ctx))
 
 
 @_viewable
 def affine_power_vs_dim(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "dims", "max_sequence_width",
-               "maximum value", "Dimensionality", ["c_ag", "c_sg"], "4 AGs + 4 SGs",
+               "maximum value", "Dimensionality", ["c_sg0"], "one ScheduleGenerator",
                metric="power", view=_view(ctx))
 
 
 @_viewable
 def affine_area_vs_max_value(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "max_sequence_width", "dims",
-               "dimensionality", "Maximum value (max sequence width)", ["c_ag", "c_sg"],
-               "4 AGs + 4 SGs", log2=True, view=_view(ctx))
+               "dimensionality", "Maximum value (max sequence width)", ["c_sg0"],
+               "one ScheduleGenerator", log2=True, view=_view(ctx))
 
 
 @_viewable
 def affine_power_vs_max_value(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "AFFINE_PATTERN_GENERATOR_EXP", "max_sequence_width", "dims",
-               "dimensionality", "Maximum value (max sequence width)", ["c_ag", "c_sg"],
-               "4 AGs + 4 SGs", log2=True, metric="power", view=_view(ctx))
+               "dimensionality", "Maximum value (max sequence width)", ["c_sg0"],
+               "one ScheduleGenerator", log2=True, metric="power", view=_view(ctx))
 
 
 def _sp_dp_fig(outpath: Path, df: pd.DataFrame, x: str, metric: str, ylabel: str,
