@@ -188,7 +188,7 @@ def _balanced(df: pd.DataFrame) -> np.ndarray:
 
 
 def _full_rate(df: pd.DataFrame) -> pd.DataFrame:
-    """Static configs whose SRAM lets every port stream one element per cycle:
+    """Configs whose SRAM lets every port stream one element per cycle:
     fetch width >= in + out ports (single-port) or >= the ports per direction
     (dual-port). A narrower SRAM shares its accesses, so the active power test
     (lake/utils/power_test_programs.py static_active_program) can run each port only
@@ -656,8 +656,8 @@ _BREAKDOWN = [
     ("Tile glue", ["tile_glue"]),
 ]
 # Three of the PnR fit geometries, small to large; each is built static and RV.
-_BREAKDOWN_CONFIGS = [
-    ("fw1_dw16_sc4096_sp_in1_out1", "fw1, 4 KB, 1 in, 1 out"),
+_BREAKDOWN_CONFIGS = [  # full-throughput tiles only (`_full_rate`; was fw1 4 KB 1x1, half rate)
+    ("fw2_dw16_sc4096_sp_in1_out1_vc2", "fw2, 4 KB, 1 in, 1 out"),
     ("fw4_dw16_sc8192_sp_in2_out2_vc2", "fw4, 8 KB, 2 in, 2 out"),
     ("fw8_dw16_sc32768_sp_in4_out4_vc2", "fw8, 32 KB, 4 in, 4 out"),
 ]
@@ -1059,13 +1059,15 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
                blocks: list[str], ylabel: str, xfmt=_pow2_fmt, log2: bool = False,
                metric: str = "area", mode: str = "static", view: str = "raw",
                data_width: int | None = DATA_WIDTH, where: dict | None = None,
-               hue_fmt=lambda v: f"{v:g}") -> None:
+               hue_fmt=lambda v: f"{v:g}", full_rate: bool = False) -> None:
     """``metric`` of ``blocks`` vs ``x`` for one experiment, one line per ``hue``
     (legend labels ``hue_fmt(v)``); ``where`` = {column: value} holds the other
-    sweep axes fixed."""
+    sweep axes fixed; ``full_rate`` keeps only `_full_rate` configs."""
     df = _exp(_load(mode, data_width), exp).dropna(subset=[x, hue])
     for col, val in (where or {}).items():
         df = df[df[col] == val]
+    if full_rate:
+        df = _full_rate(df)
     if df[x].nunique() < 2:
         raise MissingDataError(f"{exp}: {x} takes a single value at data_width={data_width}")
     df = _metric(df, blocks, metric, ylabel)
@@ -1119,9 +1121,11 @@ def _sweep_fig(outpath: Path, exp: str, x: str, hue: str, hue_name: str, xlabel:
 
 
 def _port_data_width(ctx, outpath: Path, metric: str) -> None:
-    """Every data width the final run built, vc=2; each width synthesizes at its own
-    clock, so each tick names it."""
-    df = _exp(_load(data_width=None), "PORT_EXP")
+    """Every data width the final run built, vc=2, full-throughput configs only (the fw2
+    2-in/2-out ports run at half rate in the active test, so the fw2 line and with it
+    the 64-bit point are gone); each width synthesizes at its own clock, so each tick
+    names it."""
+    df = _full_rate(_exp(_load(data_width=None), "PORT_EXP"))
     df = df[df["vec_capacity"] == 2]
     if df["data_width"].nunique() < 2:
         raise MissingDataError("needs PORT_EXP tile builds at several data widths")
@@ -1132,7 +1136,7 @@ def _port_data_width(ctx, outpath: Path, metric: str) -> None:
                "Port data width (bits) / clock (MHz)", ["c_port0"], "one input Port",
                xfmt=lambda v: f"{v:g}\n{mhz.loc[v, 'min']:.0f}",
                log2=True, metric=metric, view=_view(ctx), data_width=None,
-               where={"vec_capacity": 2})
+               where={"vec_capacity": 2}, full_rate=True)
 
 
 @_viewable
@@ -1149,16 +1153,17 @@ def port_power_vs_data_width(ctx, outpath: Path) -> None:
 @_viewable
 def port_area_vs_vc(ctx, outpath: Path) -> None:
     """PORT_EXP: area of one input Port (port_inst_0) vs vectorization capacity,
-    one line per fetch width."""
+    one line per fetch width, full-throughput configs only (no fw2 line)."""
     _sweep_fig(outpath, "PORT_EXP", "vec_capacity", "vec_width", "fetch width",
-               "Vectorization capacity (entries)", ["c_port0"], "one input Port", log2=True, view=_view(ctx))
+               "Vectorization capacity (entries)", ["c_port0"], "one input Port", log2=True,
+               view=_view(ctx), full_rate=True)
 
 
 @_viewable
 def port_power_vs_vc(ctx, outpath: Path) -> None:
     _sweep_fig(outpath, "PORT_EXP", "vec_capacity", "vec_width", "fetch width",
                "Vectorization capacity (entries)", ["c_port0"], "one input Port", log2=True,
-               metric="power", view=_view(ctx))
+               metric="power", view=_view(ctx), full_rate=True)
 
 
 @_viewable
@@ -1491,9 +1496,10 @@ def _rvnet_prefix(df: pd.DataFrame) -> pd.Series:
 
 def _li_ports(outpath: Path, metric: str, view: str = "raw") -> None:
     """LI ScheduleGenerator vs Lake ports, stacked comparison network + RV SGs:
-    every RV config at the default 6 dims and extents (MEMORY/PORT sweeps),
-    median with a min-max bar on the total. Power: bars = active, tick = idle."""
-    df = _load("rv")
+    every full-throughput RV config at the default 6 dims and extents (MEMORY/PORT
+    sweeps; RV blocks step per element, so port rate sets their activity), median with
+    a min-max bar on the total. Power: bars = active, tick = idle."""
+    df = _full_rate(_load("rv"))
     df = df[(df["dims"] == 6) & df["max_extent"].isna() & df["max_sequence_width"].isna()].copy()
     if df["in_ports"].nunique() < 2:
         raise MissingDataError("need RV tile builds at several port counts")

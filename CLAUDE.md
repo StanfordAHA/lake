@@ -327,9 +327,18 @@ What the sweep feeds (registry `tf.*`; all `data_width == 16`,
   to `memtile_interconnect_{area,power}` (n = 10 / 14 / 7 at 1,1 / 2,2 / 4,4; before, 54 of the
   71 2,2 configs ran at 1/4 and the 2,2 switch box matched 1,1). Each full-rate output adds about
   25 µW of SB power; CB power is equal idle and active (same input stream in both tests).
-  Not yet applied, user to decide: ITERATION_DOMAIN_EXP and AFFINE_PATTERN_GENERATOR_EXP are all
-  fw1 SP 2x2 (1/4 rate, so filtering would empty them), PORT_EXP's fw2 line (1/2 rate), and
-  `memtile_block_breakdown`'s fw1 SP 1x1 tile (1/2 rate).
+  Also applied (2026-11-17): `li_sched_ports_*` (full-rate RV configs), `port_*_vs_data_width` /
+  `port_*_vs_vc` (`_sweep_fig(full_rate=True)`: the fw2 line and with it the 64-bit point are gone),
+  `memtile_block_breakdown` (fw1 4 KB 1x1 swapped for fw2 4 KB 1x1).
+  - Static ID/APG figures are unaffected and stay: their blocks step once per SRAM word, every
+    P = max(fw, in+out) cycles, and the fw1 2x2 base has P = 4 like the full-rate fw4 2x2 tile.
+    Equal-P fw2 and fw4 tiles draw equal ID/AG/SG power.
+  - RV blocks step per element, so `li_sched_loc_*` (fw1 2x2 RV, 1/4 rate) is understated. A
+    full-rate rebuild (fw4 SP 2x2 vc2 RV, dims 1-6 x max extent 64-4096) is with session
+    1fa8a391.
+  - `memtile_rv_energy_breakdown` still includes the fw1 8 KB 6-D 2x2 and fw1 4 KB 1x1 tiles
+    (user to decide).
+  - Write-up: `../POWER_FIGURE_PORT_RATE_NOTE.md` (workspace, not in the repo).
 - Memory tile: `memtile_interconnect_{area,power}` (CB/SB/glue vs ports),
   `memtile_block_breakdown` (area/idle/active share per block, 3 fit
   geometries × static/RV), `memtile_rv_overhead_area`, `memtile_rv_energy_breakdown`
