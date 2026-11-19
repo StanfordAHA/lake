@@ -299,7 +299,7 @@ EXPLORATION_APPS = [
           notes="Energy = synth_power_w * total_cycles * clock_period."),
     Entry("single_level_pareto", "fig:pareto_single_level",
           "figures/single_level_pareto.pdf", "figure",
-          "single-level design points: performance and power vs area, Pareto front",
+          "16-bit single-level design points: performance and power vs area, Pareto front",
           "real", g.single_level_pareto,
           notes="Per app relative to the baseline design point, then the geometric mean over "
                 "the apps that ran on both; performance = 1 / (kernel cycles x clock period); "

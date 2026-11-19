@@ -601,23 +601,41 @@ def _pareto(pts: list[tuple[float, float]], higher: bool) -> list[tuple[float, f
     return front
 
 
-def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
+# The data width single_level_pareto compares at (user 2026-11-18: 16-bit only for now;
+# fronts for the other widths come later, once each width has enough design points).
+PARETO_DATA_WIDTH = 16
+
+
+def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
+                        data_width: int | None = PARETO_DATA_WIDTH) -> None:
     """Each single-level design point's (a) performance and (b) power against its area,
-    relative to the baseline (``_design_ppa``), with the Pareto front dashed. Area is
-    the placed tiles' only and includes the SRAM macros, so it is relative whether or
-    not SRAM_NDA is set."""
+    relative to the baseline (``_design_ppa``: the first design point at that width),
+    with the Pareto front dashed and its points ringed. Only the design points at
+    ``data_width`` (None: all), since another width changes what each app computes.
+    Area is the placed tiles' only and includes the SRAM macros, so it is relative
+    whether or not SRAM_NDA is set. Colors follow the per-app bar figures."""
+    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
     from .tile_figures import FULL_W, INK2, MUTED, SERIES, _ax_style, _legend_above, _save
-    pts = _design_ppa(_load_apps_or_miss(required_col="synth_power_w", mode=mode))
+    df = _load_apps_or_miss(required_col="synth_power_w", mode=mode)
+    order = [d for d, _ in _app_designs(set(df["design_id"]))]  # the bar figures' colors
+    if data_width is not None:
+        ids = {d.id for d in DESIGNS_SINGLE_LEVEL if d.data_width == data_width}
+        df = df[df["design_id"].isin(ids)]
+        if df.empty:
+            raise MissingDataError(f"no {mode} app results on a {data_width}-bit design point")
+    pts = _design_ppa(df)
     n_base = pts[0][2]
     fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.7))
     for ax, key, title, higher in ((axes[0], "perf", "(a) Performance", True),
                                    (axes[1], "power", "(b) Power", False)):
-        for i, ((_, label, n, v), c) in enumerate(zip(pts, SERIES * 2)):
+        for i, (d, label, n, v) in enumerate(pts):
             note = " (baseline)" if i == 0 else "" if n == n_base else f" ({n} of {n_base} apps)"
-            ax.scatter(v["area"], v[key], s=50, color=c, edgecolor="white", linewidth=0.6,
-                       zorder=3, label=label + note)
+            ax.scatter(v["area"], v[key], s=50, color=SERIES[order.index(d) % len(SERIES)],
+                       edgecolor="white", linewidth=0.6, zorder=3, label=label + note)
         front = _pareto([(v["area"], v[key]) for *_, v in pts], higher)
-        ax.plot(*zip(*front), color=MUTED, linestyle="--", linewidth=1.1, zorder=2,
+        # rings mark the front, so a one-point front still shows
+        ax.plot(*zip(*front), color=MUTED, linestyle="--", linewidth=1.1, marker="o",
+                markersize=11, markerfacecolor="none", markeredgewidth=1.1, zorder=2,
                 label="Pareto front")
         ax.set_title(title, loc="left", fontsize=10.5, color=INK2)
         ax.set_xlabel("Area (× baseline)")

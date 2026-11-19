@@ -92,7 +92,9 @@ def test_empty_tree_raises_missing_data_error(apps_root, empty_ctx, name, tmp_pa
 def test_populated_tree_produces_pdf(apps_root, empty_ctx, name, tmp_path):
     _seed_full_matrix(apps_root)
     out = tmp_path / f"{name}.pdf"
-    getattr(generators, name)(empty_ctx, out)
+    # the seed's design ids aren't real design points, so they have no data width
+    kw = {"data_width": None} if name == "single_level_pareto" else {}
+    getattr(generators, name)(empty_ctx, out, **kw)
     assert out.is_file()
     # PDFs are >>500 bytes; guard against generators writing zero-length files.
     assert out.stat().st_size > 1000
@@ -286,6 +288,24 @@ def test_placed_area_leaves_out_route_only_tiles():
                         "synth_total_area_um2": 1540.0}])
     assert list(generators._placed_area(df)) == [340.0]
     assert generators._placed_area(pd.DataFrame([{"synth_total_area_um2": 1.0}])).isna().all()
+
+
+def test_pareto_plots_only_one_data_width(apps_root, empty_ctx, tmp_path, monkeypatch):
+    """16-bit design points only by default; a width with no results is a MissingDataError."""
+    for d in ("port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc2k_sp1x1", "port_fw4_dw8_sc8k_sp2x2"):
+        _write_pass_cell(apps_root, d, "gaussian_agg", total_cycles=100, synth_power_w=0.01,
+                         clock_period_ps=1000.0, mem_tiles_placed=2, mem_tile_area_um2=1e3,
+                         pe_tiles_placed=2, pe_tile_area_um2=5e2)
+    seen, real = [], generators._design_ppa
+    monkeypatch.setattr(generators, "_design_ppa",
+                        lambda df: seen.append(set(df["design_id"])) or real(df))
+    generators.single_level_pareto(empty_ctx, tmp_path / "a.pdf")
+    generators.single_level_pareto(empty_ctx, tmp_path / "b.pdf", data_width=None)
+    assert seen == [{"port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc2k_sp1x1"},
+                    {"port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc2k_sp1x1",
+                     "port_fw4_dw8_sc8k_sp2x2"}]
+    with pytest.raises(MissingDataError, match="64-bit"):
+        generators.single_level_pareto(empty_ctx, tmp_path / "c.pdf", data_width=64)
 
 
 def test_pareto_keeps_points_nothing_beats_on_both_axes():
