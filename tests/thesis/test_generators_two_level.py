@@ -19,7 +19,7 @@ from THESIS.pipeline.errors import MissingDataError  # noqa: E402 (after matplot
 
 
 ALL_GENERATORS = ["two_level_power", "two_level_performance", "two_level_area",
-                  "two_level_utilization", "two_level_energy_efficiency"]
+                  "two_level_energy_efficiency"]
 PPA = {"synth_power_w": 0.02, "total_cycles": 9000, "output_words": 2352, "output_per_cycle": 2352 / 9000,
        "utilization": 0.4, "synth_total_area_um2": 2e5, "clock_period_ps": 1754.0,
        "mem_tiles_placed": 4, "mem_tile_area_um2": 2e4,
@@ -111,7 +111,8 @@ def test_performance_and_energy_are_per_output_word(apps_root, ctx, tmp_path, mo
     monkeypatch.setattr(generators, "_paired_bar", lambda df, y, **kw: seen.update({y: df.set_index("level")[y]}))
     generators.two_level_performance(ctx, tmp_path / "x.pdf")
     generators.two_level_energy_efficiency(ctx, tmp_path / "x.pdf")
-    assert seen["output_per_cycle"]["two"] == pytest.approx(2352 / 177697)
+    assert seen["ns_per_word"]["single"] == pytest.approx(11661 * 1000.0 / 588 / 1000)
+    assert seen["ns_per_word"]["two"] == pytest.approx(177697 * 1000.0 / 2352 / 1000)
     assert seen["energy_pj"]["single"] == pytest.approx(0.02 * 11661 * 1000.0 / 588)
     assert seen["energy_pj"]["two"] == pytest.approx(0.01 * 177697 * 1000.0 / 2352)
 

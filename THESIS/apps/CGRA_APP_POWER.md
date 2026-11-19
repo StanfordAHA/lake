@@ -123,7 +123,10 @@ The text's other axes (dims, ScheduleGenerator duration) have no design points.
   are no pond design points (no `DESIGNS_TWO_LEVEL`).
   - A pair need not do the same work: resnet_agg runs a tile=14 kernel (~11.7k ns) and
     resnet_pond_agg the whole 28×28 image (2352 words, ~178k ns; aha-08 2026-10-30). So
-    performance is output words per cycle and energy is per output word.
+    performance is wall time per output word and energy is per output word.
+- The app figures show the 16-bit design points only (`generators.APP_DATA_WIDTH`,
+  user 2026-11-18), with performance as wall time (kernel cycles × the design point's
+  clock period), and have no utilization panel.
 - `tests/conv_3_3` is not a thesis app and is skipped.
 
 ## 2. Commands
@@ -236,9 +239,9 @@ python3 -m THESIS.apps.cgra_power_ingest --bundles /aha/sweep_out/app_bundles_th
 python3 -m THESIS.apps.cgra_power_ingest ../cgra_app_power_thesis_dp_<host>_<ts>.zip \
     --kernel-stats ks_thesis_dp.json --dry-run      # check the mapping, then drop --dry-run
 python3 THESIS/generate_thesis_artifacts.py --only \
-    single_level_power single_level_performance single_level_area single_level_utilization \
+    single_level_power single_level_performance single_level_area \
     single_level_energy_efficiency single_level_power_LI single_level_performance_LI \
-    single_level_area_LI single_level_utilization_LI single_level_energy_efficiency_LI
+    single_level_area_LI single_level_energy_efficiency_LI
 ```
 
 `--tile-sweep THESIS/data/tile_sweep/<thesis_dse>.csv` takes the MemTile area from the

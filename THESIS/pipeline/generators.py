@@ -398,6 +398,10 @@ def compiler_info(ctx: GenContext, outpath: Path) -> None:
 # thesis fabrics); results without a fabric field (run_matrix) also count.
 APP_FABRIC = "thesis"
 
+# The data width of the design points the app figures show (user 2026-11-18: the
+# 16-bit ones only for now, since another width changes what each app computes).
+APP_DATA_WIDTH = 16
+
 
 def _load_apps_or_miss(required_col: str | None = None, mode: str = "static",
                        level: str | None = "single") -> pd.DataFrame:
@@ -433,6 +437,24 @@ def _app_designs(ids) -> list[tuple[str, str]]:
     return out + [(d, d) for d in sorted(set(ids) - known)]
 
 
+def _at_width(df: pd.DataFrame) -> pd.DataFrame:
+    """``df`` without the rows on a design point of another data width than
+    APP_DATA_WIDTH (rows on an id that is not a design point stay)."""
+    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    other = {d.id for d in DESIGNS_SINGLE_LEVEL if d.data_width != APP_DATA_WIDTH}
+    return df[~df["design_id"].isin(other)]
+
+
+def _design_colors() -> dict[str, str]:
+    """Each design point's bar color: its place among all the design points, so a
+    design point keeps its color whichever of them a figure shows (and matches the
+    Pareto figure)."""
+    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    from .tile_figures import SERIES
+    return {d: SERIES[i % len(SERIES)]
+            for i, (d, _) in enumerate(_app_designs({x.id for x in DESIGNS_SINGLE_LEVEL}))}
+
+
 def _missing_mark(ax, xs, fontsize: float) -> None:
     from .tile_figures import MUTED
     for x in xs:
@@ -447,12 +469,13 @@ def _missing_handle():
 
 def _app_bar(df: pd.DataFrame, *, y: str, ylabel: str, outpath: Path,
              relative: bool = False) -> None:
-    """One group per app (registry order), one bar per design point; × where the app
-    has no result there. ``relative``: each app's bars over its first design point's."""
+    """One group per app (registry order), one bar per design point at APP_DATA_WIDTH;
+    × where the app has no result there. ``relative``: each app's bars over its first
+    design point's."""
     import numpy as np
     from .tile_figures import FULL_W, SERIES, _ax_style, _legend_above, _save
     from ..apps.registry import APPS
-    df = df.dropna(subset=["app_id", "design_id", y])
+    df = _at_width(df.dropna(subset=["app_id", "design_id", y]))
     if df.empty:
         raise MissingDataError(f"no non-null {y} values in the app results")
     designs = _app_designs(set(df["design_id"]))
@@ -466,10 +489,11 @@ def _app_bar(df: pd.DataFrame, *, y: str, ylabel: str, outpath: Path,
     fig, ax = plt.subplots(figsize=(FULL_W, 2.6))
     idx = np.arange(len(apps))
     w = 0.84 / len(designs)
-    for i, ((d, label), color) in enumerate(zip(designs, SERIES * 2)):
+    colors = _design_colors()
+    for i, (d, label) in enumerate(designs):
         xs = idx - 0.42 + w * (i + 0.5)
         col = vals[d].to_numpy(dtype=float)
-        ax.bar(xs, col, width=w, color=color, label=label)
+        ax.bar(xs, col, width=w, color=colors.get(d, SERIES[i % len(SERIES)]), label=label)
         _missing_mark(ax, xs[np.isnan(col)], 8)
     ax.set_xticks(idx)
     # "Camera Pipeline 2x2" -> "Camera\nPipeline 2x2": five names side by side fit on two lines
@@ -493,10 +517,13 @@ def single_level_power(ctx: GenContext, outpath: Path, mode: str = "static") -> 
 
 
 def single_level_performance(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
-    """Per-app kernel cycles on each single-level design point."""
+    """Per-app kernel wall time (kernel cycles x clock period) on each single-level
+    design point: each design point runs at its own clock (user 2026-11-18)."""
     df = _load_apps_or_miss(required_col="total_cycles", mode=mode)
-    _app_bar(df.assign(kcycles=df["total_cycles"] / 1000.0), y="kcycles",
-             ylabel="Kernel cycles (10³)", outpath=outpath)
+    if "clock_period_ps" not in df.columns or df["clock_period_ps"].dropna().empty:
+        raise MissingDataError("clock_period_ps missing — extractor row not resolved")
+    _app_bar(df.assign(wall_us=df["total_cycles"] * df["clock_period_ps"] * 1e-6), y="wall_us",
+             ylabel="Wall time (µs)", outpath=outpath)
 
 
 def single_level_area(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
@@ -512,13 +539,6 @@ def single_level_area(ctx: GenContext, outpath: Path, mode: str = "static") -> N
     else:
         _app_bar(df.assign(area_k=df["placed_area_um2"] / 1000.0), y="area_k",
                  ylabel="Area (10³ µm²)", outpath=outpath)
-
-
-def single_level_utilization(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
-    """Per-app memory-tile utilization (SRAM busy cycles / kernel cycles)."""
-    df = _load_apps_or_miss(required_col="utilization", mode=mode)
-    _app_bar(df.assign(utilization_pct=df["utilization"] * 100.0), y="utilization_pct",
-             ylabel="Utilization (%)", outpath=outpath)
 
 
 def single_level_energy_efficiency(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
@@ -603,7 +623,7 @@ def _pareto(pts: list[tuple[float, float]], higher: bool) -> list[tuple[float, f
 
 # The data width single_level_pareto compares at (user 2026-11-18: 16-bit only for now;
 # fronts for the other widths come later, once each width has enough design points).
-PARETO_DATA_WIDTH = 16
+PARETO_DATA_WIDTH = APP_DATA_WIDTH
 
 
 def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
@@ -664,7 +684,6 @@ def _li(gen):
 single_level_power_LI = _li(single_level_power)
 single_level_performance_LI = _li(single_level_performance)
 single_level_area_LI = _li(single_level_area)
-single_level_utilization_LI = _li(single_level_utilization)
 single_level_energy_efficiency_LI = _li(single_level_energy_efficiency)
 
 
@@ -712,6 +731,9 @@ def _paired_bar(df: pd.DataFrame, *, y: str, ylabel: str, outpath: Path,
     two-level one where there is none)."""
     import numpy as np
     from .tile_figures import FULL_W, SERIES, _ax_style, _legend_above, _save
+    df = _at_width(df)
+    if df.empty:
+        raise MissingDataError(f"no two-level pair results on a {APP_DATA_WIDTH}-bit design point")
     designs = _app_designs(set(df["design_id"]))
     # "fw4 dw16 8KB SP 2x2" -> "fw4 dw16\n8KB SP\n2x2"
     ticks = [re.sub(r"^(\S+ \S+) (\S+ \S+) ", "\\1\n\\2\n", label) for _, label in designs]
@@ -750,10 +772,15 @@ def two_level_power(ctx: GenContext, outpath: Path) -> None:
 
 
 def two_level_performance(ctx: GenContext, outpath: Path) -> None:
-    """Single- vs two-level output words per kernel cycle of each app pair on each
-    design point."""
-    _paired_bar(_level_pairs("output_per_cycle"), y="output_per_cycle",
-                ylabel="Output words / cycle", outpath=outpath)
+    """Single- vs two-level wall time per output word (kernel cycles x clock period /
+    output words) of each app pair on each design point."""
+    df = _level_pairs("total_cycles")
+    for col in ("clock_period_ps", "output_words"):
+        if col not in df.columns or df[col].dropna().empty:
+            raise MissingDataError(f"{col} missing from the two-level pairs' results.json")
+    ns = df["total_cycles"] * df["clock_period_ps"] / df["output_words"] / 1000.0
+    _paired_bar(df.assign(ns_per_word=ns), y="ns_per_word", ylabel="Time / output word (ns)",
+                outpath=outpath)
 
 
 def two_level_area(ctx: GenContext, outpath: Path) -> None:
@@ -768,13 +795,6 @@ def two_level_area(ctx: GenContext, outpath: Path) -> None:
     else:
         _paired_bar(df.assign(area_k=df["placed_area_um2"] / 1000.0), y="area_k",
                     ylabel="Area (10³ µm²)", outpath=outpath)
-
-
-def two_level_utilization(ctx: GenContext, outpath: Path) -> None:
-    """Single- vs two-level memory-tile utilization of each app pair."""
-    df = _level_pairs("utilization")
-    _paired_bar(df.assign(utilization_pct=df["utilization"] * 100.0), y="utilization_pct",
-                ylabel="Utilization (%)", outpath=outpath)
 
 
 def two_level_energy_efficiency(ctx: GenContext, outpath: Path) -> None:

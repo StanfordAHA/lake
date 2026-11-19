@@ -22,7 +22,6 @@ ALL_GENERATORS = [
     "single_level_power",
     "single_level_performance",
     "single_level_area",
-    "single_level_utilization",
     "single_level_energy_efficiency",
     "single_level_pareto",
 ]
@@ -124,10 +123,38 @@ def test_area_requires_placed_tiles(apps_root, empty_ctx, tmp_path):
         generators.single_level_area(empty_ctx, tmp_path / "x.pdf")
 
 
-def test_utilization_requires_utilization_col(apps_root, empty_ctx, tmp_path):
+def test_performance_requires_the_clock(apps_root, empty_ctx, tmp_path):
     _write_pass_cell(apps_root, "d", "a", total_cycles=100, synth_power_w=0.01)
-    with pytest.raises(MissingDataError, match="utilization"):
-        generators.single_level_utilization(empty_ctx, tmp_path / "x.pdf")
+    with pytest.raises(MissingDataError, match="clock_period_ps"):
+        generators.single_level_performance(empty_ctx, tmp_path / "x.pdf")
+
+
+def test_performance_is_wall_time_at_each_design_points_clock(apps_root, empty_ctx, tmp_path, monkeypatch):
+    _write_pass_cell(apps_root, "port_fw4_dw16_sc8k_sp2x2", "a", total_cycles=1000, clock_period_ps=1666.0)
+    _write_pass_cell(apps_root, "mem_fw2_dw16_sc2k_sp1x1", "a", total_cycles=1000, clock_period_ps=2000.0)
+    seen = {}
+    monkeypatch.setattr(generators, "_app_bar", lambda df, y, **kw: seen.update(
+        {y: df.set_index("design_id")[y], "ylabel": kw["ylabel"]}))
+    generators.single_level_performance(empty_ctx, tmp_path / "x.pdf")
+    assert seen["wall_us"]["port_fw4_dw16_sc8k_sp2x2"] == pytest.approx(1.666)
+    assert seen["wall_us"]["mem_fw2_dw16_sc2k_sp1x1"] == pytest.approx(2.0)
+    assert seen["ylabel"] == "Wall time (µs)"
+
+
+def test_bars_show_only_the_app_data_width(monkeypatch):
+    """Rows on an 8- or 32-bit design point drop out; 16-bit and unknown ids stay."""
+    df = pd.DataFrame({"design_id": ["port_fw4_dw16_sc8k_sp2x2", "port_fw4_dw8_sc8k_sp2x2",
+                                     "port_fw2_dw32_sc8k_dp2x2", "mem_fw2_dw16_sc2k_sp1x1", "zz"]})
+    assert list(generators._at_width(df)["design_id"]) == [
+        "port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc2k_sp1x1", "zz"]
+
+
+def test_a_design_point_keeps_its_color_in_every_figure():
+    from THESIS.pipeline.tile_figures import SERIES
+    colors = generators._design_colors()
+    assert colors["port_fw4_dw16_sc8k_sp2x2"] == SERIES[0]
+    assert colors["mem_fw2_dw16_sc2k_sp1x1"] == SERIES[2]  # after the 32-bit dual-port point
+    assert "mem_fw4_dw16_sc8k_sp2x2" not in colors  # drawn as the baseline
 
 
 def test_energy_efficiency_gates_on_power(apps_root, empty_ctx, tmp_path):
@@ -168,7 +195,7 @@ def test_fail_rows_are_excluded(apps_root, empty_ctx, tmp_path):
     df = apps_query.load_app_results_df(apps_root)
     assert "harris_agg" not in set(df["app_id"])
     # And a chart still renders fine.
-    generators.single_level_utilization(empty_ctx, tmp_path / "x.pdf")
+    generators.single_level_power(empty_ctx, tmp_path / "x.pdf")
 
 
 # ---------- _app_bar helper edge cases ------------------------------------
@@ -241,11 +268,12 @@ def test_li_generators_read_only_rv_rows(apps_root, empty_ctx, name, tmp_path):
 
 
 def test_static_figures_skip_rv_and_stock_rows(apps_root, empty_ctx, tmp_path, monkeypatch):
-    _write_cell(apps_root, "d__static__thesis", "a", mode="static", fabric="thesis", total_cycles=100)
-    _write_cell(apps_root, "d__rv__thesis", "a", mode="rv", fabric="thesis", total_cycles=10_000)
-    _write_cell(apps_root, "d__static__stock", "a", mode="static", fabric="stock", total_cycles=20_000)
+    clk = {"clock_period_ps": 1000.0}
+    _write_cell(apps_root, "d__static__thesis", "a", mode="static", fabric="thesis", total_cycles=100, **clk)
+    _write_cell(apps_root, "d__rv__thesis", "a", mode="rv", fabric="thesis", total_cycles=10_000, **clk)
+    _write_cell(apps_root, "d__static__stock", "a", mode="static", fabric="stock", total_cycles=20_000, **clk)
     _write_cell(apps_root, "d__static__thesis", "mm_pond", mode="static", fabric="thesis", level="two",
-                total_cycles=30_000)
+                total_cycles=30_000, **clk)
     seen = {}
     monkeypatch.setattr(generators, "_app_bar", lambda df, **kw: seen.update(df=df))
     generators.single_level_performance(empty_ctx, tmp_path / "x.pdf")

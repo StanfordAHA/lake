@@ -30,7 +30,7 @@ python3 -m THESIS.apps.run_matrix --apps matmul_agg --designs port_fw4_dw16_sc8k
 
 # Then regenerate the figures.
 python3 THESIS/generate_thesis_artifacts.py --only single_level_power single_level_performance \
-    single_level_area single_level_utilization single_level_energy_efficiency
+    single_level_area single_level_energy_efficiency
 ```
 
 Other flags: `--sweep-script`, `--timeout-s` (default 1800), and
