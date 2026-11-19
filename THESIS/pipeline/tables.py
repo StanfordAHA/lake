@@ -8,7 +8,7 @@ path. Anything undetermined at generation time is left as a
 The "populate now from existing data" tables are here:
   - emit_ul_ppa_summary  — per-DesignPoint PPA rollup
   - emit_ul_design_points — DesignPoint axis enumeration
-  - emit_exploration_applications — render AppSpec list
+  - emit_exploration_applications — AppSpec list + Memory Tiles per app (app results)
   - emit_ul_perf — per-app memories, output rate and runtime (app results)
 
 The two "structural skeletons with prose TODOs":
@@ -237,30 +237,68 @@ def emit_ul_perf(df: pd.DataFrame, outpath: Path, mode: str = "static") -> None:
 # ---- tab:exploration_applications ------------------------------------------
 
 
-def emit_exploration_applications(outpath: Path) -> None:
-    """Render the app registry as a LaTeX table."""
-    from ..apps.registry import APPS, unverified
+def _records_in(a, mode: str) -> bool:
+    """Whether app a records results in mode (not blocked, and mode among its bundle_modes)."""
+    return not a.bundle_blocked and (not a.bundle_modes or mode in a.bundle_modes.split(","))
+
+
+def emit_exploration_applications(static: pd.DataFrame, rv: pd.DataFrame, outpath: Path) -> None:
+    """One row per app of the registry that records results (``AppSpec.bundle_blocked``
+    apps are left out): what it computes, the Memory Tiles it places (``tile_count``) as
+    a range over the design points it ran on, on the static and the ready/valid app
+    results, and its memory classes. An app that ran on an array other than 16x16 gets
+    "on a WxH array" after what it computes. A mode the app does not record in reads
+    ``--``. The tabular is the one in main.tex (Overleaf); its caption is hand-written."""
+    from ..apps.registry import APPS, MEMORY_CLASSES, unverified
 
     if not APPS:
         raise MissingDataError("APPS registry is empty")
+    if static.empty and rv.empty:
+        raise MissingDataError("no static or ready/valid app results")
 
-    header = ["App", "Schedule variant", "Memory access pattern"]
+    def rows_of(df: pd.DataFrame, app_id: str) -> pd.DataFrame:
+        return df[df["app_id"] == app_id] if "app_id" in df else df.iloc[0:0]
+
+    p = r">{\raggedright\arraybackslash}p"
     lines = [
-        r"\begin{tabular}{llp{0.55\linewidth}}",
+        rf"\begin{{tabular}}{{@{{}}{p}{{0.15\linewidth}}{p}{{0.40\linewidth}}cc{p}{{0.15\linewidth}}@{{}}}}",
         r"\toprule",
-        " & ".join(header) + r" \\",
+        r" & & \multicolumn{2}{c}{Memory Tiles} & \\",
+        r"\cmidrule(lr){3-4}",
+        r"Application & What it computes & Static & Ready/valid & Memory classes \\",
         r"\midrule",
     ]
+    todo = []
     for a in APPS:
-        cells = [_fmt(a.display), _fmt(a.schedule_variant), _fmt(a.memory_notes)]
-        lines.append(" & ".join(cells) + r" \\")
+        if a.bundle_blocked:
+            continue
+        bad = [c for c in a.memory_classes.split(", ")
+               if c.removesuffix(" (pond)") not in MEMORY_CLASSES]
+        if bad:
+            raise ValueError(f"{a.id}: memory classes {bad} are not among {MEMORY_CLASSES}")
+        both = pd.concat([rows_of(static, a.id), rows_of(rv, a.id)])
+        arrays = sorted({(int(w), int(h)) for w, h in
+                         zip(both.get("cgra_width", []), both.get("cgra_height", []))
+                         if pd.notna(w) and pd.notna(h) and (w, h) != (16, 16)})
+        computes = a.computes + "".join(rf", on a {w}$\times${h} array" for w, h in arrays)
+        tiles = []
+        for mode, df in (("static", static), ("rv", rv)):
+            if not _records_in(a, mode):
+                tiles.append("--")
+                continue
+            rows = rows_of(df, a.id)
+            if rows.empty:
+                todo.append(f"{a.id} ({mode})")
+            tiles.append(_span(rows.get("tile_count", pd.Series(dtype=float)), lambda v: str(int(v))))
+        lines.append(" & ".join([_fmt(a.display), computes, *tiles, a.memory_classes]) + r" \\")
     lines.extend([r"\bottomrule", r"\end{tabular}"])
 
     body = "\n".join(lines) + "\n"
-    # Warn if any AppSpec still has "??" markers so it's obvious in-file.
-    todo = [a.id for a in unverified()]
     if todo:
-        body = f"% TODO: verify halide_app_dir/testname for: {', '.join(todo)}\n" + body
+        body = f"% TODO: no app results for {', '.join(todo)}\n" + body
+    unpinned = [a.id for a in unverified()]
+    if unpinned:
+        body = f"% TODO: verify halide_app_dir/testname for: {', '.join(unpinned)}\n" + body
 
     outpath.parent.mkdir(parents=True, exist_ok=True)
     outpath.write_text(body)

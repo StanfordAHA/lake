@@ -84,7 +84,7 @@ def test_app_map_by_id_unique_basename_and_overrides():
 
 
 def _app(id, app_dir, **kw):
-    return AppSpec(id, id, app_dir, id, "aggressive", "", **kw)
+    return AppSpec(id, id, app_dir, id, "aggressive", "", "Line Buffer", **kw)
 
 
 def test_bundle_env_words_keep_their_spaces():

@@ -369,8 +369,13 @@ def ul_design_points(ctx: GenContext, outpath: Path) -> None:
 
 
 def exploration_applications(ctx: GenContext, outpath: Path) -> None:
-    """Render the AppSpec registry as a LaTeX table."""
-    tables.emit_exploration_applications(outpath)
+    """The app registry (what each app computes, its memory classes) with the Memory
+    Tiles each app places on the static and ready/valid app results, every app of the
+    run (the pond apps too)."""
+    def load(mode):
+        return apps_query.load_app_results_df(mode=mode, fabric=APP_FABRIC, level=None,
+                                              pond_id=apps_query.SINGLE_LEVEL_PONDS)
+    tables.emit_exploration_applications(load("static"), load("rv"), outpath)
 
 
 def lake_interfaces(ctx: GenContext, outpath: Path) -> None:

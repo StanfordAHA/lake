@@ -261,9 +261,13 @@ tiers:
     the design points (app results).
   - `emit_ul_design_points` — DesignPoint axis enumeration with a
     `roundtrip_validated` column.
-  - `emit_exploration_applications` — renders `THESIS/apps/registry.APPS`
-    as a table. Keeps app registry and thesis table in sync
-    automatically.
+  - `emit_exploration_applications` — one row per app of
+    `THESIS/apps/registry.APPS` that records results: what it computes
+    (`AppSpec.computes`), the Memory Tiles it places on the static and
+    ready/valid app results (`tile_count`, a range over the design points),
+    and its memory classes (`AppSpec.memory_classes`, from
+    `MEMORY_CLASSES`). The tabular is the one in main.tex; the caption is
+    hand-written.
 
 - **Structural skeletons** (real class/method names + `% TODO: prose`
   markers so the .tex is editable in-place):

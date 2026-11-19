@@ -54,7 +54,7 @@ written, with `sim_status=FAIL` or null PPA fields.
 
 | File | Purpose | Status |
 | --- | --- | --- |
-| `registry.py`     | `AppSpec` per app × schedule variant (6 apps from `tab:exploration_applications`) | `??` markers where Halide dirs still need verifying |
+| `registry.py`     | `AppSpec` per app × schedule variant; `tab:exploration_applications` is rendered from it | `??` markers where Halide dirs still need verifying |
 | `design_points.py`| `DesignPoint` per single-level config | 8 round-trip-validated configs |
 | `run_matrix.py`   | CLI that iterates designs × apps and dispatches the round-trip flow per cell | implemented (§0) |
 | `compose.py`      | Turns per-memtile PPA into per-app CGRA-level PPA (weighted by tile counts + 3:1 PE:Mem) | skeleton with placeholder PE-tile PPA |

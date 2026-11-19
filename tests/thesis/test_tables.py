@@ -221,23 +221,59 @@ def test_ul_design_points_marks_roundtrip_validated(tmp_path):
 # ---------- emit_exploration_applications ----------------------------------
 
 
-def test_exploration_applications_lists_all_apps(tmp_path):
+def _apps_table(tmp_path, static=None, rv=None):
+    out = tmp_path / "apps.tex"
+    tables.emit_exploration_applications(_app_rows() if static is None else static,
+                                         _app_rows() if rv is None else rv, out)
+    body = out.read_text()
+    return body, {ln.split(" & ")[0]: ln for ln in body.splitlines() if " & " in ln}
+
+
+def test_exploration_applications_lists_every_recorded_app(tmp_path):
     from THESIS.apps.registry import APPS
-    out = tmp_path / "apps.tex"
-    tables.emit_exploration_applications(out)
-    body = out.read_text()
-    assert r"\begin{tabular}" in body
+    body, row = _apps_table(tmp_path)
+    assert r"\begin{tabular}" in body and r"\multicolumn{2}{c}{Memory Tiles}" in body
     for a in APPS:
-        # display name should appear
-        assert a.display in body or a.display.replace("&", r"\&") in body
+        # matmul_agg never maps: it records nothing, so it has no row
+        assert (a.display in row) == (not a.bundle_blocked), a.id
 
 
-def test_exploration_applications_uses_wrapping_column(tmp_path):
-    """The memory-access-pattern column should wrap — check for p{...}."""
-    out = tmp_path / "apps.tex"
-    tables.emit_exploration_applications(out)
-    body = out.read_text()
-    assert "p{" in body
+def test_exploration_applications_memory_tiles_per_mode(tmp_path):
+    rv = _app_rows().assign(tile_count=lambda d: d["tile_count"] - 1)
+    rv = pd.concat([rv, pd.DataFrame([{"app_id": "resnet_pond_agg", "config": "a", "tile_count": 5}])])
+    body, row = _apps_table(tmp_path, rv=rv)
+    cells = {k: v.removesuffix(r" \\").split(" & ") for k, v in row.items()}
+    assert cells["Gaussian"][2:] == ["2--3", "1--2", "Line Buffer"]
+    assert cells["Matrix Multiply (pond)"][2:4] == ["4", "3"]
+    # resnet_pond_agg records ready/valid only: its static cell is "--" with no TODO
+    assert cells["ResNet block (pond)"][2:4] == ["--", "5"]
+    # Unsharp has no results in either mode: blank, and called out in a comment
+    assert cells["Unsharp"][2:4] == ["--", "--"]
+    assert body.startswith("% TODO: no app results for ") and "unsharp_agg (static)" in body
+    assert "resnet_pond_agg (static)" not in body
+
+
+def test_exploration_applications_adds_a_non_default_array(tmp_path):
+    _, row = _apps_table(tmp_path)
+    assert r"per cycle, on a 28$\times$16 array & " in row["Camera Pipeline 2x2"]
+    assert "array" not in row["Gaussian"]
+
+
+def test_exploration_applications_classes_are_the_three_defined():
+    from THESIS.apps.registry import APPS, MEMORY_CLASSES
+    for a in APPS:
+        for c in a.memory_classes.split(", "):
+            assert c.removesuffix(" (pond)") in MEMORY_CLASSES, (a.id, c)
+
+
+def test_exploration_applications_raises_without_results(tmp_path):
+    with pytest.raises(MissingDataError):
+        tables.emit_exploration_applications(pd.DataFrame(), pd.DataFrame(), tmp_path / "x.tex")
+
+
+def test_exploration_applications_wraps_the_text_columns(tmp_path):
+    body, _ = _apps_table(tmp_path)
+    assert body.count(r">{\raggedright\arraybackslash}p{") == 3
 
 
 # ---------- emit_lake_interfaces (skeleton with prose TODOs) --------------

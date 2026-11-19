@@ -4,10 +4,11 @@ Each ``AppSpec`` names one app × schedule variant, mapping to a Halide
 app dir + testname that the round-trip flow (`ASPLOS_EXP/run_roundtrip_sweep.sh`)
 can consume.
 
-The 6 apps come from ``tab:exploration_applications`` in main_thesis.tex
-(lines ~1885-1898); matrix multiply has a single- and a two-level entry
-(2026-10-25), and resnet a two-level one where the single-level one cannot map
-(2026-10-29). ``halide_app_dir`` is the ``--app`` path garnet's
+``tab:exploration_applications`` is rendered from this list
+(``tables.emit_exploration_applications``): each app's ``computes`` and
+``memory_classes``, and the Memory Tiles it places in the final run. Matrix
+multiply has a single- and a two-level entry (2026-10-25), and resnet a
+two-level one where the single-level one cannot map (2026-10-29). ``halide_app_dir`` is the ``--app`` path garnet's
 ``gen_app_bundle.py`` records (``THESIS/apps/CGRA_APP_POWER.md``); the
 matmul and resnet dirs are the ones the garnet app bundles and thesis-fabric
 runs used. Every app is the aggressive schedule: the final run has no
@@ -33,9 +34,13 @@ class AppSpec:
             ``run_clockwork.py`` via ``--testname``.
         schedule_variant: "aggressive" | "conservative" (every app is
             aggressive: tab:ul_perf has no conservative rows).
-        memory_notes: one-line access-pattern description for the thesis
-            narrative — kept in-code so it's easy to keep the tex table
-            in sync with the harness.
+        computes: what the app computes, as it ran in the final run (the
+            generator at ``halide_app_dir`` and its ``bundle_env`` args):
+            LaTeX, written into tab:exploration_applications as is. The array
+            it ran on, when not 16x16, is added from the app results.
+        memory_classes: the memory classes it uses, from the three the thesis
+            defines (MEMORY_CLASSES), comma-separated; " (pond)" after a class
+            means the PE-tile pond holds it.
         level: "single" (MEM tiles only) | "two" (also maps onto the PE-tile
             pond); the single_level_* figures plot only "single" apps.
         bundle_env: extra env for garnet gen_app_bundle.py (``--env``), as
@@ -59,7 +64,8 @@ class AppSpec:
     halide_app_dir: str
     testname: str
     schedule_variant: str
-    memory_notes: str
+    computes: str
+    memory_classes: str
     level: str = "single"
     bundle_env: str = ""
     bundle_blocked: str = ""
@@ -67,6 +73,11 @@ class AppSpec:
     bundle_modes: str = ""
     bundle_in_ports: int = 0
     single_level_app: str = ""
+
+
+# The memory classes of the thesis (sec. "Memory classes"); AppSpec.memory_classes
+# names only these.
+MEMORY_CLASSES = ("Line Buffer", "Double Buffer", "Accumulation")
 
 
 # TODO: verify each halide_app_dir / testname against the local
@@ -77,21 +88,29 @@ APPS: list[AppSpec] = [
     AppSpec("gaussian_agg", "Gaussian",
             "apps/gaussian", "gaussian_hw",
             "aggressive",
-            "2D separable stencil; line-buffer holds ~2 rows, 1-write/N-read reuse per pixel"),
+            r"3$\times$3 Gaussian blur of a grayscale image, two output pixels per cycle",
+            "Line Buffer"),
     AppSpec("unsharp_agg", "Unsharp",
             "apps/unsharp", "unsharp_hw",
             "aggressive",
-            "stencil + downstream accumulation stage; adds a small accum RF"),
+            r"Unsharp mask of an RGB image: a grayscale copy and its 3$\times$3 blur give a "
+            r"sharpening ratio that scales all three channels",
+            "Line Buffer"),
     AppSpec("harris_agg", "Harris (color)",
             "apps/harris_color", "harris_color_hw",
             "aggressive",
-            "multi-stage color→gradient→corner stencils; chained line buffers"),
+            r"Harris corner detector on an RGB image: grayscale, 3$\times$3 Sobel gradients, "
+            r"3$\times$3 sums of the gradient products, the corner response, and 3$\times$3 "
+            r"non-maximum suppression, so its line buffers are chained",
+            "Line Buffer"),
     # Has passed only on a 28x16 array (16+ IO tiles); user 2026-10-26: record it on a
     # bigger array if 16x16 does not place (whole-CGRA power replays single tiles).
     AppSpec("camera_pipeline_agg", "Camera Pipeline 2x2",
             "apps/camera_pipeline_2x2", "camera_pipeline_2x2_hw",
             "aggressive",
-            "Bayer→RGB pipeline w/ 2x2 mosaic access; strided reads on short history",
+            r"Raw Bayer image to RGB: hot-pixel suppression, demosaicking, color correction, "
+            r"and a gamma and contrast curve, a 2$\times$2 block of pixels per cycle",
+            "Line Buffer",
             bundle_retry_array="28x16"),
     # Matrix multiply in both hierarchies (user 2026-10-25): the n=16 matmul the
     # garnet app bundles run (tests/matmul_rvtry3), with the reduction unrolled
@@ -103,7 +122,9 @@ APPS: list[AppSpec] = [
     AppSpec("matmul_agg", "Matrix Multiply",
             "tests/matmul_rvtry3", "matmul_rvtry3",
             "aggressive",
-            "GEMM; reduction unrolled into a PE adder tree, MEM tiles buffer the operands",
+            r"16$\times$16 product $AB$ of an 8-bit matrix $A$ with $B = A + 1$ (elementwise), "
+            r"computed on the CGRA; each output's 16-term sum is a PE adder tree",
+            "Double Buffer",
             bundle_env="HL_TARGET=host-x86-64 'HALIDE_GEN_ARGS=sched=1 n=16' MATMUL_N=16",
             bundle_blocked="does not map on 16x16: static hits clockwork's "
                            "garnet_single_port_ram_schedule assert, RV (23 PEs) does not route "
@@ -111,7 +132,9 @@ APPS: list[AppSpec] = [
     AppSpec("matmul_pond_agg", "Matrix Multiply (pond)",
             "tests/matmul_rvtry3", "matmul_rvtry3",
             "aggressive",
-            "GEMM; partial sums accumulate in the PE-tile pond, MEM tiles buffer the operands",
+            r"16$\times$16 product $AB$ of an 8-bit matrix $A$ with $B = A + 1$ (elementwise), "
+            r"computed on the CGRA; each output's 16-term sum accumulates in a PE Tile pond",
+            "Double Buffer, Accumulation (pond)",
             level="two",
             bundle_env="HL_TARGET=host-x86-64-enable_ponds HALIDE_GEN_ARGS=n=16 MATMUL_N=16",
             single_level_app="matmul_agg"),
@@ -121,7 +144,10 @@ APPS: list[AppSpec] = [
     AppSpec("resnet_agg", "ResNet block",
             "pondspec_e2e/resnet", "resnet",
             "aggressive",
-            "3×3 conv block w/ weight reuse; ping-pong tile buffer for activations",
+            r"One 3$\times$3 convolution layer with 4 input channels, 3 output channels, and a "
+            r"28$\times$28 output; the 9 kernel positions are the outermost loop, so the partial "
+            r"sums stay in Memory Tiles",
+            "Double Buffer, Accumulation",
             bundle_env="EXT=mat"),
     # Resnet where resnet_agg cannot map (two MEM writers, one input port): the same
     # app with the reduction innermost, accumulated in the PE-tile pond, the output
@@ -138,7 +164,9 @@ APPS: list[AppSpec] = [
     AppSpec("resnet_pond_agg", "ResNet block (pond)",
             "pondspec_e2e/resnet_pond", "resnet",
             "aggressive",
-            "3×3 conv block; each output pixel's partial sums accumulate in the PE-tile pond",
+            r"The same layer with the reduction innermost, so each output pixel accumulates in a "
+            r"PE Tile pond",
+            "Double Buffer, Accumulation (pond)",
             level="two",
             bundle_modes="rv",
             single_level_app="resnet_agg"),

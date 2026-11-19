@@ -436,7 +436,8 @@ TABLES = [
           "PE ALU supported operations", "manual"),
     Entry("exploration_applications", "tab:exploration_applications",
           "tables/exploration_applications.tex", "table",
-          "app suite × memory-usage summary (rendered from THESIS/apps/registry.py)",
+          "app suite: what each computes, Memory Tiles per mode, memory classes "
+          "(THESIS/apps/registry.py + the app results)",
           "real", g.exploration_applications),
     Entry("ul_design_points", "tab:ul_design_points",
           "tables/ul_design_points.tex", "table",
