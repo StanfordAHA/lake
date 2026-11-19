@@ -4,8 +4,9 @@ Follows the Kahng-hybrid recipe (Kahng et al., DATE 2015 / SLIP 2013 /
 TCAD): the SRAM macro is treated as a piecewise-constant lookup and
 subtracted from the target; a sparse linear model (Lasso) is then fit
 on the surrounding logic. Coefficients are interpretable as
-"cost per unit of parameter X" — exactly the format the thesis'
-``tab:memtile_model_coeff`` expects.
+"cost per unit of parameter X". It fed tab:memtile_model_{coeff,verif}, which the
+user dropped from the thesis on 2026-11-18 (held-out errors up to 50-66%, and every
+config has synthesis results anyway); unregistered since, kept as library code.
 
 Design choices (see PIPELINE.md §7 and the regression research memory):
   - **SRAM split.** ``synth_storage_area_um2`` (from

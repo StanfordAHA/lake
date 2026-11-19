@@ -434,18 +434,6 @@ TABLES = [
     Entry("PE_operations_support", "tab:PE_operations_support",
           "tables/PE_operations_support.tex", "table",
           "PE ALU supported operations", "manual"),
-    Entry("memtile_model_coeff", "tab:memtile_model_coeff",
-          "tables/memtile_model_coeff.tex", "table",
-          "Memory Tile non-SRAM area / idle / active power vs spec parameters, per runtime "
-          "mode (LassoCV), fit on the tile sweep (tile_sweep.load())",
-          "real", g.memtile_model_coeff,
-          notes="Pasted inline into main.tex (Overleaf). Fit on the final run's thesis_dse "
-                "(ingested 2026-11-16; every data width, each at its own clock): re-paste."),
-    Entry("memtile_model_verif", "tab:memtile_model_verif",
-          "tables/memtile_model_verif.tex", "table",
-          "Memory Tile model: error on held-out configs (held-out PnR builds + 3 extrapolations)",
-          "real", g.memtile_model_verif,
-          notes="Same model as memtile_model_coeff, refit without each held-out set."),
     Entry("exploration_applications", "tab:exploration_applications",
           "tables/exploration_applications.tex", "table",
           "app suite × memory-usage summary (rendered from THESIS/apps/registry.py)",

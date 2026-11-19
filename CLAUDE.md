@@ -133,21 +133,16 @@ If a new `THESIS_BUILDS/<EXP>/` directory shows up:
 3. Add generators + registry entries for whatever figures the new
    experiment feeds.
 
-### 1.6 Memory Tile model tables (`tab:memtile_model_*`)
+### 1.6 Memory Tile model tables (`tab:memtile_model_*`): dropped 2026-11-18
 
-`THESIS/pipeline/regression.py` (tile-sweep part, 2026-10-24) fits a Memory Tile's
-non-SRAM area and idle/active power to its spec parameters, one LassoCV per runtime
-mode, on `THESIS/data/tile_sweep/latest.csv`, and checks it on held-out configs.
-Design notes: `THESIS/PIPELINE.md` §7. The tables are pasted inline into main.tex
-(Overleaf), so regenerate and re-paste after a new sweep is ingested. Since 2026-11-16
-they fit the final run's thesis_dse (§1.8), every data width at its own clock. Held-out
-errors are larger than on the old dw16 sweep (held-out builds: area 9.4% mean vs 3.1%;
-max extent 4096 active 52% vs 17%), likely because log2(data width) also carries the
-per-width clock. Not re-pasted yet.
-
-```bash
-python3 THESIS/generate_thesis_artifacts.py --only memtile_model_coeff memtile_model_verif
-```
+The user dropped the spec-parameter model from the thesis (2026-11-18): its held-out errors
+(up to 50% on the held-out PnR builds, 66% extrapolated) are too high to be useful, and every
+configuration already has its synthesis results. Both tables and their "Building a Model" text
+are gone from main.tex (that subsection now holds only the synthesis-to-PnR fit,
+`memtile_synth_vs_pnr_*`), and the registry entries and generators are removed.
+`THESIS/pipeline/regression.py` keeps the model (LassoCV per runtime mode on non-SRAM
+area and idle/active power) and `tests/thesis/test_tile_model.py` its tests; don't bring
+it back into the thesis without asking. Design notes: `THESIS/PIPELINE.md` §7.
 
 ### 1.7a Auto-generated LaTeX tables
 

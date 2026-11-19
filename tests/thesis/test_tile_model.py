@@ -1,5 +1,5 @@
-"""The Memory Tile model behind tab:memtile_model_coeff / tab:memtile_model_verif
-(THESIS/pipeline/regression.py, tile-sweep part)."""
+"""The Memory Tile spec-parameter model (THESIS/pipeline/regression.py, tile-sweep part).
+It fed tab:memtile_model_{coeff,verif}, dropped from the thesis 2026-11-18."""
 
 from __future__ import annotations
 

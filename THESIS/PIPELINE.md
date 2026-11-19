@@ -144,7 +144,8 @@ Tables use a red-boxed `\fbox{…BOGUS PLACEHOLDER…}` snippet — safe to
   2026-11-16: each design point's static thesis MemTile from the final run's `thesis_dse`,
   synth level at that tile's clock (std-cell area; tile area and active power relative to
   the baseline under SRAM_NDA; clock; synth slack). It no longer reads THESIS_BUILDS.
-  (`tab:memtile_model_*` fit the tile sweep since 2026-10-24: §7; thesis_dse since 2026-11-16.)
+  (`tab:memtile_model_*` fit the tile sweep until the user dropped them from the thesis on
+  2026-11-18: §7.)
 - **App results** (`data/apps`, `THESIS.apps.cgra_power_ingest`) → `tab:ul_perf`
   (`tables.emit_ul_perf`): one row per app of the static run, aggressive schedules
   only. Each row gives the UL memories (`tile_count`), output words per cycle and kernel
@@ -172,7 +173,7 @@ manual (block diagram / curated table). Full breakdown: run
 | No dedicated ScheduleGenerator sweep | `sched_gen_{dim,max_extent}` | **DONE** (2026-11-18): the full-rate sweep (`tile_sweep.FULL_RATE`, CLAUDE.md §1.8) feeds `sched_gen_{area,power}_vs_{dim,max_extent}`, split into area / power subfigures like the IterationDomain ones |
 | No LI ScheduleGenerator sweep in THESIS_BUILDS | `li_sched_{ports,loc}_{area,power}` | **DONE**: from the garnet tile sweep (CLAUDE.md §1.8); `li_sched_loc_*` from the full-rate sweep since 2026-11-18 |
 | No app-mapping harness / results | Every `single_level_*`, `two_level_*`, `tab:ul_perf` | **DONE** (2026-11-16): the final run's garnet `cgra_app_power.py` zip → `THESIS.apps.cgra_power_ingest` → `results.json` (76 rows). Commands: `THESIS/apps/CGRA_APP_POWER.md` |
-| No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **DONE** — tile-sweep model (2026-10-24, §7); refit on thesis_dse 2026-11-16 (larger held-out errors: CLAUDE.md §1.6) |
+| No memtile regression fit | `tab:memtile_model_{coeff,verif}` | **dropped** (user 2026-11-18): the spec-parameter model's held-out errors (up to 50% on held-out builds, 66% extrapolated) are too large to be useful, and every config has synthesis results; tables and text removed from main.tex, entries from the registry. The model stays in `regression.py` (§7) |
 | No pre/post SB PPA numbers | `fig:interconnect_fork_ready_valid_data`, `fig:interconnect_fifo_replace_ff` | **DONE** (2026-11-16): `THESIS.pipeline.sb_ppa` reads the final run's Genus hierarchical area reports (PE Tile: `thesis_tiles_pe`, Memory Tile: the same configs in `thesis_dse`, dw 8/16/32/64) into `data/sb_ppa/sb_area.csv`; `pipeline/sb_figures.py` draws both. Synthesis, not PnR: Genus keeps the SB's children (Innovus folds the fork logic into the SB) and the Memory Tile set has no PnR build at every width. Area only: app power flattens the fork logic, and the Memory Tile power test never drives the SB. Fork logic = canal's ready reductions (`*_fan_in`) + valid-gating ANDs + core-output loopbacks; the `*_ready_and` cells are garnet's power-domain isolation, not fork logic |
 
 Each TODO is also captured in the corresponding `Entry.notes` in
@@ -183,7 +184,13 @@ same list from the source of truth.
 
 ## 7. Memtile regression module
 
-`pipeline/regression.py` fits the two `tab:memtile_model_*` tables on the tile
+**Not in the thesis since 2026-11-18** (user: the errors are too high to be useful, and the
+synthesis results it would stand in for exist for every config). The two
+`tab:memtile_model_*` tables and their "Building a Model" text are gone from main.tex, and
+their registry entries and generators are removed; that subsection now holds only the
+synthesis-to-PnR fit (`memtile_synth_vs_pnr_*`). What follows documents the code, which stays.
+
+`pipeline/regression.py` fitted the two `tab:memtile_model_*` tables on the tile
 sweep (`tile_sweep.load()`, i.e. `data/tile_sweep/latest.csv`; since 2026-10-24,
 before that on THESIS_BUILDS):
 
@@ -202,14 +209,13 @@ before that on THESIS_BUILDS):
 - The old THESIS_BUILDS functions (`fit_area_logic`, LOEO, delay) are still in the
   module, unregistered.
 
-Regenerate the two tables in isolation:
+To render the two tables anyway (no registry entry now):
 
 ```bash
-python3 THESIS/generate_thesis_artifacts.py --only memtile_model_coeff memtile_model_verif
+python3 -c 'from THESIS.pipeline import regression as r, tile_sweep as t; d = t.load(); r.emit_tile_coef_table(d, "coeff.tex"); r.emit_tile_verif_table(d, "verif.tex")'
 ```
 
-Output lands at `THESIS/output/tables/memtile_model_{coeff,verif}.tex`
-and is a `\begin{tabular}` snippet suitable for `\input{}` from the tex.
+Each is a `\begin{tabular}` snippet.
 Partial fits (power missing) prefix a `% partial fit — skipped: ...`
 LaTeX comment so it's obvious in-file.
 

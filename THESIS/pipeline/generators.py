@@ -20,7 +20,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from . import apps_query, regression, tables
+from . import apps_query, tables
 from .errors import MissingDataError
 from .ingest import symlink_builds
 
@@ -347,23 +347,6 @@ def storage_power_vs_capacity(ctx: GenContext, outpath: Path) -> None:
         title="Storage power vs capacity",
         xlabel="storage_cap (bytes)", ylabel="synth power (W)", outpath=outpath,
     )
-
-
-# ---- Memtile PPA regression tables -----------------------------------------
-
-
-def memtile_model_coeff(ctx: GenContext, outpath: Path) -> None:
-    """Memory Tile non-SRAM cost model (per runtime mode, LassoCV on the spec
-    parameters) fit on the tile sweep: coefficient table."""
-    from . import tile_sweep
-    regression.emit_tile_coef_table(tile_sweep.load(), outpath)
-
-
-def memtile_model_verif(ctx: GenContext, outpath: Path) -> None:
-    """The same model's error on held-out configs: the sweep's held-out PnR
-    builds and three extrapolations (32 KB, 4 in / 4 out, extent 4096)."""
-    from . import tile_sweep
-    regression.emit_tile_verif_table(tile_sweep.load(), outpath)
 
 
 # ---- Exploration & compiler tables (populated / skeletons) -----------------
