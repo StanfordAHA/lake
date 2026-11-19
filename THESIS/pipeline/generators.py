@@ -626,18 +626,49 @@ def _pareto(pts: list[tuple[float, float]], higher: bool) -> list[tuple[float, f
 PARETO_DATA_WIDTH = APP_DATA_WIDTH
 
 
+def _tile_bandwidth(memtile: pd.DataFrame | None,
+                    mode: str = "static") -> list[tuple[str, str, float, float]]:
+    """(design_id, label, tile area, peak bandwidth in GB/s) per distinct design point
+    with a tile-sweep row, in design order. The tile is tab:ul_ppa_summary's
+    (``tables._memtile_power_row``): its synthesis area with the SRAM macros, relative
+    to the first design point (the baseline), and its clock. Peak bandwidth is the
+    words per cycle the tile can move, the Ports' (inputs + outputs) or the SRAM's
+    (fetch width, twice that when dual-port), whichever is smaller, x data width x clock.
+    It is the tile's alone, no app, so every data width compares in bytes."""
+    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    by_id = {d.id: d for d in DESIGNS_SINGLE_LEVEL}
+    out = []
+    for d, label in _app_designs(set(by_id)):
+        t = tables._memtile_power_row(memtile, by_id[d], mode)
+        if t is None:
+            continue
+        mhz = t.get("clock_mhz")
+        if pd.isna(mhz) and pd.notna(t.get("clock_period_ps")):
+            mhz = 1e6 / float(t["clock_period_ps"])
+        dp = by_id[d]
+        words = min(dp.in_ports + dp.out_ports, dp.fetch_width * (2 if dp.dual_port else 1))
+        out.append((d, label, float(t["syn_std"] + t["syn_sram"]),
+                    words * dp.data_width / 8 * float(mhz) / 1000))
+    if not out:
+        raise MissingDataError("no tile-sweep row for any design point "
+                               "(python3 -m THESIS.pipeline.tile_sweep <thesis_dse zip>)")
+    base = out[0][2]
+    return [(d, label, a / base, bw) for d, label, a, bw in out]
+
+
 def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
                         data_width: int | None = PARETO_DATA_WIDTH) -> None:
-    """Each single-level design point's (a) performance and (b) power against its area,
-    relative to the baseline (``_design_ppa``: the first design point at that width),
-    with the Pareto front dashed and its points ringed. Only the design points at
-    ``data_width`` (None: all), since another width changes what each app computes.
-    Area is the placed tiles' only and includes the SRAM macros, so it is relative
-    whether or not SRAM_NDA is set. Colors follow the per-app bar figures."""
+    """(a) Each design point's tile: peak bandwidth against tile area (``_tile_bandwidth``,
+    every data width, from the tile sweep). (b) The apps: power against the area of
+    the tiles they are placed on, relative to the baseline (``_design_ppa``), on the
+    design points at ``data_width`` only (None: all), since another width changes what
+    each app computes. Each panel dashes its Pareto front and rings its points; colors
+    follow the per-app bar figures (``_design_colors``)."""
     from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    from . import tile_sweep
     from .tile_figures import FULL_W, INK2, MUTED, SERIES, _ax_style, _legend_above, _save
+    tiles = _tile_bandwidth(tile_sweep.load(), mode)
     df = _load_apps_or_miss(required_col="synth_power_w", mode=mode)
-    order = [d for d, _ in _app_designs(set(df["design_id"]))]  # the bar figures' colors
     if data_width is not None:
         ids = {d.id for d in DESIGNS_SINGLE_LEVEL if d.data_width == data_width}
         df = df[df["design_id"].isin(ids)]
@@ -645,24 +676,36 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
             raise MissingDataError(f"no {mode} app results on a {data_width}-bit design point")
     pts = _design_ppa(df)
     n_base = pts[0][2]
+    notes = {d: "" if n == n_base else f" ({n} of {n_base} apps in b)" for d, _, n, _ in pts}
+    notes[tiles[0][0]] = " (baseline)"
+    colors = _design_colors()
+    panels = (
+        ("(a) Tile", "Tile area (× baseline)", "Peak bandwidth (GB/s)", True, tiles),
+        ("(b) Applications", "Area used (× baseline)", "Power (× baseline)", False,
+         [(d, label, v["area"], v["power"]) for d, label, _, v in pts]),
+    )
     fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.7))
-    for ax, key, title, higher in ((axes[0], "perf", "(a) Performance", True),
-                                   (axes[1], "power", "(b) Power", False)):
-        for i, (d, label, n, v) in enumerate(pts):
-            note = " (baseline)" if i == 0 else "" if n == n_base else f" ({n} of {n_base} apps)"
-            ax.scatter(v["area"], v[key], s=50, color=SERIES[order.index(d) % len(SERIES)],
-                       edgecolor="white", linewidth=0.6, zorder=3, label=label + note)
-        front = _pareto([(v["area"], v[key]) for *_, v in pts], higher)
+    handles = {}
+    for ax, (title, xlabel, ylabel, higher, xy) in zip(axes, panels):
+        for d, label, x, y in xy:
+            handles[label] = ax.scatter(x, y, s=50, color=colors.get(d, SERIES[0]),
+                                        edgecolor="white", linewidth=0.6, zorder=3,
+                                        label=label + notes.get(d, ""))
+        front = _pareto([(x, y) for *_, x, y in xy], higher)
         # rings mark the front, so a one-point front still shows
-        ax.plot(*zip(*front), color=MUTED, linestyle="--", linewidth=1.1, marker="o",
-                markersize=11, markerfacecolor="none", markeredgewidth=1.1, zorder=2,
-                label="Pareto front")
+        line, = ax.plot(*zip(*front), color=MUTED, linestyle="--", linewidth=1.1, marker="o",
+                        markersize=11, markerfacecolor="none", markeredgewidth=1.1, zorder=2,
+                        label="Pareto front")
         ax.set_title(title, loc="left", fontsize=10.5, color=INK2)
-        ax.set_xlabel("Area (× baseline)")
-        ax.set_ylabel(f"{title[4:]} (× baseline)")
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
         _ax_style(ax, xgrid=True)
     fig.tight_layout()
-    _legend_above(axes[0])
+    # one legend for both panels, in design order: (a) shows every design point
+    labels = list(dict.fromkeys([label for _, label, *_ in tiles]
+                                + [label for _, label, *_ in pts]))
+    hs = [handles[label] for label in labels] + [line]
+    _legend_above(axes[0], hs, [h.get_label() for h in hs])
     _save(fig, outpath)
 
 

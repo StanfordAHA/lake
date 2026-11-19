@@ -87,8 +87,26 @@ def test_empty_tree_raises_missing_data_error(apps_root, empty_ctx, name, tmp_pa
 # ---------- All 5 land a PDF on a fully-populated tree ---------------------
 
 
+def _fake_tile_sweep() -> pd.DataFrame:
+    """A tile-sweep frame (``tile_sweep.load()``) with each design point's static thesis
+    tile: design point i has std-cell area 1000 (i + 1), SRAM 1000, at 500 MHz."""
+    from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
+    from THESIS.apps.garnet_configs import garnet_config
+    return pd.DataFrame([{"config": garnet_config(dp, "static", "thesis"),
+                          "syn_std": 1000.0 * (i + 1), "syn_sram": 1000.0, "clock_mhz": 500.0,
+                          "synth_active_total_power": 0.01}
+                         for i, dp in enumerate(DESIGNS_SINGLE_LEVEL)])
+
+
+@pytest.fixture
+def fake_tile_sweep(monkeypatch):
+    """single_level_pareto's panel (a) reads the tile sweep: hand it _fake_tile_sweep."""
+    from THESIS.pipeline import tile_sweep
+    monkeypatch.setattr(tile_sweep, "load", lambda *a, **k: _fake_tile_sweep())
+
+
 @pytest.mark.parametrize("name", ALL_GENERATORS)
-def test_populated_tree_produces_pdf(apps_root, empty_ctx, name, tmp_path):
+def test_populated_tree_produces_pdf(apps_root, empty_ctx, name, tmp_path, fake_tile_sweep):
     _seed_full_matrix(apps_root)
     out = tmp_path / f"{name}.pdf"
     # the seed's design ids aren't real design points, so they have no data width
@@ -318,8 +336,23 @@ def test_placed_area_leaves_out_route_only_tiles():
     assert generators._placed_area(pd.DataFrame([{"synth_total_area_um2": 1.0}])).isna().all()
 
 
-def test_pareto_plots_only_one_data_width(apps_root, empty_ctx, tmp_path, monkeypatch):
-    """16-bit design points only by default; a width with no results is a MissingDataError."""
+def test_tile_bandwidth_is_words_per_cycle_times_width_times_clock():
+    """Panel (a): min(Ports, SRAM words per cycle) x data width x clock, tile area
+    (std-cell + SRAM) over the baseline's, one entry per distinct design point."""
+    t = {d: (a, bw) for d, _, a, bw in generators._tile_bandwidth(_fake_tile_sweep())}
+    assert t["port_fw4_dw16_sc8k_sp2x2"] == (1.0, pytest.approx(4 * 2 * 0.5))   # 2+2 Ports, 16 bit
+    assert t["port_fw2_dw32_sc8k_dp2x2"] == (1.5, pytest.approx(4 * 4 * 0.5))   # dual-port fw2: 4
+    assert t["mem_fw2_dw16_sc2k_sp1x1"][1] == pytest.approx(2 * 2 * 0.5)         # 1+1 Ports
+    assert t["mem_fw1_dw16_sc4k_dp1x1"][1] == pytest.approx(2 * 2 * 0.5)         # fw1 DP: 1 + 1
+    assert "mem_fw4_dw16_sc8k_sp2x2" not in t  # the baseline's twin is drawn once
+    with pytest.raises(MissingDataError, match="tile-sweep"):
+        generators._tile_bandwidth(None)
+
+
+def test_pareto_plots_only_one_data_width(apps_root, empty_ctx, tmp_path, monkeypatch,
+                                          fake_tile_sweep):
+    """Panel (b): 16-bit design points only by default; a width with no results is a
+    MissingDataError."""
     for d in ("port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc2k_sp1x1", "port_fw4_dw8_sc8k_sp2x2"):
         _write_pass_cell(apps_root, d, "gaussian_agg", total_cycles=100, synth_power_w=0.01,
                          clock_period_ps=1000.0, mem_tiles_placed=2, mem_tile_area_um2=1e3,
