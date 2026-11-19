@@ -280,9 +280,10 @@ EXPLORATION_APPS = [
                 "cycles (the bundle manifest's kernel entry)."),
     Entry("single_level_area", "fig:single_level_area",
           "figures/single_level_area.pdf", "figure",
-          "per-app synth area of the CGRA tiles the app touches, per design point",
+          "per-app synth area of the CGRA tiles the app is placed on, per design point",
           "real", g.single_level_area,
-          notes="(placed + route tiles) x tile area. It includes the SRAM macros, so with "
+          notes="placed tiles x tile area, not route-only tiles (user 2026-11-18). It "
+                "includes the SRAM macros, so with "
                 "tile_figures.SRAM_NDA each app's bars are relative to its first design point "
                 "(the baseline)."),
     Entry("single_level_utilization", "fig:single_level_utilization",
@@ -318,7 +319,8 @@ EXPLORATION_APPS = [
           "real", g.two_level_performance),
     Entry("two_level_area", "fig:two_level_area",
           "figures/two_level_area.pdf", "figure",
-          "single- vs two-level area of the tiles each app pair touches", "real", g.two_level_area),
+          "single- vs two-level area of the tiles each app pair is placed on", "real",
+          g.two_level_area),
     Entry("two_level_utilization", "fig:two_level_utilization",
           "figures/two_level_utilization.pdf", "figure",
           "single- vs two-level memory-tile utilization of each app pair", "real",

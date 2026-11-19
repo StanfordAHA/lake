@@ -115,9 +115,10 @@ def test_performance_requires_total_cycles(apps_root, empty_ctx, tmp_path):
         generators.single_level_performance(empty_ctx, tmp_path / "x.pdf")
 
 
-def test_area_requires_synth_total_area(apps_root, empty_ctx, tmp_path):
-    _write_pass_cell(apps_root, "d", "a", total_cycles=100)
-    with pytest.raises(MissingDataError, match="synth_total_area_um2"):
+def test_area_requires_placed_tiles(apps_root, empty_ctx, tmp_path):
+    """The area bars count placed tiles only, so synth_total_area_um2 alone isn't enough."""
+    _write_pass_cell(apps_root, "d", "a", total_cycles=100, synth_total_area_um2=1e4)
+    with pytest.raises(MissingDataError, match="placed tile area"):
         generators.single_level_area(empty_ctx, tmp_path / "x.pdf")
 
 
@@ -229,7 +230,9 @@ def test_li_generators_read_only_rv_rows(apps_root, empty_ctx, name, tmp_path):
         _write_cell(apps_root, cell, "gaussian_agg", mode="rv",
                          fabric="thesis", total_cycles=900, utilization=0.4, synth_power_w=0.02,
                          synth_total_area_um2=1e4, synth_logic_area_um2=6e3,
-                         synth_storage_area_um2=4e3, clock_period_ps=1754.0)
+                         synth_storage_area_um2=4e3, clock_period_ps=1754.0,
+                         mem_tiles_placed=2, mem_tile_area_um2=3e3,
+                         pe_tiles_placed=4, pe_tile_area_um2=1e3)
     out = tmp_path / f"{name}.pdf"
     getattr(generators, name)(empty_ctx, out)
     assert out.is_file() and out.stat().st_size > 1000

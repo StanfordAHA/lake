@@ -500,17 +500,17 @@ def single_level_performance(ctx: GenContext, outpath: Path, mode: str = "static
 
 
 def single_level_area(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
-    """Per-app synth area of the CGRA tiles the app touches (a run_matrix cell: the
-    design's own area) on each single-level design point. It includes the SRAM macros,
+    """Per-app synth area of the CGRA tiles the app is placed on (``_placed_area``, not
+    its route-only tiles) on each single-level design point. It includes the SRAM macros,
     so with tile_figures.SRAM_NDA each app's bars are relative to its first design point."""
     from .tile_figures import SRAM_NDA
-    df = _load_apps_or_miss(required_col="synth_total_area_um2", mode=mode)
+    df = _with_placed_area(_load_apps_or_miss(mode=mode))
     if SRAM_NDA:
-        ref = _app_designs(set(df.dropna(subset=["synth_total_area_um2"])["design_id"]))[0][1]
-        _app_bar(df, y="synth_total_area_um2", ylabel=f"Area (× {ref})", outpath=outpath,
+        ref = _app_designs(set(df.dropna(subset=["placed_area_um2"])["design_id"]))[0][1]
+        _app_bar(df, y="placed_area_um2", ylabel=f"Area (× {ref})", outpath=outpath,
                  relative=True)
     else:
-        _app_bar(df.assign(area_k=df["synth_total_area_um2"] / 1000.0), y="area_k",
+        _app_bar(df.assign(area_k=df["placed_area_um2"] / 1000.0), y="area_k",
                  ylabel="Area (10³ µm²)", outpath=outpath)
 
 
@@ -549,6 +549,16 @@ def _placed_area(df: pd.DataFrame) -> pd.Series:
         return pd.Series(float("nan"), index=df.index)
     mem = df["mem_tiles_placed"] * df["mem_tile_area_um2"]
     return mem + df["pe_tiles_placed"] * df["pe_tile_area_um2"]
+
+
+def _with_placed_area(df: pd.DataFrame) -> pd.DataFrame:
+    """``df`` with a ``placed_area_um2`` column (``_placed_area``); MissingDataError
+    when no row has it."""
+    df = df.assign(placed_area_um2=_placed_area(df))
+    if df["placed_area_um2"].dropna().empty:
+        raise MissingDataError("placed tile area not populated in any results.json "
+                               f"(needs {', '.join(_PLACED_AREA_COLS)})")
+    return df
 
 
 def _design_ppa(df: pd.DataFrame) -> list[tuple[str, str, int, dict]]:
@@ -729,16 +739,16 @@ def two_level_performance(ctx: GenContext, outpath: Path) -> None:
 
 
 def two_level_area(ctx: GenContext, outpath: Path) -> None:
-    """Single- vs two-level synth area of the CGRA tiles each app touches. It includes
-    the SRAM macros, so with tile_figures.SRAM_NDA each panel is relative to its
-    leftmost bar."""
+    """Single- vs two-level synth area of the CGRA tiles each app is placed on
+    (``_placed_area``, not its route-only tiles). It includes the SRAM macros, so with
+    tile_figures.SRAM_NDA each panel is relative to its leftmost bar."""
     from .tile_figures import SRAM_NDA
-    df = _level_pairs("synth_total_area_um2")
+    df = _with_placed_area(_level_pairs("mem_tiles_placed"))
     if SRAM_NDA:
-        _paired_bar(df, y="synth_total_area_um2", ylabel="Area (× leftmost bar)", outpath=outpath,
+        _paired_bar(df, y="placed_area_um2", ylabel="Area (× leftmost bar)", outpath=outpath,
                     relative=True)
     else:
-        _paired_bar(df.assign(area_k=df["synth_total_area_um2"] / 1000.0), y="area_k",
+        _paired_bar(df.assign(area_k=df["placed_area_um2"] / 1000.0), y="area_k",
                     ylabel="Area (10³ µm²)", outpath=outpath)
 
 

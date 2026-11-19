@@ -292,12 +292,13 @@ Caveats:
   overcounts by that tail. Their `utilization` is None.
   `gen_app_bundle.py --annotate <bundle>` adds `kernel` and `mem_activity` to them
   before the power run.
-- **The Pareto plot counts placed tiles only** (`generators._placed_area`, user
+- **App area figures count placed tiles only** (`generators._placed_area`, user
   2026-11-18): `mem_tiles_placed` × `mem_tile_area_um2` + `pe_tiles_placed` ×
-  `pe_tile_area_um2`. Route-only tiles hold none of the app's data and their count moves
-  with placement (unsharp on fw1 dp 1x1: 0.93× with them, 1.15× without). Its power
-  still covers every tile the app uses. `single_level_area` and `synth_total_area_um2`
-  keep the route-only tiles.
+  `pe_tile_area_um2`, in `single_level_pareto`, `single_level_area(_LI)` and
+  `two_level_area`. Route-only tiles hold none of the app's data and their count moves
+  with placement (unsharp on fw1 dp 1x1: 0.93× with them, 1.15× without). Power still
+  covers every tile the app uses. `synth_total_area_um2` in results.json keeps the
+  route-only tiles; no figure plots it.
 - **SRAM area is drawn in µm².** `single_level_area` stacks SRAM area absolute, while the
   tile figures show SRAM numbers relative (`tile_figures.SRAM_NDA`).
 

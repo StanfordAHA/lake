@@ -21,7 +21,9 @@ from THESIS.pipeline.errors import MissingDataError  # noqa: E402 (after matplot
 ALL_GENERATORS = ["two_level_power", "two_level_performance", "two_level_area",
                   "two_level_utilization", "two_level_energy_efficiency"]
 PPA = {"synth_power_w": 0.02, "total_cycles": 9000, "output_words": 2352, "output_per_cycle": 2352 / 9000,
-       "utilization": 0.4, "synth_total_area_um2": 2e5, "clock_period_ps": 1754.0}
+       "utilization": 0.4, "synth_total_area_um2": 2e5, "clock_period_ps": 1754.0,
+       "mem_tiles_placed": 4, "mem_tile_area_um2": 2e4,
+       "pe_tiles_placed": 10, "pe_tile_area_um2": 6e3}
 
 
 @pytest.fixture
@@ -123,7 +125,7 @@ def test_area_is_relative_to_the_leftmost_bar_under_sram_nda(apps_root, ctx, tmp
     generators.two_level_area(ctx, tmp_path / "x.pdf")
     monkeypatch.setattr(tile_figures, "SRAM_NDA", False)
     generators.two_level_area(ctx, tmp_path / "x.pdf")
-    assert calls[0]["relative"] and calls[0]["y"] == "synth_total_area_um2"
+    assert calls[0]["relative"] and calls[0]["y"] == "placed_area_um2"
     assert calls[1]["y"] == "area_k" and not calls[1].get("relative")
     monkeypatch.undo()
     monkeypatch.setattr(apps_query, "DEFAULT_RESULTS_ROOT", apps_root)
