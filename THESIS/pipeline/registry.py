@@ -301,7 +301,8 @@ EXPLORATION_APPS = [
           "single-level design points: performance and power vs area, Pareto front",
           "real", g.single_level_pareto,
           notes="Per app relative to the baseline design point, then the geometric mean over "
-                "the apps that ran on both; performance = 1 / (kernel cycles x clock period)."),
+                "the apps that ran on both; performance = 1 / (kernel cycles x clock period); "
+                "area = the tiles with a placed core only, not route-only ones (user 2026-11-18)."),
     # Each two-level app against its single-level counterpart on every design point
     # (user 2026-10-30), not a sweep of two-level design points.
     Entry("two_level_power", "fig:two_level_power",

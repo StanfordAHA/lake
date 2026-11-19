@@ -56,12 +56,16 @@ def _seed_full_matrix(root: Path) -> None:
                            "synth_logic_area_um2": 6500.0,
                            "synth_storage_area_um2": 7500.0,
                            "synth_power_w": 0.012,
-                           "clock_period_ps": 1428.0}),
+                           "clock_period_ps": 1428.0,
+                           "mem_tiles_placed": 2, "mem_tile_area_um2": 3750.0,
+                           "pe_tiles_placed": 2, "pe_tile_area_um2": 1000.0}),
         ("mem_small_sp", {"synth_total_area_um2": 9000.0,
                           "synth_logic_area_um2": 6100.0,
                           "synth_storage_area_um2": 2900.0,
                           "synth_power_w": 0.008,
-                          "clock_period_ps": 1428.0}),
+                          "clock_period_ps": 1428.0,
+                          "mem_tiles_placed": 2, "mem_tile_area_um2": 1450.0,
+                          "pe_tiles_placed": 2, "pe_tile_area_um2": 1000.0}),
     ]
     apps = [("matmul_agg", 0.70, 500), ("gaussian_agg", 0.42, 800),
             ("resnet_agg", 0.55, 1200)]
@@ -257,7 +261,10 @@ def test_design_ppa_is_the_geomean_over_apps_relative_to_the_baseline():
             ("port_fw4_dw8_sc8k_sp2x2", 0.5, 1.0, 500.0, ("a",))):
         for i, a in enumerate(apps):
             scale = 1 + i  # app b is twice app a everywhere: ratios are per app
-            rows.append({"app_id": a, "design_id": d, "synth_total_area_um2": area * scale,
+            # placed area = 2 MEM tiles x 0.25 area + 1 PE tile x 0.5 area = area
+            rows.append({"app_id": a, "design_id": d, "synth_total_area_um2": 99.0,
+                         "mem_tiles_placed": 2 * scale, "mem_tile_area_um2": area / 4,
+                         "pe_tiles_placed": scale, "pe_tile_area_um2": area / 2,
                          "synth_power_w": power * scale, "total_cycles": 100 * scale,
                          "clock_period_ps": period})
     pts = generators._design_ppa(pd.DataFrame(rows))
@@ -266,6 +273,16 @@ def test_design_ppa_is_the_geomean_over_apps_relative_to_the_baseline():
     assert got["port_fw4_dw16_sc8k_sp2x2"] == (2, {"area": 1.0, "perf": 1.0, "power": 1.0})
     assert got["mem_fw2_dw16_sc2k_sp1x1"] == (2, pytest.approx({"area": 2.0, "perf": 1.0, "power": 4.0}))
     assert got["port_fw4_dw8_sc8k_sp2x2"] == (1, pytest.approx({"area": 0.5, "perf": 2.0, "power": 1.0}))
+
+
+def test_placed_area_leaves_out_route_only_tiles():
+    """Placed MEM + PE tiles x their tile areas; route-only tiles and
+    synth_total_area_um2 (which counts them) don't enter. NaN without tile counts."""
+    df = pd.DataFrame([{"mem_tiles_placed": 3, "mem_tiles_route": 10, "mem_tile_area_um2": 100.0,
+                        "pe_tiles_placed": 4, "pe_tiles_route": 20, "pe_tile_area_um2": 10.0,
+                        "synth_total_area_um2": 1540.0}])
+    assert list(generators._placed_area(df)) == [340.0]
+    assert generators._placed_area(pd.DataFrame([{"synth_total_area_um2": 1.0}])).isna().all()
 
 
 def test_pareto_keeps_points_nothing_beats_on_both_axes():

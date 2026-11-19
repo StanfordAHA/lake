@@ -537,14 +537,31 @@ def single_level_energy_efficiency(ctx: GenContext, outpath: Path, mode: str = "
     _app_bar(df, y="energy_uj", ylabel="Energy per run (µJ)", outpath=outpath)
 
 
+_PLACED_AREA_COLS = ("mem_tiles_placed", "mem_tile_area_um2", "pe_tiles_placed", "pe_tile_area_um2")
+
+
+def _placed_area(df: pd.DataFrame) -> pd.Series:
+    """Synthesis area of the tiles an app places a core on (MEM + PE, SRAM macros
+    included). Tiles it only routes through are left out: they hold none of its data,
+    and how many there are moves with placement (user 2026-11-18). NaN where a row lacks
+    the tile counts or areas."""
+    if not set(_PLACED_AREA_COLS) <= set(df.columns):
+        return pd.Series(float("nan"), index=df.index)
+    mem = df["mem_tiles_placed"] * df["mem_tile_area_um2"]
+    return mem + df["pe_tiles_placed"] * df["pe_tile_area_um2"]
+
+
 def _design_ppa(df: pd.DataFrame) -> list[tuple[str, str, int, dict]]:
     """(design_id, label, n_apps, {area, perf, power}) per design point, in design order:
     each app's value over the same app's on the first design point (the baseline), then
-    the geometric mean over the apps that ran on both. perf = 1 / kernel runtime
+    the geometric mean over the apps that ran on both. area = ``_placed_area`` (placed
+    tiles only); power stays the power of every tile the app uses, route-only tiles
+    included, since their switch boxes carry its data. perf = 1 / kernel runtime
     (cycles x that design point's clock period), so the clock counts, not just cycles."""
     import numpy as np
-    df = df.assign(runtime_s=df["total_cycles"] * df["clock_period_ps"] * 1e-12)
-    cols = {"area": "synth_total_area_um2", "perf": "runtime_s", "power": "synth_power_w"}
+    df = df.assign(runtime_s=df["total_cycles"] * df["clock_period_ps"] * 1e-12,
+                   placed_area_um2=_placed_area(df))
+    cols = {"area": "placed_area_um2", "perf": "runtime_s", "power": "synth_power_w"}
     df = df.dropna(subset=["app_id", "design_id", *cols.values()])
     if df.empty:
         raise MissingDataError("no app results with area, runtime and power")
@@ -576,8 +593,9 @@ def _pareto(pts: list[tuple[float, float]], higher: bool) -> list[tuple[float, f
 
 def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
     """Each single-level design point's (a) performance and (b) power against its area,
-    relative to the baseline (``_design_ppa``), with the Pareto front dashed. Area
-    includes the SRAM macros, so it is relative whether or not SRAM_NDA is set."""
+    relative to the baseline (``_design_ppa``), with the Pareto front dashed. Area is
+    the placed tiles' only and includes the SRAM macros, so it is relative whether or
+    not SRAM_NDA is set."""
     from .tile_figures import FULL_W, INK2, MUTED, SERIES, _ax_style, _legend_above, _save
     pts = _design_ppa(_load_apps_or_miss(required_col="synth_power_w", mode=mode))
     n_base = pts[0][2]
