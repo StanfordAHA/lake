@@ -826,13 +826,16 @@ _MODE_STYLE = {"static": (SERIES[0], "Static"), "rv": (SERIES[1], "Ready/valid")
 
 
 def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, unit: str,
-                 note: str, one_line: bool, counts: bool = True) -> float:
+                 note: str, one_line: bool, counts: bool = True,
+                 star_labels: dict | None = None, lift: float = 0.0) -> float:
     """Scatter (fit = dots, held out = stars) with each mode's fit line on
     ``ax``; prediction error per build on ``rax``. Each fit's equation (R² on the
     same line if ``one_line``) and the held-out error (``note`` formats its mean
-    and max, and ``n`` = held-out builds) are stacked above ``ax``; returns that
-    block's height in points. The series are labeled for one legend over the
-    figure, with their build counts unless ``counts`` is off."""
+    and max, and ``n`` = held-out builds) are stacked above ``ax``, ``lift``
+    points higher than the axes top; returns that block's height in points
+    (lift included). The series are labeled for one legend over the figure, with
+    their build counts unless ``counts`` is off. ``star_labels`` (row index ->
+    text) writes a text beside a held-out build's star on ``rax``."""
     lo, hi = p[xcol].min() / norm, p[xcol].max() / norm
     pad = (hi - lo) * 0.06
     errs, lines = [], []
@@ -861,6 +864,12 @@ def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, un
                         zorder=3)
             if m == "*":
                 errs.extend(e.abs().tolist())
+                for i, xi, ei in zip(sub.index, x, e):
+                    if star_labels and i in star_labels:
+                        rax.annotate(star_labels[i], (xi, ei), xytext=(7, 0),
+                                     textcoords="offset points", ha="left", va="center",
+                                     fontsize=9, color=c, zorder=4, gid="star_label",
+                                     bbox=dict(boxstyle="square,pad=0.05", fc="white", ec="none"))
     ax.set_xlim(lo - pad, hi + pad)
     rax.set_xlim(lo - pad, hi + pad)
     rax.axhline(0, color=AXIS, linewidth=0.9, zorder=1)
@@ -872,9 +881,48 @@ def _model_panel(ax, rax, p: pd.DataFrame, xcol: str, ycol: str, norm: float, un
     ax.tick_params(labelbottom=False)
     lines += [(t, INK2) for t in note.format(np.mean(errs), max(errs), n=len(errs)).split("\n")]
     for k, (text, c) in enumerate(reversed(lines)):
-        ax.annotate(text, (0, 1), xycoords="axes fraction", xytext=(0, 4 + 12.5 * k),
+        ax.annotate(text, (0, 1), xycoords="axes fraction", xytext=(0, 4 + lift + 12.5 * k),
                     textcoords="offset points", ha="left", va="bottom", fontsize=9, color=c)
-    return 4 + 12.5 * len(lines)
+    return 4 + lift + 12.5 * len(lines)
+
+
+_LABEL_SIDES = ((7, 0, "left", "center"), (-7, 0, "right", "center"),
+                (0, 7, "center", "bottom"), (0, -7, "center", "top"))
+
+
+def _dodge_star_labels(ax) -> None:
+    """Put each star label (``_model_panel``'s ``star_labels``) on the first side of
+    its star (right, left, above, below) where it covers no marker and no label
+    already placed; the right side when none is free. Call once the layout is final."""
+    texts = [t for t in ax.texts if t.get_gid() == "star_label"]
+    if not texts:
+        return
+    r = ax.figure.canvas.get_renderer()
+    pt = ax.figure.dpi / 72
+    marks = [(xy, np.sqrt(sz) / 2 * pt) for coll in ax.collections
+             for xy, sz in zip(ax.transData.transform(coll.get_offsets()),
+                               np.broadcast_to(coll.get_sizes(), len(coll.get_offsets())))]
+
+    def clear(bb, placed):
+        if any(bb.overlaps(o) for o in placed):
+            return False
+        return all(np.hypot(min(max(x, bb.x0), bb.x1) - x, min(max(y, bb.y0), bb.y1) - y) > rad
+                   for (x, y), rad in marks)
+
+    placed = []
+    for t in texts:
+        for dx, dy, ha, va in _LABEL_SIDES:
+            t.xyann = (dx, dy)
+            t.set_ha(ha)
+            t.set_va(va)
+            if clear(t.get_window_extent(r), placed):
+                break
+        else:
+            dx, dy, ha, va = _LABEL_SIDES[0]
+            t.xyann = (dx, dy)
+            t.set_ha(ha)
+            t.set_va(va)
+        placed.append(t.get_window_extent(r))
 
 
 def _dec(v: float) -> int:
@@ -923,27 +971,42 @@ def memtile_synth_vs_pnr_power(ctx, outpath: Path) -> None:
     figure (fit builds = dots, held-out builds = stars). A build can lack one of
     the two PnR power runs (in the final data one held-out RV build has no active
     power), so the shared legend carries no counts; each panel's note gives its
-    own held-out count."""
+    own held-out count. Each panel is relative to its own smallest fit tile, so
+    the idle error panel labels each held-out star with that build's PnR idle
+    power as a share of its PnR active power (none where the build has no active
+    run): a large relative error on a small idle power is a small one on the tile."""
     p = _pnr_builds()
     fig, axes = plt.subplots(2, 2, figsize=(FULL_W, 4.6), sharex="col",
                              gridspec_kw={"height_ratios": [3, 1.15], "hspace": 0.08,
                                           "wspace": 0.3})
+    held = p[p["pnr_role"] == "validate"].dropna(
+        subset=["pnr_idle_total_power", "pnr_active_total_power"])
+    shares = {i: f"{v:.0f}%" for i, v in
+              (held["pnr_idle_total_power"] / held["pnr_active_total_power"] * 100).items()}
+    notes = {"idle": "Held-out |error| (n={n}):\nmean {:.1f}%, max {:.1f}%\n"
+                     "Labels: idle as % of active power",
+             "active": "Held-out |error| (n={n}):\nmean {:.1f}%, max {:.1f}%"}
+    blocks = []
     for k, (var, title) in enumerate((("idle", "(a) Idle"), ("active", "(b) Active"))):
         x, y = f"synth_{var}_total_power", f"pnr_{var}_total_power"
         q = p.dropna(subset=[x, y])
         norm, unit = _model_norm(q, x)
         ax, rax = axes[0, k], axes[1, k]
-        block = _model_panel(ax, rax, q, x, y, norm, unit,
-                             "Held-out |error| (n={n}):\nmean {:.1f}%, max {:.1f}%",
-                             one_line=False, counts=False)
-        ax.set_title(title, loc="left", fontsize=10.5, color=INK2, pad=block + 2)
+        # (b) has one note line fewer: lift it so both blocks start under their titles
+        blocks.append(_model_panel(ax, rax, q, x, y, norm, unit, notes[var],
+                                   one_line=False, counts=False,
+                                   star_labels=shares if var == "idle" else None,
+                                   lift=12.5 if var == "active" else 0.0))
         ax.set_ylabel(f"PnR power ({unit})")
         rax.set_xlabel(f"Synthesis power ({unit})")
+    for ax, (_, title) in zip(axes[0], (("idle", "(a) Idle"), ("active", "(b) Active"))):
+        ax.set_title(title, loc="left", fontsize=10.5, color=INK2, pad=max(blocks) + 2)
     if axes[0, 0].get_legend_handles_labels()[1] != axes[0, 1].get_legend_handles_labels()[1]:
         raise MissingDataError("idle and active panels have different series; one legend "
                                "can't label both")
     fig.align_ylabels(axes[:, 0])
     _legend_above(axes[0, 0])
+    _dodge_star_labels(axes[1, 0])
     _save(fig, outpath)
 
 
