@@ -99,3 +99,17 @@ def test_full_rate_figures_need_full_rate_csv(tmp_path, monkeypatch):
     monkeypatch.setattr(tile_sweep, "FULL_RATE", tmp_path / "missing.csv")
     with pytest.raises(MissingDataError, match="missing.csv"):
         tf.sched_gen_area_vs_dim(None, tmp_path / "x.png")
+
+
+def test_reference_off_scale_at_several_steps_goes_to_the_legend():
+    """sched_gen_power_vs_dim: y ∝ x is off scale at 4 of 5 dims steps. Four per-step
+    notes one dimension apart ran together; they become one legend note."""
+    import matplotlib.pyplot as plt
+    fig, pax = plt.subplots()
+    xs = [1, 2, 3, 4, 5, 6]
+    tf._pct_line(pax, xs, [10, 10.5, 11, 11.4, 11.8, 12.1])
+    tf._pct_line(pax, xs, [1, 1.2, 1.3, 1.4, 1.5, 1.8])  # steps up to +20%
+    tf._pct_axis(pax, xs)
+    assert not [t for t in pax.texts if t.get_text()[:1] in "↑↓"]
+    assert tf._REF_OFF_SCALE[pax] == "y ∝ x, off scale:\n+25% to +100% per step"
+    plt.close(fig)

@@ -323,7 +323,8 @@ def _pct_axis(pax, xvals, pos=None, geo: bool = False):
     up from a near-zero value), and takes in the reference only if that
     doesn't squash them (at most 3x their largest change). Whatever falls
     outside is noted at the panel edge in its own color; a reference that is
-    off scale at every step gets one note."""
+    off scale at two or more steps gets one note, in the legend (per-step notes
+    one dimension apart run together on a half-width panel)."""
     pts = [(x, y, l.get_color()) for l in pax.get_lines()
            for x, y in zip(l.get_xdata(), l.get_ydata()) if np.isfinite(y)]
     vals = np.array([y for _, y, _ in pts] or [0.0])
@@ -336,7 +337,8 @@ def _pct_axis(pax, xvals, pos=None, geo: bool = False):
     pad = max(0.12 * (hi - lo), 2.0)
     off_ref = [(x, y) for x, y in zip(mid, ref) if y > hi + pad]
     off = [(x, y, c) for x, y, c in pts if y > hi + pad or y < lo - pad]
-    if len(off_ref) < len(ref):
+    ref_in_legend = len(off_ref) >= 2 or (off_ref and len(off_ref) == len(ref))
+    if not ref_in_legend:
         off += [(x, y, MUTED) for x, y in off_ref]
     room_hi = 2.2 * pad if off_ref or any(y > hi for _, y, _ in off) else 0.0  # for the notes
     room_lo = 2.2 * pad if any(y < lo for _, y, _ in off) else 0.0
@@ -348,8 +350,8 @@ def _pct_axis(pax, xvals, pos=None, geo: bool = False):
         # the arrow gives the sign; without it neighboring notes fit one step apart
         pax.text(x, top if up else bottom, f"{'↑' if up else '↓'}{abs(y):.0f}%", ha="center",
                  va="top" if up else "bottom", fontsize=8.5, color=c)
-    if off_ref and len(off_ref) == len(ref):  # noted in the legend's y ∝ x entry
-        r0, r1 = min(ref), max(ref)
+    if ref_in_legend:  # noted in the legend's y ∝ x entry
+        r0, r1 = min(y for _, y in off_ref), max(y for _, y in off_ref)
         rng = f"{r0:+.0f}%" if round(r0) == round(r1) else f"{r0:+.0f}% to {r1:+.0f}%"
         _REF_OFF_SCALE[pax] = f"y ∝ x, off scale:\n{rng} per step"
     pax.axhline(0, color=AXIS, linewidth=0.9, zorder=1)
