@@ -295,13 +295,14 @@ EXPLORATION_APPS = [
     Entry("single_level_pareto", "fig:pareto_single_level",
           "figures/single_level_pareto.pdf", "figure",
           "single-level design points: (a) tile peak bandwidth vs tile area, every width; "
-          "(b) 16-bit app power vs area; Pareto fronts",
+          "(b) 16-bit app power vs area; Pareto fronts; DESIGNS_PARETO_ONLY as diamonds",
           "real", g.single_level_pareto,
           notes="(a) tab:ul_ppa_summary's tile (tile sweep): area with the SRAM macros over "
                 "the baseline's; peak bandwidth = min(Ports, SRAM words/cycle) x data width x "
                 "clock (user 2026-11-18). (b) per app relative to the baseline design point, "
                 "then the geometric mean over the apps that ran on both; area = the tiles with "
-                "a placed core only, not route-only ones."),
+                "a placed core only, not route-only ones. Also the 4 DESIGNS_PARETO_ONLY "
+                "points (addon6 bundles), which no other figure shows (user 2026-11-19)."),
     # Each two-level app against its single-level counterpart on every design point
     # (user 2026-10-30), not a sweep of two-level design points.
     Entry("two_level_power", "fig:two_level_power",

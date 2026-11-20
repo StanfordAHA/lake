@@ -103,6 +103,46 @@ DESIGNS_SINGLE_LEVEL: list[DesignPoint] = [
 ]
 
 
+# Four more 16-bit points, recorded in the addon6 app bundles (2026-11-18). Only the
+# app ingest and the single-level Pareto figure read them (user 2026-11-19, via session
+# app_power_pipeclean); the per-app figures and tables keep DESIGNS_SINGLE_LEVEL.
+# Each varies one parameter of a DESIGNS_SINGLE_LEVEL point: capacity (2 KB DP, 4 KB SP,
+# 8 KB DP) or fetch width (fw2 8 KB SP, which runs its 2+2 Ports at half rate: 2 SRAM
+# words per cycle).
+DESIGNS_PARETO_ONLY: list[DesignPoint] = [
+    DesignPoint(
+        id="mem_fw2_dw16_sc2k_dp2x2",
+        display="MEM fw2 dw16 2KB DP 2x2",
+        experiment="MEMORY_EXP", sweep_group="addon6",
+        fetch_width=2, storage_cap_bytes=2048, data_width=16,
+        in_ports=2, out_ports=2, dual_port=True,
+    ),
+    DesignPoint(
+        id="mem_fw4_dw16_sc4k_sp2x2",
+        display="MEM fw4 dw16 4KB SP 2x2",
+        experiment="MEMORY_EXP", sweep_group="addon6",
+        fetch_width=4, storage_cap_bytes=4096, data_width=16,
+        in_ports=2, out_ports=2, dual_port=False,
+    ),
+    DesignPoint(
+        id="mem_fw2_dw16_sc8k_sp2x2",
+        display="MEM fw2 dw16 8KB SP 2x2",
+        experiment="MEMORY_EXP", sweep_group="addon6",
+        fetch_width=2, storage_cap_bytes=8192, data_width=16,
+        in_ports=2, out_ports=2, dual_port=False,
+    ),
+    DesignPoint(
+        id="mem_fw2_dw16_sc8k_dp2x2",
+        display="MEM fw2 dw16 8KB DP 2x2",
+        experiment="MEMORY_EXP", sweep_group="addon6",
+        fetch_width=2, storage_cap_bytes=8192, data_width=16,
+        in_ports=2, out_ports=2, dual_port=True,
+    ),
+]
+
+# Every design point the app ingest maps a config to.
+DESIGNS_ALL: list[DesignPoint] = DESIGNS_SINGLE_LEVEL + DESIGNS_PARETO_ONLY
+
 # Two-level = single-level upper tier × 3 Pond lower-tier points.
 # TODO: needs a Pond spec factory (see PIPELINE.md TODO #6). Empty until
 # the Pond mflowgen construct is stood up.

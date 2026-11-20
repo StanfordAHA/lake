@@ -302,6 +302,13 @@ Caveats:
   with placement (unsharp on fw1 dp 1x1: 0.93× with them, 1.15× without). Power still
   covers every tile the app uses. `synth_total_area_um2` in results.json keeps the
   route-only tiles; no figure plots it.
+- **Pareto-only design points** (`design_points.DESIGNS_PARETO_ONLY`, user 2026-11-19):
+  fw2 dw16 2 KB DP, fw4 dw16 4 KB SP, fw2 dw16 8 KB SP and fw2 dw16 8 KB DP, all 2x2,
+  recorded in the addon6 bundles. The ingest maps them like the others (it reads
+  `DESIGNS_ALL`); only `single_level_pareto` shows them, as diamonds. Every other figure
+  and table drops their rows (`generators._drop_pareto_only`). Gap: camera on fw2 8 KB SP
+  deadlocks in RV, so that point has no RV camera result (no RV Pareto exists, so no
+  figure misses it).
 - **SRAM area is drawn in µm².** `single_level_area` stacks SRAM area absolute, while the
   tile figures show SRAM numbers relative (`tile_figures.SRAM_NDA`).
 

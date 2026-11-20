@@ -15,7 +15,9 @@ from THESIS.apps import cgra_power_ingest as ing
 
 STATIC = "fw4_dw16_sc8192_sp_in2_out2_vc2_sharectr_portcg_thesis"
 RV = "fw4_dw16_sc8192_sp_in2_out2_vc2_nofp_portcg_thesis_rv"
-UNMAPPED = "fw4_dw16_sc4096_sp_in2_out2_vc2_sharectr_portcg_thesis"  # not in DESIGNS_SINGLE_LEVEL
+UNMAPPED = "fw4_dw16_sc16384_sp_in2_out2_vc2_sharectr_portcg_thesis"  # not a design point
+# a DESIGNS_PARETO_ONLY point: ingested like the others (user 2026-11-19)
+PARETO_ONLY = "fw2_dw16_sc8192_sp_in2_out2_vc2_sharectr_portcg_thesis"
 
 
 def _gates(cell: float, sram: float) -> str:
@@ -123,11 +125,17 @@ def test_unmapped_design_and_app_are_skipped_unless_kept(tmp_path):
     assert any("no design point with this geometry" in n for n in notes)
     assert any("app conv_3_3 not in registry.APPS" in n for n in notes)
     kept = _by_dir(ing.build_results(ing._Tree(out), keep_unmapped=True)[0])
-    assert "fw4_dw16_sc4096_sp_in2_out2_vc2__static__thesis/gaussian_agg" in kept
-    assert kept["fw4_dw16_sc4096_sp_in2_out2_vc2__static__thesis/gaussian_agg"]["in_design_set"] is False
+    unmapped = "fw4_dw16_sc16384_sp_in2_out2_vc2__static__thesis/gaussian_agg"
+    assert unmapped in kept and kept[unmapped]["in_design_set"] is False
     assert "port_fw4_dw16_sc8k_sp2x2__static__thesis/conv_3_3" in kept
     mapped = ing.build_results(ing._Tree(out), apps=ing.gc.app_map({"conv_3_3": "conv"}))[0]
     assert {rel.split("/")[1] for rel, _ in mapped} == {"conv"}
+
+
+def test_pareto_only_design_point_is_ingested(tmp_path):
+    out, _ = make_out_dir(tmp_path, [(PARETO_ONLY, "gauss", "apps/gaussian", {})])
+    results, _ = ing.build_results(ing._Tree(out))
+    assert [rel for rel, _ in results] == ["mem_fw2_dw16_sc8k_sp2x2__static__thesis/gaussian_agg"]
 
 
 def test_row_whose_manifest_disagrees_with_its_config_name_is_skipped(tmp_path):

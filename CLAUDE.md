@@ -190,6 +190,10 @@ SRAM busy fraction for utilization). Results land in
 dw16 8KB points are one config). The user's final data set is unpacked in
 `../thesis_final_data/` (`CONTENTS.txt`, `app_bundles_thesis_dp_STATUS.txt` for the gaps).
 The figures draw each distinct config once and an × where an app has no result.
+`DESIGNS_PARETO_ONLY` (user 2026-11-19): four more dw16 2x2 points from the addon6 bundles
+(2 KB DP, fw4 4 KB SP, fw2 8 KB SP, fw2 8 KB DP). The ingest maps them; only
+`single_level_pareto` draws them (diamonds), every other figure and table drops them
+(`THESIS/apps/CGRA_APP_POWER.md` §3).
 Apps (`registry.APPS`, user 2026-10-25): the 4 image apps, matmul single level
 (`matmul_agg`, blocked: the no-pond `matmul_rvtry3 sched=1` does not map on 16x16) and
 two level (`matmul_pond_agg`, pond accumulation; `level="two"`, not in `single_level_*`),

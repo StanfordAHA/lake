@@ -61,7 +61,7 @@ import zipfile
 from pathlib import Path
 
 from . import garnet_configs as gc
-from .design_points import DESIGNS_SINGLE_LEVEL
+from .design_points import DESIGNS_ALL
 from .registry import APPS
 from ..pipeline.tile_sweep import _gates
 
@@ -282,7 +282,7 @@ def build_results(tree: _Tree, *, kernel_stats=None, sweep=None, apps=None,
         # the variant name first (garnet_configs --commands names variants by app id), then
         # the Halide app (two registry apps can share one: matmul single / two level)
         app_id = apps.get(variant) or apps.get(app)
-        designs = gc.designs_for_spec(spec, DESIGNS_SINGLE_LEVEL)
+        designs = gc.designs_for_spec(spec, DESIGNS_ALL)
         if not designs or app_id is None:
             why = ", ".join(w for w, bad in (("no design point with this geometry", not designs),
                                              (f"variant {variant} / app {app} not in registry.APPS / --app-map",

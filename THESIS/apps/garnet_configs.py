@@ -26,7 +26,7 @@ import re
 import shlex
 import sys
 
-from .design_points import DESIGNS_SINGLE_LEVEL, DesignPoint
+from .design_points import DESIGNS_ALL, DESIGNS_SINGLE_LEVEL, DesignPoint
 from .registry import APPS
 
 # build_spec / build_spec_rv defaults (garnet sweep_specs.SPEC_DEFAULTS)
@@ -320,7 +320,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="print the /aha bundle script and the build-machine app-power command")
     ap.add_argument("--fabric", choices=FABRICS, default="thesis")
     ap.add_argument("--modes", default="static,rv")
-    ap.add_argument("--designs", nargs="+", default=["all"], help="design ids (default all)")
+    ap.add_argument("--designs", nargs="+", default=["all"],
+                    help="design ids (default: all of DESIGNS_SINGLE_LEVEL; "
+                         "DESIGNS_PARETO_ONLY ids too)")
     ap.add_argument("--apps", nargs="+", default=["all"], help="registry.APPS ids (default all)")
     ap.add_argument("--bundle-root", default="/aha/sweep_out/app_bundles_thesis_dp")
     ap.add_argument("--tree-root", default="/aha/sweep_out/app_bundles_thesis_dp_trees",
@@ -334,8 +336,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="the clock table of the thesis tile set (a fresh thesis_fmax run since "
                          "lassen 0f44a74 made every PE probe stale)")
     args = ap.parse_args(argv)
+    # "all" = the per-app figures' points; DESIGNS_PARETO_ONLY ones by id
     designs = (DESIGNS_SINGLE_LEVEL if args.designs == ["all"]
-               else [d for d in DESIGNS_SINGLE_LEVEL if d.id in set(args.designs)])
+               else [d for d in DESIGNS_ALL if d.id in set(args.designs)])
     modes = [m for m in args.modes.split(",") if m]
     if args.commands:
         apps = APPS if args.apps == ["all"] else [a for a in APPS if a.id in set(args.apps)]

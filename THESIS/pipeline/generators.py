@@ -373,8 +373,8 @@ def exploration_applications(ctx: GenContext, outpath: Path) -> None:
     Tiles each app places on the static and ready/valid app results, every app of the
     run (the pond apps too)."""
     def load(mode):
-        return apps_query.load_app_results_df(mode=mode, fabric=APP_FABRIC, level=None,
-                                              pond_id=apps_query.SINGLE_LEVEL_PONDS)
+        return _drop_pareto_only(apps_query.load_app_results_df(
+            mode=mode, fabric=APP_FABRIC, level=None, pond_id=apps_query.SINGLE_LEVEL_PONDS))
     tables.emit_exploration_applications(load("static"), load("rv"), outpath)
 
 
@@ -403,10 +403,24 @@ APP_FABRIC = "thesis"
 APP_DATA_WIDTH = 16
 
 
+def _drop_pareto_only(df: pd.DataFrame) -> pd.DataFrame:
+    """``df`` without the rows on a ``DESIGNS_PARETO_ONLY`` design point: only the
+    single-level Pareto figure shows those (user 2026-11-19)."""
+    from ..apps.design_points import DESIGNS_PARETO_ONLY
+    if df.empty or "design_id" not in df:
+        return df
+    return df[~df["design_id"].isin({d.id for d in DESIGNS_PARETO_ONLY})]
+
+
 def _load_apps_or_miss(required_col: str | None = None, mode: str = "static",
-                       level: str | None = "single") -> pd.DataFrame:
+                       level: str | None = "single",
+                       pareto_only: bool = False) -> pd.DataFrame:
+    """The mode's app results; ``pareto_only`` keeps the DESIGNS_PARETO_ONLY rows,
+    which every figure and table but single_level_pareto leaves out."""
     df = apps_query.load_app_results_df(mode=mode, fabric=APP_FABRIC, level=level,
                                         pond_id=apps_query.SINGLE_LEVEL_PONDS)
+    if not pareto_only:
+        df = _drop_pareto_only(df)
     if df.empty:
         raise MissingDataError(
             f"no PASS {mode} {APP_FABRIC}-fabric rows in THESIS/data/apps — ingest garnet "
@@ -425,15 +439,16 @@ def _load_apps_or_miss(required_col: str | None = None, mode: str = "static",
 def _app_designs(ids) -> list[tuple[str, str]]:
     """(design_id, label) of the design points among ``ids``, in design_points order,
     one per config: "PORT fw4 dw16 8KB SP 2x2 (baseline)" -> "fw4 dw16 8KB SP 2x2", and
-    the MEM point with the same config (the same results) is drawn once. Unknown ids last."""
-    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    the MEM point with the same config (the same results) is drawn once. The
+    DESIGNS_PARETO_ONLY points follow DESIGNS_SINGLE_LEVEL's. Unknown ids last."""
+    from ..apps.design_points import DESIGNS_ALL
     out, labels = [], set()
-    for d in DESIGNS_SINGLE_LEVEL:
+    for d in DESIGNS_ALL:
         label = re.sub(r"^\S+ | \(.*\)$", "", d.display)
         if d.id in ids and label not in labels:
             out.append((d.id, label))
             labels.add(label)
-    known = {d.id for d in DESIGNS_SINGLE_LEVEL}
+    known = {d.id for d in DESIGNS_ALL}
     return out + [(d, d) for d in sorted(set(ids) - known)]
 
 
@@ -448,11 +463,12 @@ def _at_width(df: pd.DataFrame) -> pd.DataFrame:
 def _design_colors() -> dict[str, str]:
     """Each design point's bar color: its place among all the design points, so a
     design point keeps its color whichever of them a figure shows (and matches the
-    Pareto figure)."""
-    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    Pareto figure). The DESIGNS_PARETO_ONLY points come after the others, so they
+    reuse colors from the top of SERIES; the Pareto figure draws them as diamonds."""
+    from ..apps.design_points import DESIGNS_ALL
     from .tile_figures import SERIES
     return {d: SERIES[i % len(SERIES)]
-            for i, (d, _) in enumerate(_app_designs({x.id for x in DESIGNS_SINGLE_LEVEL}))}
+            for i, (d, _) in enumerate(_app_designs({x.id for x in DESIGNS_ALL}))}
 
 
 def _missing_mark(ax, xs, fontsize: float) -> None:
@@ -635,8 +651,8 @@ def _tile_bandwidth(memtile: pd.DataFrame | None,
     words per cycle the tile can move, the Ports' (inputs + outputs) or the SRAM's
     (fetch width, twice that when dual-port), whichever is smaller, x data width x clock.
     It is the tile's alone, no app, so every data width compares in bytes."""
-    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
-    by_id = {d.id: d for d in DESIGNS_SINGLE_LEVEL}
+    from ..apps.design_points import DESIGNS_ALL
+    by_id = {d.id: d for d in DESIGNS_ALL}
     out = []
     for d, label in _app_designs(set(by_id)):
         t = tables._memtile_power_row(memtile, by_id[d], mode)
@@ -663,14 +679,15 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
     the tiles they are placed on, relative to the baseline (``_design_ppa``), on the
     design points at ``data_width`` only (None: all), since another width changes what
     each app computes. Each panel dashes its Pareto front and rings its points; colors
-    follow the per-app bar figures (``_design_colors``)."""
-    from ..apps.design_points import DESIGNS_SINGLE_LEVEL
+    follow the per-app bar figures (``_design_colors``). It also shows the
+    DESIGNS_PARETO_ONLY points, as diamonds (user 2026-11-19)."""
+    from ..apps.design_points import DESIGNS_ALL, DESIGNS_PARETO_ONLY
     from . import tile_sweep
     from .tile_figures import FULL_W, INK2, MUTED, SERIES, _ax_style, _legend_above, _save
     tiles = _tile_bandwidth(tile_sweep.load(), mode)
-    df = _load_apps_or_miss(required_col="synth_power_w", mode=mode)
+    df = _load_apps_or_miss(required_col="synth_power_w", mode=mode, pareto_only=True)
     if data_width is not None:
-        ids = {d.id for d in DESIGNS_SINGLE_LEVEL if d.data_width == data_width}
+        ids = {d.id for d in DESIGNS_ALL if d.data_width == data_width}
         df = df[df["design_id"].isin(ids)]
         if df.empty:
             raise MissingDataError(f"no {mode} app results on a {data_width}-bit design point")
@@ -679,6 +696,7 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
     notes = {d: "" if n == n_base else f" ({n} of {n_base} apps in b)" for d, _, n, _ in pts}
     notes[tiles[0][0]] = " (baseline)"
     colors = _design_colors()
+    diamonds = {d.id for d in DESIGNS_PARETO_ONLY}
     panels = (
         ("(a) Tile", "Tile area (× baseline)", "Peak bandwidth (GB/s)", True, tiles),
         ("(b) Applications", "Area used (× baseline)", "Power (× baseline)", False,
@@ -689,6 +707,7 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
     for ax, (title, xlabel, ylabel, higher, xy) in zip(axes, panels):
         for d, label, x, y in xy:
             handles[label] = ax.scatter(x, y, s=50, color=colors.get(d, SERIES[0]),
+                                        marker="D" if d in diamonds else "o",
                                         edgecolor="white", linewidth=0.6, zorder=3,
                                         label=label + notes.get(d, ""))
         front = _pareto([(x, y) for *_, x, y in xy], higher)
@@ -746,8 +765,8 @@ def _level_pairs(required_col: str) -> pd.DataFrame:
     """The RV rows of every (single-level, two-level) app pair, with ``pair`` (the
     single-level app's name) and ``level`` (single | two) columns."""
     from ..apps.registry import APPS, by_id
-    df = apps_query.load_app_results_df(mode=TWO_LEVEL_MODE, fabric=APP_FABRIC, level=None,
-                                        pond_id=apps_query.SINGLE_LEVEL_PONDS)
+    df = _drop_pareto_only(apps_query.load_app_results_df(
+        mode=TWO_LEVEL_MODE, fabric=APP_FABRIC, level=None, pond_id=apps_query.SINGLE_LEVEL_PONDS))
     parts = []
     for app in APPS:
         if not app.single_level_app or df.empty:

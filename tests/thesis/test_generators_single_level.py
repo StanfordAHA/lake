@@ -89,13 +89,14 @@ def test_empty_tree_raises_missing_data_error(apps_root, empty_ctx, name, tmp_pa
 
 def _fake_tile_sweep() -> pd.DataFrame:
     """A tile-sweep frame (``tile_sweep.load()``) with each design point's static thesis
-    tile: design point i has std-cell area 1000 (i + 1), SRAM 1000, at 500 MHz."""
-    from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
+    tile: design point i (of DESIGNS_ALL) has std-cell area 1000 (i + 1), SRAM 1000, at
+    500 MHz."""
+    from THESIS.apps.design_points import DESIGNS_ALL
     from THESIS.apps.garnet_configs import garnet_config
     return pd.DataFrame([{"config": garnet_config(dp, "static", "thesis"),
                           "syn_std": 1000.0 * (i + 1), "syn_sram": 1000.0, "clock_mhz": 500.0,
                           "synth_active_total_power": 0.01}
-                         for i, dp in enumerate(DESIGNS_SINGLE_LEVEL)])
+                         for i, dp in enumerate(DESIGNS_ALL)])
 
 
 @pytest.fixture
@@ -345,6 +346,9 @@ def test_tile_bandwidth_is_words_per_cycle_times_width_times_clock():
     assert t["mem_fw2_dw16_sc2k_sp1x1"][1] == pytest.approx(2 * 2 * 0.5)         # 1+1 Ports
     assert t["mem_fw1_dw16_sc4k_dp1x1"][1] == pytest.approx(2 * 2 * 0.5)         # fw1 DP: 1 + 1
     assert "mem_fw4_dw16_sc8k_sp2x2" not in t  # the baseline's twin is drawn once
+    # the Pareto-only points too; fw2 single-port 2+2: the SRAM's 2 words per cycle
+    assert t["mem_fw2_dw16_sc8k_sp2x2"][1] == pytest.approx(2 * 2 * 0.5)
+    assert t["mem_fw2_dw16_sc8k_dp2x2"][1] == pytest.approx(4 * 2 * 0.5)
     with pytest.raises(MissingDataError, match="tile-sweep"):
         generators._tile_bandwidth(None)
 
@@ -367,6 +371,29 @@ def test_pareto_plots_only_one_data_width(apps_root, empty_ctx, tmp_path, monkey
                      "port_fw4_dw8_sc8k_sp2x2"}]
     with pytest.raises(MissingDataError, match="64-bit"):
         generators.single_level_pareto(empty_ctx, tmp_path / "c.pdf", data_width=64)
+
+
+def test_pareto_only_points_stay_out_of_every_other_figure(apps_root, empty_ctx, tmp_path,
+                                                           monkeypatch, fake_tile_sweep):
+    """DESIGNS_PARETO_ONLY results reach single_level_pareto only (user 2026-11-19); the
+    other design points keep their bar colors."""
+    from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
+    from THESIS.pipeline.tile_figures import SERIES
+    for d in ("port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc8k_sp2x2"):
+        _write_pass_cell(apps_root, d, "gaussian_agg", total_cycles=100, synth_power_w=0.01,
+                         clock_period_ps=1000.0, mem_tiles_placed=2, mem_tile_area_um2=1e3,
+                         pe_tiles_placed=2, pe_tile_area_um2=5e2)
+    assert set(generators._load_apps_or_miss()["design_id"]) == {"port_fw4_dw16_sc8k_sp2x2"}
+    assert set(generators._load_apps_or_miss(pareto_only=True)["design_id"]) == {
+        "port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc8k_sp2x2"}
+    seen, real = [], generators._design_ppa
+    monkeypatch.setattr(generators, "_design_ppa",
+                        lambda df: seen.append(set(df["design_id"])) or real(df))
+    generators.single_level_pareto(empty_ctx, tmp_path / "p.pdf")
+    assert seen == [{"port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc8k_sp2x2"}]
+    colors = generators._design_colors()
+    single = generators._app_designs({d.id for d in DESIGNS_SINGLE_LEVEL})
+    assert [colors[d] for d, _ in single] == SERIES[:len(single)]
 
 
 def test_pareto_keeps_points_nothing_beats_on_both_axes():
