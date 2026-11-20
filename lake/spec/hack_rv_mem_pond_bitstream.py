@@ -520,6 +520,269 @@ def get_vec_accum_pond(num_partial_reduction=64, num_output_pixels=4):
     return linear_test
 
 
+def get_repeat_pond(num_writes=2, num_reads=1024):
+    '''
+    Pond schedule that holds one value and returns it num_reads times.
+
+    Write port 0 writes every token to word 0; the tokens are copies of one
+    value (for example a weight that a GLB IO reads twice). Read port 0
+    (port 2, the port that feeds the PE packed into the Pond's tile) reads
+    word 0 num_reads times. A read waits until the writer has written more
+    tokens than have been read, and runs freely once the writer is finished.
+    Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
+    '''
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    assert 1 <= num_writes <= MAX_EXTENT
+    read_extents = [num_reads]
+    while read_extents[0] > MAX_EXTENT:
+        assert read_extents[0] % 2 == 0, f"ERROR: cannot split {num_reads} pond reads into extents"
+        read_extents = [read_extents[0] // 2, 2 * (read_extents[1] if len(read_extents) > 1 else 1)]
+    assert all(e <= MAX_EXTENT for e in read_extents)
+
+    linear_test = {}
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 1,
+            'extents': [num_writes],
+            'address': {
+                'strides': [0],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+    linear_test[2] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': len(read_extents),
+            'extents': read_extents,
+            'address': {
+                'strides': [0] * len(read_extents),
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+    pw = 0
+    pr0 = 2
+    # read count < write count until the writer finishes, then always true
+    raw_constraint = (pr0, 0, pw, 0, LFComparisonOperator.LT.value, 0)
+    linear_test['constraints'] = [raw_constraint]
+    return linear_test
+
+
+def get_row_shift_pond(num_groups, num_rows, shift):
+    '''
+    Pond schedule that shifts a row-major stream by ``shift`` elements within
+    each row: for element g of row q it returns element g - shift of row q,
+    or 0 for g < shift. A row is num_groups elements and the rows follow
+    each other.
+
+    Row q is written to the B Pond words starting at B * q (mod 32), where B
+    is the smallest power of two of at least 2 * num_groups - 1, and read
+    port 0 (port 2) reads word B * q + g - shift. For g < shift that word is
+    one of the last shift words of the previous row's block, which are never
+    written; the clear (port 1) zeroes the Pond before the first row (twice,
+    as iteration extents are programmed as extent - 2). Row q is read once
+    it is completely written. The writer is held back once it is 32 / B - 1
+    rows ahead, but the Pond's input ready is tied high, so a held-back
+    write is lost: the reader must keep up (it must never wait for a
+    downstream join), and the guard only turns an overflow into a hang. Each constraint compares one counter level of
+    one port pair; the comparison network holds one comparison per pair.
+    Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
+    '''
+    POND_DEPTH = 32
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    assert 1 <= shift < num_groups, f"ERROR: shift {shift} must lie in [1, {num_groups})"
+    assert 2 <= num_rows <= MAX_EXTENT, f"ERROR: {num_rows} rows must lie in [2, {MAX_EXTENT}]"
+    block = 1
+    while block < 2 * num_groups - 1:
+        block *= 2
+    rows_in_flight = POND_DEPTH // block
+    assert rows_in_flight >= 2, f"ERROR: rows of {num_groups} elements need {block} Pond words, more than half the Pond"
+
+    def port(name, direction, extents, strides, offset):
+        return {
+            'name': name,
+            'type': direction,
+            'config': {
+                'dimensionality': len(extents),
+                'extents': extents,
+                'address': {'strides': strides, 'offset': offset},
+                'schedule': {}
+            },
+            'vec_in_config': {},
+            'vec_out_config': {},
+            'vec_constraints': []
+        }
+
+    linear_test = {}
+    linear_test[0] = port('port_w0', Direction.IN, [num_groups, num_rows], [1, block], 0)
+    linear_test[1] = port('port_w_init', Direction.IN, [2], [0], 0)
+    linear_test[2] = port('port_r0', Direction.OUT, [num_groups, num_rows], [1, block], POND_DEPTH - shift)
+    pw, pwinit, pr = 0, 1, 2
+    LT, GT = LFComparisonOperator.LT.value, LFComparisonOperator.GT.value
+    linear_test['constraints'] = [
+        # read row q once the writer has finished it
+        (pr, 1, pw, 1, LT, 0),
+        # read only after both clears
+        (pr, 1, pwinit, 0, LT, 1),
+        # overwrite a row's block only after its reads (one row of margin)
+        (pw, 1, pr, 1, GT, rows_in_flight - 1),
+    ]
+    return linear_test
+
+
+def get_col_cumsum_pond(num_groups, num_rows, num_mats):
+    '''
+    Pond schedule of one lane of a cumsum along dim -2 (down the rows).
+
+    The lane sees column groups m = 0 .. num_groups - 1 of row r, then of row
+    r + 1, and so on; num_rows rows form one matrix, and num_mats matrices
+    follow each other. Its PE adds the input to the running sum of the same
+    column in the row above, read from this Pond, and writes the new sum back:
+
+        y[r, m] = y[r - 1, m] + x[r, m],   y[-1, m] = 0
+
+    The Pond is a ring of its 32 words (addresses wrap). Token t of a matrix
+    (t = r * num_groups + m) is written by port_w0 to word t mod 32; port_r0
+    (port 2, the tile's PE) reads word (t - num_groups) mod 32, the sum of the
+    same column one row up; port_r1 (port 3, the interconnect) reads word
+    t mod 32 again, the new sum, which is the cumsum output. The clear (port 1)
+    zeroes the Pond once before each matrix (num_mats >= 2, as iteration
+    extents are programmed as extent - 2), so the first row reads zeros.
+
+    Each constraint compares one counter level of one read port and one
+    write port (the comparison network has no read-to-read comparison, and
+    one comparison per pair and direction):
+    - r0 reads token t once w0 has written token t - num_groups;
+    - r1 reads token t once w0 has written it;
+    - w0 stays fewer than 30 tokens ahead of r1 (ring of 32 words);
+    - r0 starts matrix b after the clears of matrix b;
+    - the clears of matrix b wait until r1 has finished matrix b - 1.
+    The write port cannot hold back its writer (the Pond's input ready is
+    tied high), and r1 cannot pace r0, so a held-back write is lost: the
+    output must keep up with the loop (r1 must stay fewer than 30 tokens
+    behind w0), and the w0 guard only turns an overflow into a hang.
+    Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
+    '''
+    POND_DEPTH = 32
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    tokens = num_groups * num_rows
+    assert 1 <= num_groups < POND_DEPTH - 2, f"ERROR: {num_groups} column groups do not fit the Pond ring"
+    assert 2 <= tokens <= MAX_EXTENT, f"ERROR: {tokens} tokens per matrix exceed the 11-bit extent limit"
+    assert 2 <= num_mats <= MAX_EXTENT, f"ERROR: {num_mats} matrices must lie in [2, {MAX_EXTENT}]"
+
+    def port(name, direction, extents, strides, offset):
+        return {
+            'name': name,
+            'type': direction,
+            'config': {
+                'dimensionality': len(extents),
+                'extents': extents,
+                'address': {'strides': strides, 'offset': offset},
+                'schedule': {}
+            },
+            'vec_in_config': {},
+            'vec_out_config': {},
+            'vec_constraints': []
+        }
+
+    linear_test = {}
+    linear_test[0] = port('port_w0', Direction.IN, [tokens, num_mats], [1, 0], 0)
+    linear_test[1] = port('port_w_init', Direction.IN, [num_mats], [0], 0)
+    linear_test[2] = port('port_r0', Direction.OUT, [tokens, num_mats], [1, 0], POND_DEPTH - num_groups)
+    linear_test[3] = port('port_r1', Direction.OUT, [tokens, num_mats], [1, 0], 0)
+    pw, pwinit, pr0, pr1 = 0, 1, 2, 3
+    LT, GT = LFComparisonOperator.LT.value, LFComparisonOperator.GT.value
+    linear_test['constraints'] = [
+        # r0 token t - num_groups < w0 count: the sum one row up is written
+        (pr0, 0, pw, 0, LT, -num_groups),
+        # r1 token t < w0 count: the new sum is written
+        (pr1, 0, pw, 0, LT, 0),
+        # w0 < r1 + POND_DEPTH - 2: never overwrite an unread sum
+        (pw, 0, pr1, 0, GT, POND_DEPTH - 2),
+        # r0 matrix b < clears done
+        (pr0, 1, pwinit, 0, LT, 0),
+        # clear b < r1 matrix + 1: matrix b - 1 has been read out
+        (pwinit, 0, pr1, 1, GT, 1),
+    ]
+    return linear_test
+
+
+def get_fifo_pond(input_stream_size, read_port=2, raw_margin=0):
+    '''
+    Pond schedule for an elastic FIFO.
+
+    Write port 0 stores the stream in order and one read port returns it in
+    order: read port 0 (port 2) feeds the PE of the Pond's tile and read port 1
+    (port 3) drives the interconnect. ``read_port`` selects 2 or 3.
+    A word is read once it was written; ``raw_margin`` m > 0 waits until m
+    more were written (RTL simulation reads correctly with 0, also right
+    after the write). The last word is read when the writer is done. A
+    stream longer than the 11-bit extent limit is counted in blocks of b
+    words, and the same rules apply to whole blocks.
+    The writer is held back once it is 30 words (in blocks) ahead, but the
+    Pond's input ready is tied high, so a held-back write is lost: the FIFO
+    must never fill (its branch must hold fewer than 30 words), and the
+    guard only turns an overflow into a hang.
+    Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
+    '''
+    POND_DEPTH = 32
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    if input_stream_size <= MAX_EXTENT:
+        block = 1
+        extents, strides = [input_stream_size], [1]
+    else:
+        block = next((b for b in (2, 4, 8) if input_stream_size % b == 0 and input_stream_size // b <= MAX_EXTENT), None)
+        assert block is not None, f"ERROR: cannot split a {input_stream_size}-word pond FIFO stream into blocks"
+        extents, strides = [block, input_stream_size // block], [1, block]
+    level = len(extents) - 1
+
+    linear_test = {}
+    assert read_port in (2, 3)
+    for port, name, direction in ((0, 'port_w0', Direction.IN), (read_port, f'port_r{read_port - 2}', Direction.OUT)):
+        linear_test[port] = {
+            'name': name,
+            'type': direction,
+            'config': {
+                'dimensionality': len(extents),
+                'extents': extents,
+                'address': {
+                    'strides': strides,
+                    'offset': 0
+                },
+                'schedule': {}
+            },
+            'vec_in_config': {},
+            'vec_out_config': {},
+            'vec_constraints': []
+        }
+
+    pw = 0
+    pr = read_port
+    # read count (in blocks) + raw_margin < write count
+    raw_constraint = (pr, level, pw, level, LFComparisonOperator.LT.value, raw_margin)
+    # write count < read count + slack: stay inside the 32-word pond
+    slack = POND_DEPTH // block - 2
+    war_constraint = (pw, level, pr, level, LFComparisonOperator.GT.value, slack)
+    linear_test['constraints'] = [raw_constraint, war_constraint]
+    return linear_test
+
+
 def get_single_mem_transpose(in_img_x=64, in_img_y=32):
     '''
     Helper function to create config for mem transpose

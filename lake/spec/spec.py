@@ -1531,6 +1531,35 @@ class Spec():
                     num_partial_reduction=rv_params["num_partial_reduction"],
                     num_output_pixels=rv_params["num_output_pixels"],
                 )
+            elif rv_type == "get_mem_single_read":
+                application = get_mem_single_read(
+                    input_stream_size=rv_params["input_stream_size"],
+                    rv_stride=rv_params.get("rv_stride", 1),
+                    filter_offset_scalar=rv_params.get("filter_offset_scalar", 0),
+                )
+            elif rv_type == "get_repeat_pond":
+                application = get_repeat_pond(
+                    num_writes=rv_params.get("num_writes", 2),
+                    num_reads=rv_params["num_reads"],
+                )
+            elif rv_type == "get_col_cumsum_pond":
+                application = get_col_cumsum_pond(
+                    num_groups=rv_params["num_groups"],
+                    num_rows=rv_params["num_rows"],
+                    num_mats=rv_params["num_mats"],
+                )
+            elif rv_type == "get_row_shift_pond":
+                application = get_row_shift_pond(
+                    num_groups=rv_params["num_groups"],
+                    num_rows=rv_params["num_rows"],
+                    shift=rv_params["shift"],
+                )
+            elif rv_type == "get_fifo_pond":
+                application = get_fifo_pond(
+                    input_stream_size=rv_params["input_stream_size"],
+                    read_port=rv_params.get("read_port", 2),
+                    raw_margin=rv_params.get("raw_margin", 0),
+                )
             elif rv_type == "get_broadcast_mem":
                 application = get_broadcast_mem(
                     input_stream_size=rv_params["input_stream_size"],
