@@ -1548,6 +1548,18 @@ class Spec():
                     num_rows=rv_params["num_rows"],
                     num_mats=rv_params["num_mats"],
                 )
+            elif rv_type == "get_block_absmax_pond":
+                application = get_block_absmax_pond(
+                    num_groups=rv_params["num_groups"],
+                    block_rows=rv_params["block_rows"],
+                    num_blocks=rv_params["num_blocks"],
+                )
+            elif rv_type == "get_block_replay_pond":
+                application = get_block_replay_pond(
+                    num_groups=rv_params["num_groups"],
+                    block_rows=rv_params["block_rows"],
+                    num_blocks=rv_params["num_blocks"],
+                )
             elif rv_type == "get_row_shift_pond":
                 application = get_row_shift_pond(
                     num_groups=rv_params["num_groups"],

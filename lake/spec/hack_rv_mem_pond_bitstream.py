@@ -722,6 +722,119 @@ def get_col_cumsum_pond(num_groups, num_rows, num_mats):
     return linear_test
 
 
+
+def _pond_port(name, direction, extents, strides, offset):
+    return {
+        'name': name,
+        'type': direction,
+        'config': {
+            'dimensionality': len(extents),
+            'extents': extents,
+            'address': {'strides': strides, 'offset': offset},
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+
+def get_block_absmax_pond(num_groups, block_rows, num_blocks):
+    '''
+    Pond schedule of one lane of a block |max| along dim -2 (down the rows).
+
+    In each block the lane sees num_groups columns of row r, then of row r + 1,
+    for block_rows rows; num_blocks blocks follow each other. Its PE takes the
+    |max| of the input and the running |max| of the same column one row up,
+    read from this Pond, and writes the result back:
+
+        m[r, g] = abs_max(m[r - 1, g], x[r, g]),   m[-1, g] = 0
+
+    The Pond is a ring of its 32 words. Token t of a block (t = r * num_groups
+    + g) is written by port_w0 to word t mod 32; port_r0 (port 2, the tile's
+    PE) reads word (t - num_groups) mod 32. port_r1 (port 3, the
+    interconnect) reads only the last row, the block maxima, once the block is
+    written. The clear (port 1) zeroes the Pond once before each block, so the
+    first row reads zeros.
+
+    Constraints (one per read/write pair and direction):
+    - r0 reads token t once w0 has written token t - num_groups;
+    - r1 reads block b once w0 has finished block b. This compares the block
+      counters: at the token level the counter correction for a writer in the
+      next block adds the reader's extent (num_groups, not the block length),
+      so the last maximum would never be released;
+    - r0 starts block b after the clear of block b;
+    - the clear of block b waits until r1 has read block b - 1.
+    w0 needs no guard: it can only enter the next block after that block's
+    clear, which waits for r1. The Pond's input ready is tied high, so r1 must
+    not stall for long (its reader should never back-pressure).
+    Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
+    '''
+    POND_DEPTH = 32
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    tokens = num_groups * block_rows
+    assert 2 <= num_groups < POND_DEPTH - 2, f"ERROR: {num_groups} column groups do not fit the Pond ring"
+    assert 2 <= block_rows and tokens <= MAX_EXTENT, f"ERROR: {tokens} tokens per block exceed the 11-bit extent limit"
+    assert 2 <= num_blocks <= MAX_EXTENT, f"ERROR: {num_blocks} blocks must lie in [2, {MAX_EXTENT}]"
+
+    linear_test = {}
+    linear_test[0] = _pond_port('port_w0', Direction.IN, [tokens, num_blocks], [1, 0], 0)
+    linear_test[1] = _pond_port('port_w_init', Direction.IN, [num_blocks], [0], 0)
+    linear_test[2] = _pond_port('port_r0', Direction.OUT, [tokens, num_blocks], [1, 0], POND_DEPTH - num_groups)
+    linear_test[3] = _pond_port('port_r1', Direction.OUT, [num_groups, num_blocks], [1, 0], (tokens - num_groups) % POND_DEPTH)
+    pw, pwinit, pr0, pr1 = 0, 1, 2, 3
+    LT, GT = LFComparisonOperator.LT.value, LFComparisonOperator.GT.value
+    linear_test['constraints'] = [
+        # r0 token t - num_groups < w0 count: the maximum one row up is written
+        (pr0, 0, pw, 0, LT, -num_groups),
+        # r1 block b < w0 blocks done: the block maxima are written
+        (pr1, 1, pw, 1, LT, 0),
+        # r0 block b < clears done
+        (pr0, 1, pwinit, 0, LT, 0),
+        # clear b < r1 block + 1: block b - 1 has been read out
+        (pwinit, 0, pr1, 1, GT, 1),
+    ]
+    return linear_test
+
+
+def get_block_replay_pond(num_groups, block_rows, num_blocks):
+    '''
+    Pond schedule that replays the num_groups values of each block block_rows
+    times, in the token order of the block (row-major, num_groups per row).
+
+    port_w0 writes value g of block b to word (g + num_groups * b) mod 32 (a
+    ring of 32 / num_groups blocks). port_r0 (port 2, the tile's PE) reads the
+    words of block b once per row, after w0 has finished block b. The w0 guard
+    keeps a block from overwriting one that r0 has not finished; the Pond's
+    input ready is tied high, so the guard only turns an overflow into a hang,
+    and the reader must keep up (it runs one row per block_rows tokens of its
+    writer's source, so it only holds the latency gap).
+    Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
+    '''
+    POND_DEPTH = 32
+    EXTENT_COUNTER_WIDTH = 11
+    MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
+    ring_blocks = POND_DEPTH // num_groups
+    assert 2 <= num_groups <= POND_DEPTH // 2, f"ERROR: {num_groups} values per block do not fit two blocks in the Pond"
+    assert 2 <= block_rows <= MAX_EXTENT, f"ERROR: {block_rows} rows must lie in [2, {MAX_EXTENT}]"
+    assert 2 <= num_blocks <= MAX_EXTENT, f"ERROR: {num_blocks} blocks must lie in [2, {MAX_EXTENT}]"
+
+    linear_test = {}
+    linear_test[0] = _pond_port('port_w0', Direction.IN, [num_groups, num_blocks], [1, num_groups], 0)
+    linear_test[2] = _pond_port('port_r0', Direction.OUT, [num_groups, block_rows, num_blocks],
+                                [1, 0, num_groups], 0)
+    pw, pr0 = 0, 2
+    LT, GT = LFComparisonOperator.LT.value, LFComparisonOperator.GT.value
+    linear_test['constraints'] = [
+        # r0 block b < w0 blocks done
+        (pr0, 2, pw, 1, LT, 0),
+        # w0 block b < r0 block + ring_blocks - 1: never overwrite an unread block
+        (pw, 1, pr0, 2, GT, ring_blocks - 1),
+    ]
+    return linear_test
+
+
 def get_fifo_pond(input_stream_size, read_port=2, raw_margin=0):
     '''
     Pond schedule for an elastic FIFO.
