@@ -593,12 +593,25 @@ def get_row_shift_pond(num_groups, num_rows, shift):
     port 0 (port 2) reads word B * q + g - shift. For g < shift that word is
     one of the last shift words of the previous row's block, which are never
     written; the clear (port 1) zeroes the Pond before the first row (twice,
-    as iteration extents are programmed as extent - 2). Row q is read once
-    it is completely written. The writer is held back once it is 32 / B - 1
-    rows ahead, but the Pond's input ready is tied high, so a held-back
-    write is lost: the reader must keep up (it must never wait for a
-    downstream join), and the guard only turns an overflow into a hang. Each constraint compares one counter level of
-    one port pair; the comparison network holds one comparison per pair.
+    as iteration extents are programmed as extent - 2).
+
+    With 4 or more rows in flight (num_groups <= 4), row q is read once it is
+    completely written, and the writer is held back once it is 32 / B - 1
+    rows ahead. With only 2 rows in flight (5 to 8 groups, B = 16), those
+    row guards would hold the writer back while the reader reads the
+    previous row, so both guards compare single elements instead: element t
+    is read once the writer has written element t, and the writer stays
+    fewer than num_groups elements ahead of the reader. The ports are then
+    never a whole row apart, so the comparison network's row correction (it
+    adds a row to the writer's count when the row counters differ) is exact,
+    and a write never reaches a word the reader still needs (that word is
+    2 * num_groups - shift elements back).
+
+    The Pond's input ready is tied high, so a held-back write is lost: the
+    reader must keep up (it must never wait for a downstream join), and the
+    guard only turns an overflow into a hang. Each constraint compares one
+    counter level of one port pair; the comparison network holds one
+    comparison per pair.
     Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
     '''
     POND_DEPTH = 32
@@ -633,14 +646,24 @@ def get_row_shift_pond(num_groups, num_rows, shift):
     linear_test[2] = port('port_r0', Direction.OUT, [num_groups, num_rows], [1, block], POND_DEPTH - shift)
     pw, pwinit, pr = 0, 1, 2
     LT, GT = LFComparisonOperator.LT.value, LFComparisonOperator.GT.value
-    linear_test['constraints'] = [
-        # read row q once the writer has finished it
-        (pr, 1, pw, 1, LT, 0),
-        # read only after both clears
-        (pr, 1, pwinit, 0, LT, 1),
-        # overwrite a row's block only after its reads (one row of margin)
-        (pw, 1, pr, 1, GT, rows_in_flight - 1),
-    ]
+    if rows_in_flight > 2:
+        linear_test['constraints'] = [
+            # read row q once the writer has finished it
+            (pr, 1, pw, 1, LT, 0),
+            # read only after both clears
+            (pr, 1, pwinit, 0, LT, 1),
+            # overwrite a row's block only after its reads (one row of margin)
+            (pw, 1, pr, 1, GT, rows_in_flight - 1),
+        ]
+    else:
+        linear_test['constraints'] = [
+            # read element t once the writer has written it
+            (pr, 0, pw, 0, LT, 0),
+            # read only after both clears
+            (pr, 1, pwinit, 0, LT, 1),
+            # writer < reader + num_groups: fewer than a row ahead
+            (pw, 0, pr, 0, GT, num_groups),
+        ]
     return linear_test
 
 
