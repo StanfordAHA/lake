@@ -686,6 +686,15 @@ def get_col_cumsum_pond(num_groups, num_rows, num_mats):
     zeroes the Pond once before each matrix (num_mats >= 2, as iteration
     extents are programmed as extent - 2), so the first row reads zeros.
 
+    A matrix of more than 1,024 tokens (the 11-bit extent limit) is counted
+    in chunks of up to 512 tokens, as in get_fifo_pond. The token guards
+    still compare single tokens: when two ports are in different chunks, the
+    comparison network adds the gated port's chunk extent, which is exact
+    because the ports stay fewer than POND_DEPTH + num_groups tokens apart,
+    less than a chunk. The last chunk of a matrix and the first chunk of the
+    next are adjacent in token order too, so the guards also hold across
+    matrices.
+
     Each constraint compares one counter level of one read port and one
     write port (the comparison network has no read-to-read comparison, and
     one comparison per pair and direction):
@@ -705,8 +714,16 @@ def get_col_cumsum_pond(num_groups, num_rows, num_mats):
     MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
     tokens = num_groups * num_rows
     assert 1 <= num_groups < POND_DEPTH - 2, f"ERROR: {num_groups} column groups do not fit the Pond ring"
-    assert 2 <= tokens <= MAX_EXTENT, f"ERROR: {tokens} tokens per matrix exceed the 11-bit extent limit"
+    assert tokens >= 2, f"ERROR: {tokens} tokens per matrix, need at least 2"
     assert 2 <= num_mats <= MAX_EXTENT, f"ERROR: {num_mats} matrices must lie in [2, {MAX_EXTENT}]"
+    if tokens <= MAX_EXTENT:
+        tok_extents, tok_strides = [tokens], [1]
+    else:
+        inner = next((e for e in range(MAX_EXTENT // 2, POND_DEPTH + num_groups, -1)
+                      if tokens % e == 0 and tokens // e <= MAX_EXTENT), None)
+        assert inner is not None, f"ERROR: cannot split {tokens} tokens per matrix into chunks"
+        tok_extents, tok_strides = [inner, tokens // inner], [1, inner]
+    mat = len(tok_extents)  # level of the matrix loop in w0, r0 and r1
 
     def port(name, direction, extents, strides, offset):
         return {
@@ -724,10 +741,11 @@ def get_col_cumsum_pond(num_groups, num_rows, num_mats):
         }
 
     linear_test = {}
-    linear_test[0] = port('port_w0', Direction.IN, [tokens, num_mats], [1, 0], 0)
+    extents, strides = tok_extents + [num_mats], tok_strides + [0]
+    linear_test[0] = port('port_w0', Direction.IN, extents, strides, 0)
     linear_test[1] = port('port_w_init', Direction.IN, [num_mats], [0], 0)
-    linear_test[2] = port('port_r0', Direction.OUT, [tokens, num_mats], [1, 0], POND_DEPTH - num_groups)
-    linear_test[3] = port('port_r1', Direction.OUT, [tokens, num_mats], [1, 0], 0)
+    linear_test[2] = port('port_r0', Direction.OUT, extents, strides, POND_DEPTH - num_groups)
+    linear_test[3] = port('port_r1', Direction.OUT, extents, strides, 0)
     pw, pwinit, pr0, pr1 = 0, 1, 2, 3
     LT, GT = LFComparisonOperator.LT.value, LFComparisonOperator.GT.value
     linear_test['constraints'] = [
@@ -738,9 +756,9 @@ def get_col_cumsum_pond(num_groups, num_rows, num_mats):
         # w0 < r1 + POND_DEPTH - 2: never overwrite an unread sum
         (pw, 0, pr1, 0, GT, POND_DEPTH - 2),
         # r0 matrix b < clears done
-        (pr0, 1, pwinit, 0, LT, 0),
+        (pr0, mat, pwinit, 0, LT, 0),
         # clear b < r1 matrix + 1: matrix b - 1 has been read out
-        (pwinit, 0, pr1, 1, GT, 1),
+        (pwinit, 0, pr1, mat, GT, 1),
     ]
     return linear_test
 
