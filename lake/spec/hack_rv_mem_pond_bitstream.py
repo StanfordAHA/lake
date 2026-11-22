@@ -845,9 +845,14 @@ def get_fifo_pond(input_stream_size, read_port=2, raw_margin=0):
     A word is read once it was written; ``raw_margin`` m > 0 waits until m
     more were written (RTL simulation reads correctly with 0, also right
     after the write). The last word is read when the writer is done. A
-    stream longer than the 11-bit extent limit is counted in blocks of b
-    words, and the same rules apply to whole blocks.
-    The writer is held back once it is 30 words (in blocks) ahead, but the
+    stream longer than the 11-bit extent limit is counted in chunks of up
+    to 512 words, and both guards still compare single words: when the two
+    ports are in different chunks, the comparison network adds the gated
+    port's chunk extent to the right counter, which is exact because the
+    ports never drift a whole chunk apart. (Guards on whole blocks of 2-8
+    words cut the usable depth to 21-24 words at 4,096 words, and
+    fused_e8m0_quant_single_IO at 64 x 2048 lost words and hung.)
+    The writer is held back once it is 30 words ahead, but the
     Pond's input ready is tied high, so a held-back write is lost: the FIFO
     must never fill (its branch must hold fewer than 30 words), and the
     guard only turns an overflow into a hang.
@@ -857,13 +862,15 @@ def get_fifo_pond(input_stream_size, read_port=2, raw_margin=0):
     EXTENT_COUNTER_WIDTH = 11
     MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)  # Counter is signed so max extent is 2^10
     if input_stream_size <= MAX_EXTENT:
-        block = 1
         extents, strides = [input_stream_size], [1]
     else:
-        block = next((b for b in (2, 4, 8) if input_stream_size % b == 0 and input_stream_size // b <= MAX_EXTENT), None)
-        assert block is not None, f"ERROR: cannot split a {input_stream_size}-word pond FIFO stream into blocks"
-        extents, strides = [block, input_stream_size // block], [1, block]
-    level = len(extents) - 1
+        # Chunks of at most 512 words keep chunk extent + slack inside the
+        # 11-bit counters, and a chunk is longer than the slack.
+        inner = next((e for e in range(MAX_EXTENT // 2, POND_DEPTH, -1)
+                      if input_stream_size % e == 0 and input_stream_size // e <= MAX_EXTENT), None)
+        assert inner is not None, f"ERROR: cannot split a {input_stream_size}-word pond FIFO stream into chunks"
+        extents, strides = [inner, input_stream_size // inner], [1, inner]
+    level = 0
 
     linear_test = {}
     assert read_port in (2, 3)
@@ -887,10 +894,10 @@ def get_fifo_pond(input_stream_size, read_port=2, raw_margin=0):
 
     pw = 0
     pr = read_port
-    # read count (in blocks) + raw_margin < write count
+    # read count + raw_margin < write count
     raw_constraint = (pr, level, pw, level, LFComparisonOperator.LT.value, raw_margin)
     # write count < read count + slack: stay inside the 32-word pond
-    slack = POND_DEPTH // block - 2
+    slack = POND_DEPTH - 2
     war_constraint = (pw, level, pr, level, LFComparisonOperator.GT.value, slack)
     linear_test['constraints'] = [raw_constraint, war_constraint]
     return linear_test
