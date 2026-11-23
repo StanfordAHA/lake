@@ -637,6 +637,28 @@ def _pareto(pts: list[tuple[float, float]], higher: bool) -> list[tuple[float, f
     return front
 
 
+def _fronts_by_width(xy, higher: bool) -> dict:
+    """{data width: Pareto front (``_pareto``)} of ``xy`` = [(design_id, label, x, y)]:
+    each width's points form their own front, since points of different data widths
+    are not comparable (user 2026-11-23). Ids that are not design points share width None."""
+    from ..apps.design_points import DESIGNS_ALL
+    width = {d.id: d.data_width for d in DESIGNS_ALL}
+    groups: dict = {}
+    for d, _, x, y in xy:
+        groups.setdefault(width.get(d), []).append((x, y))
+    return {w: _pareto(pts, higher) for w, pts in groups.items()}
+
+
+def _drop_lone_widths(xy: list) -> list:
+    """``xy`` = [(design_id, ...)] without the points whose data width has no other
+    point: with nothing comparable, they say nothing on a Pareto plot (user 2026-11-23)."""
+    from collections import Counter
+    from ..apps.design_points import DESIGNS_ALL
+    width = {d.id: d.data_width for d in DESIGNS_ALL}
+    n = Counter(width.get(p[0]) for p in xy)
+    return [p for p in xy if n[width.get(p[0])] > 1]
+
+
 # The data width single_level_pareto compares at (user 2026-11-18: 16-bit only for now;
 # fronts for the other widths come later, once each width has enough design points).
 PARETO_DATA_WIDTH = APP_DATA_WIDTH
@@ -650,7 +672,8 @@ def _tile_bandwidth(memtile: pd.DataFrame | None,
     to the first design point (the baseline), and its clock. Peak bandwidth is the
     words per cycle the tile can move, the Ports' (inputs + outputs) or the SRAM's
     (fetch width, twice that when dual-port), whichever is smaller, x data width x clock.
-    It is the tile's alone, no app, so every data width compares in bytes."""
+    It is the tile's alone, no app, in bytes so every data width fits one axis
+    (single_level_pareto still draws one front per width: widths are not comparable)."""
     from ..apps.design_points import DESIGNS_ALL
     by_id = {d.id: d for d in DESIGNS_ALL}
     out = []
@@ -678,13 +701,15 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
     every data width, from the tile sweep). (b) The apps: power against the area of
     the tiles they are placed on, relative to the baseline (``_design_ppa``), on the
     design points at ``data_width`` only (None: all), since another width changes what
-    each app computes. Each panel dashes its Pareto front and rings its points; colors
+    each app computes. Each data width gets its own dashed Pareto front
+    (``_fronts_by_width``; user 2026-11-23: widths are not comparable), its points
+    ringed, and a width with a single tile is left out (``_drop_lone_widths``). Colors
     follow the per-app bar figures (``_design_colors``). It also shows the
     DESIGNS_PARETO_ONLY points, as diamonds (user 2026-11-19)."""
     from ..apps.design_points import DESIGNS_ALL, DESIGNS_PARETO_ONLY
     from . import tile_sweep
     from .tile_figures import FULL_W, INK2, MUTED, SERIES, _ax_style, _legend_above, _save
-    tiles = _tile_bandwidth(tile_sweep.load(), mode)
+    tiles = _drop_lone_widths(_tile_bandwidth(tile_sweep.load(), mode))
     df = _load_apps_or_miss(required_col="synth_power_w", mode=mode, pareto_only=True)
     if data_width is not None:
         ids = {d.id for d in DESIGNS_ALL if d.data_width == data_width}
@@ -710,11 +735,11 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
                                         marker="D" if d in diamonds else "o",
                                         edgecolor="white", linewidth=0.6, zorder=3,
                                         label=label + notes.get(d, ""))
-        front = _pareto([(x, y) for *_, x, y in xy], higher)
-        # rings mark the front, so a one-point front still shows
-        line, = ax.plot(*zip(*front), color=MUTED, linestyle="--", linewidth=1.1, marker="o",
-                        markersize=11, markerfacecolor="none", markeredgewidth=1.1, zorder=2,
-                        label="Pareto front")
+        for front in _fronts_by_width(xy, higher).values():
+            # rings mark the front, so a one-point front still shows
+            line, = ax.plot(*zip(*front), color=MUTED, linestyle="--", linewidth=1.1,
+                            marker="o", markersize=11, markerfacecolor="none",
+                            markeredgewidth=1.1, zorder=2, label="Pareto front (per data width)")
         ax.set_title(title, loc="left", fontsize=10.5, color=INK2)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)

@@ -396,6 +396,23 @@ def test_pareto_only_points_stay_out_of_every_other_figure(apps_root, empty_ctx,
     assert [colors[d] for d, _ in single] == SERIES[:len(single)]
 
 
+def test_pareto_draws_one_front_per_data_width():
+    """Panel (a): the 8-, 16- and 32-bit tiles each get their own front (user
+    2026-11-23: points of different widths are not comparable)."""
+    tiles = generators._tile_bandwidth(_fake_tile_sweep())
+    t = {d: (a, bw) for d, _, a, bw in tiles}
+    fronts = generators._fronts_by_width(tiles, higher=True)
+    assert set(fronts) == {8, 16, 32}
+    assert fronts[8] == [t["port_fw4_dw8_sc8k_sp2x2"]]  # its only point
+    # the 32-bit dual-port point is the cheaper one in the fake sweep (index 1 vs 5)
+    assert fronts[32] == [t["port_fw2_dw32_sc8k_dp2x2"]]
+    assert t["port_fw4_dw32_sc8k_sp2x2"] not in fronts[16]
+    assert fronts[16][0] == t["port_fw4_dw16_sc8k_sp2x2"]  # the cheapest 16-bit tile
+    # the lone 8-bit tile has nothing to compare with, so the figure leaves it out
+    kept = {d for d, *_ in generators._drop_lone_widths(tiles)}
+    assert kept == set(t) - {"port_fw4_dw8_sc8k_sp2x2"}
+
+
 def test_pareto_keeps_points_nothing_beats_on_both_axes():
     pts = [(1.0, 1.0), (2.0, 3.0), (1.5, 0.5), (3.0, 2.0), (0.5, 0.8)]
     assert generators._pareto(pts, higher=True) == [(0.5, 0.8), (1.0, 1.0), (2.0, 3.0)]
