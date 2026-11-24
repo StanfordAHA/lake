@@ -189,6 +189,9 @@ SRAM busy fraction for utilization). Results land in
 (76 rows, kernel stats from the manifests: 89 `results.json`, since the PORT and MEM fw4
 dw16 8KB points are one config). The user's final data set is unpacked in
 `../thesis_final_data/` (`CONTENTS.txt`, `app_bundles_thesis_dp_STATUS.txt` for the gaps).
+**Re-ingested 2026-11-23** from `../thesis_final_data_11_23/` (same zip name, 121 rows, 135
+`results.json`, the earlier 89 unchanged): it adds the addon6 rows below and static
+`resnet_pond_agg`; only `single_level_pareto` changed.
 The figures draw each distinct config once and an × where an app has no result.
 `DESIGNS_PARETO_ONLY` (user 2026-11-19): four more dw16 2x2 points from the addon6 bundles
 (2 KB DP, fw4 4 KB SP, fw2 8 KB SP, fw2 8 KB DP). The ingest maps them; only

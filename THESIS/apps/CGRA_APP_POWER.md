@@ -258,7 +258,16 @@ python3 -m THESIS.apps.cgra_power_ingest ../thesis_final_data/cgra_app_power_the
 
 89 `results.json` (the fw4 dw16 8KB rows go under both the PORT and MEM design ids), areas
 from the zip's own Genus reports (no `--tile-sweep`). Everything in `single_level_*`,
-`single_level_*_LI`, `two_level_*` and `tab:ul_perf` is drawn from it. What the figures
+`single_level_*_LI`, `two_level_*` and `tab:ul_perf` is drawn from it.
+
+**Re-ingested 2026-11-23** with the addon6 rows (user's `thesis_final_data_11_23.zip`,
+unpacked in `../thesis_final_data_11_23/`; garnet 2174d63e): the same zip name, now 121
+rows, 17,567/17,567 tiles exact, 135 `results.json`. Same command on the new path. The 89
+earlier cells are unchanged in every value (only `garnet` and `source_path` differ). New:
+the four `DESIGNS_PARETO_ONLY` points (39 cells: 5 apps each, static and RV, minus RV
+camera on fw2 8 KB SP) and static `resnet_pond_agg` on six configs (7 cells; the two-level
+figures are RV only, so nothing draws them). Regenerated, every app figure and table but
+`single_level_pareto` came out byte-identical. What the figures
 show (2026-11-16):
 - `two_level_*` ResNet: the pond version uses far fewer tiles (7 MEM / 23 PE vs 26 MEM /
   52 PE; area about 0.3x) but delivers about 15x fewer output words per cycle (0.013 vs
@@ -306,9 +315,11 @@ Caveats:
   fw2 dw16 2 KB DP, fw4 dw16 4 KB SP, fw2 dw16 8 KB SP and fw2 dw16 8 KB DP, all 2x2,
   recorded in the addon6 bundles. The ingest maps them like the others (it reads
   `DESIGNS_ALL`); only `single_level_pareto` shows them, as diamonds. Every other figure
-  and table drops their rows (`generators._drop_pareto_only`). Gap: camera on fw2 8 KB SP
-  deadlocks in RV, so that point has no RV camera result (no RV Pareto exists, so no
-  figure misses it).
+  and table drops their rows (`generators._drop_pareto_only`). Their app power is in since
+  2026-11-23: panel (b), static, puts fw4 4 KB SP on the 16-bit front with fw2 2 KB SP 1x1
+  (0.92x area, 0.98x power). Gap: camera on fw2 8 KB SP deadlocks in RV, so that point has
+  no RV camera result, and RV gaussian/harris/unsharp run about 1.5x slower there (static
+  runs them at full rate); no RV Pareto exists, so no figure shows either.
 - **SRAM area is drawn in µm².** `single_level_area` stacks SRAM area absolute, while the
   tile figures show SRAM numbers relative (`tile_figures.SRAM_NDA`).
 
