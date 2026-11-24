@@ -1579,7 +1579,8 @@ class Spec():
                     raw_scalar=rv_params.get("raw_scalar", 4),
                 )
             elif rv_type == "get_interleave_mem":
-                application = get_interleave_mem(single_input_stream_size=rv_params["single_input_stream_size"])
+                application = get_interleave_mem(single_input_stream_size=rv_params["single_input_stream_size"],
+                                                 turn=rv_params.get("turn", 1))
             elif rv_type == "get_single_mem_line_buffer":
                 application = get_single_mem_line_buffer(
                     buffer_size=rv_params["buffer_size"],

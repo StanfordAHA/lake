@@ -1733,16 +1733,22 @@ def get_mem_line_buffer_single_port(line_size=64, num_lines=198, offset_r0=-64):
 
     return linear_test
 
-def get_interleave_mem(single_input_stream_size=512):
+def get_interleave_mem(single_input_stream_size=512, turn=1):
     '''
     Helper function to interleave two data streams like output GLB IOs.
     Input num 0 first, input num 1 second.
     Auto-splits extents when single_input_stream_size exceeds the extent
     counter width, following the same pattern as get_filter_mem_two_streams.
+    turn: values read from one input before switching to the other (1, 2 or 4;
+    default 1 = element-wise). The inputs sit in alternate SRAM words, and the
+    read port refills its word cache only every other cycle, so turn 1 (a new
+    word for every value) reads at most 0.5 values per cycle; turn 2 or 4 keeps
+    the read at about 1 value per cycle.
     '''
     EXTENT_COUNTER_WIDTH = 11
     MAX_EXTENT = 2**(EXTENT_COUNTER_WIDTH - 1)
     SIPO_WORD_WIDTH = 4
+    assert turn in (1, 2, 4), f"ERROR: interleave turn must be 1, 2 or 4 values, got {turn}"
 
     port_data_in_0 = 0
     port_data_in_1 = 1
@@ -1774,6 +1780,17 @@ def get_interleave_mem(single_input_stream_size=512):
         read_strides = [SIPO_WORD_WIDTH, 1, 2 * SIPO_WORD_WIDTH]
         raw_dim_w = 1
         raw_dim_r = 2
+
+    if turn > 1:
+        # turn values of one input, then turn of the other, then the next turn values of each word:
+        # (turn, 1), (2, SIPO_WORD_WIDTH), (SIPO_WORD_WIDTH // turn, turn), then the word-pair loops
+        turn_levels = [(turn, 1), (2, SIPO_WORD_WIDTH), (SIPO_WORD_WIDTH // turn, turn)]
+        turn_levels = [(e, s) for e, s in turn_levels if e > 1]
+        outer = list(zip(read_extents[2:], read_strides[2:]))
+        read_extents = [e for e, _ in turn_levels + outer]
+        read_strides = [s for _, s in turn_levels + outer]
+        read_dimensionality = len(read_extents)
+        raw_dim_r = read_dimensionality - 1
 
     linear_test = {}
 
