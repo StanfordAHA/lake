@@ -752,6 +752,10 @@ _RV_GROUPS = [
     ("Config registers", ["cfg_regs"], MUTED),
     ("MemoryPort, StencilValid, ROM", ["c_mp", "stencil", "rom"], SERIES[4]),
 ]
+# Non-SRAM logic outside the groups (mostly inner_glue, plus the controllers'
+# leftover logic and tile_glue/mc_glue): 9-15% of static idle power, 5-8% of RV.
+# Stacked on top so each bar sums to all non-SRAM power (user 2026-11-24).
+_RV_OTHER = ("Other logic", "#c9c8c0")
 _RV_CONFIGS = [  # full-throughput tiles only (`_full_rate`; were fw1 8 KB 2x2 me1024, 1/4
     # rate, and fw1 4 KB 1x1, 1/2 rate)
     ("fw2_dw16_sc4096_sp_in1_out1_vc2", "fw2 4 KB\n1 in, 1 out"),
@@ -764,7 +768,9 @@ _RV_CONFIGS = [  # full-throughput tiles only (`_full_rate`; were fw1 8 KB 2x2 m
 
 def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
     """Static vs RV twins, per block: (a) non-SRAM active energy per delivered
-    bit, with the SRAM's share of active power on top; (b) non-SRAM idle power."""
+    bit, with the SRAM's share of active power on top; (b) non-SRAM idle power.
+    The top segment, "Other logic", is total - SRAM - the groups, so each bar is
+    all non-SRAM power."""
     df = _load(mode=None).set_index("config")
     missing = [c + s for c, _ in _RV_CONFIGS for s in ("", "_rv") if c + s not in df.index]
     if missing:
@@ -789,6 +795,11 @@ def memtile_rv_energy_breakdown(ctx, outpath: Path) -> None:
                     ax.bar(x, v, w, bottom=bottom, color=c, edgecolor="white", linewidth=0.5,
                            label=name if (i == 0 and j == 1) else None)
                     bottom += v
+                nonsram = r[f"synth_{var}_total_power"] - r[f"pw_synth_{var}_sram"]
+                other = max(nonsram * scale - bottom, 0.0)
+                ax.bar(x, other, w, bottom=bottom, color=_RV_OTHER[1], edgecolor="white",
+                       linewidth=0.5, label=_RV_OTHER[0] if (i == 0 and j == 1) else None)
+                bottom += other
                 if var == "active":
                     share = r["pw_synth_active_sram"] / r["synth_active_total_power"] * 100
                     note = f"{share:.0f}%" if SRAM_NDA else f"+{r['pw_synth_active_sram'] * scale:.2f}"
