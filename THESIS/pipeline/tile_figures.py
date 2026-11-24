@@ -559,13 +559,15 @@ def memtile_rv_overhead_area(ctx, outpath: Path) -> None:
     if j.empty:
         raise MissingDataError("no static/RV pairs in the tile sweep")
     j["pct"] = (j["syn_std_rv"] / j["syn_std"] - 1) * 100
+    # max_sequence_width sizes only the static ScheduleGenerator's strides; the
+    # ready/valid tile has none, so the AFFINE sweep pairs 6 RV builds with 30
+    # static builds (user 2026-11-24: drop the row).
+    j = j[~j["experiments"].str.contains("AFFINE")]
 
     def group(r):
         e = r["experiments"]
         if "ITERATION_DOMAIN" in e:
             return "IterationDomain sweep (fw1)"
-        if "AFFINE" in e:
-            return "AddressGenerator sweep (fw1)"
         if "PORT_EXP" in e and "MEMORY" not in e:
             return "Port sweep (fw2–8, 8 KB)"
         kind = "dual-port" if r["dual_port"] else "single-port"
