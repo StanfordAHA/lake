@@ -453,7 +453,8 @@ def memtile_bandwidth_area(ctx, outpath: Path) -> None:
 @_viewable
 def memtile_interconnect_area(ctx, outpath: Path) -> None:
     """CB / SB / other-top-level area vs Lake port count (16-bit data), full-throughput
-    configs only (the same set as the power panel)."""
+    configs only (the same set as the power panel). The other-top-level series uses
+    only the SRAM depths every port count has, since it grows with depth."""
     df = _full_rate(_load())
     parts = [("syn_cb", "Connection boxes"), ("syn_sb", "Switch box"),
              ("syn_top", "Other top level")]
@@ -462,6 +463,16 @@ def memtile_interconnect_area(ctx, outpath: Path) -> None:
     med = df.groupby("in_ports")[cols].median()
     lo = df.groupby("in_ports")[cols].min()
     hi = df.groupby("in_ports")[cols].max()
+    # syn_top grows with SRAM depth (r = 0.87 vs log2 depth) and each port count
+    # sweeps different depths, so its median and range come from the depths all port
+    # counts share (512-2048 words; user 2026-11-25). CB, SB and the tick n use all.
+    # The caption says so: "(shared depths)" in the legend forces it to one column.
+    depth = df["storage_capacity"] * 8 / (df["vec_width"] * df["data_width"])
+    shared = set.intersection(*(set(d) for _, d in depth.groupby(df["in_ports"])))
+    if not shared:
+        raise MissingDataError("no SRAM depth common to every port count")
+    top = df[depth.isin(shared)].groupby("in_ports")["syn_top"]
+    med["syn_top"], lo["syn_top"], hi["syn_top"] = top.median(), top.min(), top.max()
     fig, ax, pax = _view_axes(_view(ctx), (HALF_W, 2.3))
     w = 0.26
     for k, ((col, lab), colr) in enumerate(zip(parts, SERIES[:3])):
