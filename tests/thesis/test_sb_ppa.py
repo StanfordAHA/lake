@@ -56,7 +56,7 @@ def test_tile_parts_bins_the_switch_box_children():
     assert p["regs"] == pytest.approx(2 * 50 + 2 * 13)
     assert (p["regs_dw_n"], p["regs_dw_area"], p["regs_1b_n"]) == (2, 100.0, 2)
     assert p["muxes"] == pytest.approx(2 * (10 + 4))
-    assert p["config"] == pytest.approx(60.0)
+    assert p["config_regs"] == pytest.approx(60.0)
     assert (p["fan_in"], p["fanout"], p["ands_n"]) == (pytest.approx(6.0), pytest.approx(1.0), 8)
     assert p["other"] == pytest.approx(4.0)  # the two SBs' own logic
     assert p["sb_area"] == pytest.approx(sum(p[k] for k in sb_ppa.PARTS))
@@ -100,6 +100,9 @@ def test_ingest_both_tiles_and_the_fork_logic(sb_csv):
     assert rv["fork_area"] == pytest.approx(6.0 + 4 * 0.2 + 0.2 + 0.7)
     assert st["fork_area"] == 0
     assert rv["regs_dw_each"] == pytest.approx(48.0) and st["regs_dw_each"] == pytest.approx(16.0)
+    # the config-register part doesn't overwrite the config name
+    assert rv["config"].endswith("_nofp_portcg_thesis_rv")
+    assert rv["config_regs"] == pytest.approx(60.0)
 
 
 @pytest.mark.parametrize("fig", ["interconnect_fifo_replace_ff", "interconnect_fork_ready_valid_data"])

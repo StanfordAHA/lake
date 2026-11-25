@@ -329,8 +329,9 @@ EXPLORATION_APPS = [
           "figures/two_level_energy_efficiency.pdf", "figure",
           "single- vs two-level energy per output word of each app pair", "real",
           g.two_level_energy_efficiency,
-          notes="synth_power_w * total_cycles * clock_period / output_words: per word, "
-                "since resnet_agg runs a tile=14 kernel and resnet_pond_agg the 28x28 image."),
+          notes="synth_power_w * total_cycles * clock_period / output_words: per word. The "
+                "ResNet pair both output 2352 words but differ in schedule and input file "
+                "(resnet_agg EXT=mat, resnet_pond_agg png)."),
 
     # Latency-insensitive variants
     Entry("single_level_power_LI", "fig:single_level_power_LI",

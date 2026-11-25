@@ -72,7 +72,7 @@ The text's other axes (dims, ScheduleGenerator duration) have no design points.
 | matmul_agg | tests/matmul_rvtry3 | single | HL_TARGET=host-x86-64 'HALIDE_GEN_ARGS=sched=1 n=16' MATMUL_N=16 |
 | matmul_pond_agg | tests/matmul_rvtry3 | two | HL_TARGET=host-x86-64-enable_ponds HALIDE_GEN_ARGS=n=16 MATMUL_N=16 |
 | resnet_agg | pondspec_e2e/resnet | single | EXT=mat |
-| resnet_pond_agg | pondspec_e2e/resnet_pond | two | (none; RV only) |
+| resnet_pond_agg | pondspec_e2e/resnet_pond | two | (none) |
 
 - **matmul** is the n=16 matmul the garnet bundles run. Single level unrolls the
   reduction into a PE adder tree, so only MEM tiles hold data; two level accumulates in
@@ -100,11 +100,13 @@ The text's other axes (dims, ScheduleGenerator duration) have no design points.
     accumulates in the pond, output channels are a loop, the output is `(x, y, w)`, its
     Makefile's `HL_TARGET` has `enable_ponds`, and `tile` stays at its default of 28.
   - The ingest maps those rows by variant name, or by the manifests' app basename
-    `resnet_pond`. `--commands` records it RV only (`bundle_modes`) on every point: the
-    1-input ones (addon2) and, since 2026-10-30, the five 2-input ones, where it pairs
-    with resnet_agg's RV cells in `two_level_*` (/aha addon4, aha-08). Its static cells
-    on the 1-input points output all zeros and stay gaps; static on the 2-input points
-    is untried. Don't `--app-map resnet_pond_agg=resnet_agg`: they are different code.
+    `resnet_pond`. RV is on every point: the 1-input ones (addon2) and, since
+    2026-10-30, the five 2-input ones, where it pairs with resnet_agg's RV cells in
+    `two_level_*` (/aha addon4, aha-08). Static, whose 1-input cells once output all
+    zeros, came in the 2026-11-23 zip on the same six configs (7 cells, all PASS, every
+    tile exact), so `--commands` records it in both modes and `tab:exploration_applications`
+    and `tab:ul_perf` count it (2026-11-25). Don't `--app-map resnet_pond_agg=resnet_agg`:
+    they are different code.
   - addon4 (aha-08, 2026-10-31; `/aha/sweep_out/app_bundles_thesis_dp_addon4.tgz`): four
     of the five 2-input cells are bit-accurate, all at 177,697 ns (the same as on the
     1-input points, so the pond's reduction sets the pace, not the MEM tile), with 7 MEM /
@@ -121,9 +123,10 @@ The text's other axes (dims, ScheduleGenerator duration) have no design points.
   `single_level_app` (resnet_pond_agg/resnet_agg, matmul_pond_agg/matmul_agg) on every
   design point, from the RV results; a cell without a result is drawn as an ×. There
   are no pond design points (no `DESIGNS_TWO_LEVEL`).
-  - A pair need not do the same work: resnet_agg runs a tile=14 kernel (~11.7k ns) and
-    resnet_pond_agg the whole 28×28 image (2352 words, ~178k ns; aha-08 2026-10-30). So
-    performance is wall time per output word and energy is per output word.
+  - Performance is wall time per output word and energy is per output word. The ResNet
+    pair does the same work, 2352 output words each (resnet_agg ~11.7k ns, resnet_pond_agg
+    ~178k ns; aha-08 2026-10-30), but differs in schedule and input file: resnet_agg runs
+    with EXT=mat, resnet_pond_agg with the default png.
 - The app figures show the 16-bit design points only (`generators.APP_DATA_WIDTH`,
   user 2026-11-18), with performance as wall time (kernel cycles × the design point's
   clock period), and have no utilization panel.

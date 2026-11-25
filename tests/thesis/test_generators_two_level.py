@@ -102,7 +102,8 @@ def test_energy_needs_the_clock_and_output_words(apps_root, ctx, tmp_path):
 
 
 def test_performance_and_energy_are_per_output_word(apps_root, ctx, tmp_path, monkeypatch):
-    # a tile=14 kernel against the whole 28x28 image: 4x the words in ~15x the cycles
+    # synthetic word counts that differ (4x the words in ~15x the cycles), so a per-run
+    # value would differ from the per-word one
     _cell(apps_root, "d", "rv", "resnet_agg", synth_power_w=0.02, total_cycles=11661,
           clock_period_ps=1000.0, output_words=588, output_per_cycle=588 / 11661)
     _cell(apps_root, "d", "rv", "resnet_pond_agg", level="two", synth_power_w=0.01,

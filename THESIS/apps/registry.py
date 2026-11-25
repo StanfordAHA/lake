@@ -153,10 +153,12 @@ APPS: list[AppSpec] = [
     # app with the reduction innermost, accumulated in the PE-tile pond, the output
     # channels a loop and HL_TARGET -enable_ponds (its Makefile), at the default
     # tile=28. addon2 recorded it RV on the two 1-input points (garnet mflowgen/CLAUDE.md
-    # "Add-ons"); static outputs all zeros there, so those two cells are gaps (user
-    # 2026-10-29). RV on the five 2-input points too, so every point where resnet_agg
-    # maps has both levels for the two_level_* figures (user 2026-10-30); static there
-    # is untried; RV fw4_dw32 sp fails in clockwork and is a gap (addon4, 2026-10-31).
+    # "Add-ons"), and RV on the five 2-input points too, so every point where resnet_agg
+    # maps has both levels for the two_level_* figures (user 2026-10-30); RV fw4_dw32 sp
+    # fails in clockwork and is a gap (addon4, 2026-10-31). Static, which once output
+    # all zeros on the 1-input points, is in the 2026-11-23 app power zip on the same six
+    # configs (7 cells, all PASS with every tile exact), so it records in both modes;
+    # the two_level_* figures still read RV only.
     # Recorded from an identical copy (manifest app probe_1fa8/resnet_pond);
     # in H2H thesis since ff1435830. No app env: its bundles record app_env {} and ran
     # with hardware_targets.mk's default EXT=png, bit-accurate (unlike resnet_agg's
@@ -168,7 +170,6 @@ APPS: list[AppSpec] = [
             r"PE Tile pond",
             "Double Buffer, Accumulation (pond)",
             level="two",
-            bundle_modes="rv",
             single_level_app="resnet_agg"),
 
 ]

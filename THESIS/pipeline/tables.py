@@ -62,6 +62,34 @@ def _find_design_row(df: pd.DataFrame, dp) -> pd.Series | None:
     return hits.iloc[0]
 
 
+def _by_width(designs) -> list[list[tuple]]:
+    """``designs`` as one tile each, grouped by data width: the first design point's
+    (the baseline's) width first, then the others ascending; a group keeps the
+    design_points order. A design point whose static tile (``garnet_config``) an
+    earlier one already has is not a row of its own: it joins that one as
+    ``(dp, [dp and its repeats])`` (mem_fw4_dw16_sc8k_sp2x2 is the baseline's tile).
+    Only rows of one width compare (user 2026-11-25)."""
+    from ..apps.garnet_configs import garnet_config
+
+    tiles: dict[str, tuple] = {}
+    for dp in designs:
+        tiles.setdefault(garnet_config(dp, "static") or dp.id, (dp, []))[1].append(dp)
+    rows = list(tiles.values())
+    widths = sorted({dp.data_width for dp, _ in rows},
+                    key=lambda w: (w != rows[0][0].data_width, w))
+    return [[r for r in rows if r[0].data_width == w] for w in widths]
+
+
+def _grouped(groups, render) -> list[str]:
+    """The table body lines: ``render(dp, same)`` per row, a \\midrule between groups."""
+    lines = []
+    for i, group in enumerate(groups):
+        if i:
+            lines.append(r"\midrule")
+        lines.extend(render(dp, same) for dp, same in group)
+    return lines
+
+
 # ---- tab:ul_ppa_summary ----------------------------------------------------
 
 
@@ -84,16 +112,16 @@ def emit_ul_ppa_summary(df: pd.DataFrame, outpath: Path, memtile: pd.DataFrame |
     ``tile_sweep.load()`` of thesis_dse): each design point's static thesis tile, synth
     level, at its own clock. Std-cell area and timing are absolute; under SRAM_NDA the
     values that include the SRAM macros (tile area, active power) are relative to the
-    first design point (the baseline). ``df`` (the standalone builds, which predate the
-    final run and lack one design point) is no longer read."""
+    first design point (the baseline), as Fig. single_level_pareto (a) normalizes. One
+    row per tile, grouped by data width (``_by_width``). ``df`` (the standalone builds,
+    which predate the final run and lack one design point) is no longer read."""
     from ..apps.design_points import DESIGNS_SINGLE_LEVEL
     from .tile_figures import SRAM_NDA
 
     if not DESIGNS_SINGLE_LEVEL:
         raise MissingDataError("DESIGNS_SINGLE_LEVEL is empty — populate it first")
 
-    rows = [(dp, _memtile_power_row(memtile, dp)) for dp in DESIGNS_SINGLE_LEVEL]
-    base = rows[0][1]
+    base = _memtile_power_row(memtile, DESIGNS_SINGLE_LEVEL[0])
     rel = SRAM_NDA
     if rel and base is None:
         raise MissingDataError(f"no thesis_dse row for the baseline {DESIGNS_SINGLE_LEVEL[0].id}")
@@ -113,25 +141,28 @@ def emit_ul_ppa_summary(df: pd.DataFrame, outpath: Path, memtile: pd.DataFrame |
     ]
     lines = [r"\begin{tabular}{lrrrrr}", r"\toprule", " & ".join(header) + r" \\", r"\midrule"]
     missing = []
-    for dp, t in rows:
+
+    def render(dp, _same) -> str:
+        t = _memtile_power_row(memtile, dp)
         if t is None:
             missing.append(dp.id)
-            lines.append(" & ".join([_fmt(dp.display)] + ["--"] * 5) + r" \\")
-            continue
+            return " & ".join([_fmt(dp.display)] + ["--"] * 5) + r" \\"
         area = t.get("syn_std", float("nan")) + t.get("syn_sram", float("nan"))
         power = float(t["synth_active_total_power"])
         mhz = t.get("clock_mhz")
         if pd.isna(mhz) and pd.notna(t.get("clock_period_ps")):
             mhz = 1e6 / float(t["clock_period_ps"])
         b_area = base.get("syn_std", float("nan")) + base.get("syn_sram", float("nan")) if rel else 1
-        lines.append(" & ".join([
+        return " & ".join([
             _fmt(dp.display),
             cell(t.get("syn_std"), lambda v: f"{v / 1000:.2f}"),
             cell(area, (lambda v: f"{v / b_area:.2f}") if rel else (lambda v: f"{v / 1000:.2f}")),
             f"{power / float(base['synth_active_total_power']):.2f}" if rel else f"{power * 1000:.3g}",
             cell(mhz, lambda v: f"{v:.0f}"),
             cell(t.get("tile_synth_wns_ps", t.get("syn_wns_ps")), lambda v: f"{v:.1f}"),
-        ]) + r" \\")
+        ]) + r" \\"
+
+    lines += _grouped(_by_width(DESIGNS_SINGLE_LEVEL), render)
     lines.extend([r"\bottomrule", r"\end{tabular}"])
     body = "\n".join(lines) + "\n"
     if missing:
@@ -145,7 +176,9 @@ def emit_ul_ppa_summary(df: pd.DataFrame, outpath: Path, memtile: pd.DataFrame |
 
 
 def emit_ul_design_points(df: pd.DataFrame, outpath: Path) -> None:
-    """One row per DesignPoint axis (config identity + roundtrip status)."""
+    """One row per tile of the single-level design points (config identity + roundtrip
+    status), grouped by data width (``_by_width``). A tile in two experiments (the
+    baseline) lists both."""
     from ..apps.design_points import DESIGNS_SINGLE_LEVEL
 
     if not DESIGNS_SINGLE_LEVEL:
@@ -161,19 +194,21 @@ def emit_ul_design_points(df: pd.DataFrame, outpath: Path) -> None:
         " & ".join(header) + r" \\",
         r"\midrule",
     ]
-    for dp in DESIGNS_SINGLE_LEVEL:
-        cells = [
+
+    def render(dp, same) -> str:
+        return " & ".join([
             _fmt(dp.id),
-            _fmt(dp.experiment),
+            _fmt(", ".join(dict.fromkeys(d.experiment for d in same))),
             _fmt(dp.fetch_width),
             _fmt(dp.storage_cap_bytes),
             _fmt(dp.data_width),
             _fmt(dp.in_ports),
             _fmt(dp.out_ports),
             _fmt(dp.dual_port) if dp.dual_port is not None else "--",
-            _fmt(dp.roundtrip_validated),
-        ]
-        lines.append(" & ".join(cells) + r" \\")
+            _fmt(all(d.roundtrip_validated for d in same)),
+        ]) + r" \\"
+
+    lines += _grouped(_by_width(DESIGNS_SINGLE_LEVEL), render)
     lines.extend([r"\bottomrule", r"\end{tabular}"])
 
     outpath.parent.mkdir(parents=True, exist_ok=True)
@@ -192,18 +227,22 @@ def _span(values: pd.Series, fmt) -> str:
     return lo if lo == hi else f"{lo}--{hi}"
 
 
-def emit_ul_perf(df: pd.DataFrame, outpath: Path, mode: str = "static") -> None:
+def emit_ul_perf(df: pd.DataFrame, outpath: Path, mode: str = "static",
+                 data_width: int | None = None) -> None:
     """One row per app of the mode's app results (``apps_query``): the UL
     memories it places (``tile_count``), output words per cycle and kernel
     cycles, each a range over the design points it ran on. Apps that record
-    nothing in the mode (``bundle_blocked``, ``bundle_modes``) are left out."""
+    nothing in the mode (``bundle_blocked``, ``bundle_modes``) are left out. With
+    ``data_width``, the "N of M design points" note counts the tiles (distinct
+    configs) of that width only; ``df`` should hold that width's rows only."""
     from ..apps import garnet_configs as gc
     from ..apps.design_points import DESIGNS_SINGLE_LEVEL
     from ..apps.registry import APPS
 
     if df.empty:
         raise MissingDataError(f"no {mode} app results")
-    n_configs = len({gc.garnet_config(dp, mode) for dp in DESIGNS_SINGLE_LEVEL} - {None})
+    n_configs = len({gc.garnet_config(dp, mode) for dp in DESIGNS_SINGLE_LEVEL
+                     if data_width is None or dp.data_width == data_width} - {None})
     header = ["Application", "UL memories", "Output words per cycle", "Total runtime (cycles)", "Notes"]
     lines = [
         r"\begin{tabular}{lcccl}",

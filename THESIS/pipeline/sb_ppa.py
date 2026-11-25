@@ -19,7 +19,7 @@ children, by canal's instance names (canal/circuit.py):
   regs       REG_T*: the 40 track (pipeline) registers, a flip-flop register in static
              and a depth-2 FIFO (FifoRegWrapper fifo_only) in RV
   muxes      MUX_SB_*, RMUX_*, mux_aoi_*: output and register-bypass muxes (RV: + valid)
-  config     config_reg_*: configuration registers (RV: + per-mux enables, FIFO init)
+  config_regs  config_reg_*: configuration registers (RV: + per-mux enables, FIFO init)
   fan_in     *_fan_in (InclusiveNodeFanout): the fork's ready reduction, a producer is
              ready when every enabled sink that selects it is
   fanout     *_FANOUT (ExclusiveNodeFanout): ready back to an SB mux from its register or
@@ -61,8 +61,8 @@ OUT = REPO_ROOT / "THESIS" / "data" / "sb_ppa" / "sb_area.csv"
 MODES = {"sharectr_portcg_thesis": "static", "nofp_portcg_thesis_rv": "rv"}
 _ROW = re.compile(r"^( *)(\S+)\s+(\S+)\s+(\d+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*$")
 _SB_KIDS = [("regs", r"REG_T\d+_\w+_B\d+"), ("muxes", r"(MUX_SB_\w+|RMUX_\w+|mux_aoi_\w+)"),
-            ("config", r"config_reg_\d+"), ("fan_in", r"\w+_fan_in"), ("fanout", r"\w+_FANOUT"),
-            ("ands", r"and\d*_inst\d+")]
+            ("config_regs", r"config_reg_\d+"), ("fan_in", r"\w+_fan_in"),
+            ("fanout", r"\w+_FANOUT"), ("ands", r"and\d*_inst\d+")]
 PARTS = [name for name, _ in _SB_KIDS] + ["other"]
 
 
@@ -173,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(args.out, index=False)
     cols = ["tile", "mode", "data_width", "tile_area", "sb_area", "regs", "regs_dw_each", "muxes",
-            "config", "fork_area", "pd_ready_ands"]
+            "config_regs", "fork_area", "pd_ready_ands"]
     print(df[cols].round(1).to_string(index=False), file=sys.stderr)
     print(f"-> {args.out}", file=sys.stderr)
     return 0

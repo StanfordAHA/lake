@@ -756,8 +756,10 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
 
 def ul_perf(ctx: GenContext, outpath: Path) -> None:
     """Per-app UL memories, output rate and runtime over the single-level design
-    points: the static app results, every app of the run (the pond matmul too)."""
-    tables.emit_ul_perf(_load_apps_or_miss(required_col="total_cycles", level=None), outpath)
+    points: the static app results, every app of the run (the pond apps too), on the
+    APP_DATA_WIDTH (16-bit) design points only (user 2026-11-25)."""
+    tables.emit_ul_perf(_at_width(_load_apps_or_miss(required_col="total_cycles", level=None)),
+                        outpath, data_width=APP_DATA_WIDTH)
 
 
 def _li(gen):
@@ -778,11 +780,11 @@ single_level_energy_efficiency_LI = _li(single_level_energy_efficiency)
 # ---- two_level_*: each two-level app against its single-level counterpart ----
 # A pond app and the same computation without the pond (AppSpec.single_level_app),
 # side by side on every design point: what the second level (the PE-tile pond) buys
-# (user 2026-10-30). RV only: resnet_pond_agg records RV only, and the no-pond matmul
-# maps in neither mode. A missing bar is drawn as an ×: no bit-accurate result there.
-# A pair need not do the same work (resnet_agg runs a tile=14 kernel, resnet_pond_agg
-# the whole 28x28 image; aha-08 2026-10-30), so performance and energy are per output
-# word.
+# (user 2026-10-30). RV only: static resnet_pond_agg came only with the 2026-11-23 zip,
+# and the no-pond matmul maps in neither mode. A missing bar is drawn as an ×: no
+# bit-accurate result there. Performance and energy are per output word. The ResNet
+# pair does the same work (2352 output words each) but differs in schedule and input
+# file (resnet_agg EXT=mat, resnet_pond_agg the default png).
 TWO_LEVEL_MODE = "rv"
 _LEVEL_LABELS = {"single": "Single level (MEM tiles)", "two": "Two level (+ PE-tile pond)"}
 

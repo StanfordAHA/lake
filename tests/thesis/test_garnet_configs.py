@@ -154,16 +154,19 @@ def test_mode_and_port_filters_skip_configs():
     assert len(jobs["gaussian"]) == 4 and not any(c.startswith("#") for c in jobs["gaussian"])
 
 
-def test_resnet_pond_records_rv_on_every_point():
+def test_resnet_pond_records_both_modes_on_every_point():
     # garnet mflowgen/CLAUDE.md "Add-ons": addon2 recorded resnet_pond_agg RV on the two
-    # 1-input points, where resnet_agg cannot map; the 2-input points pair it with resnet_agg
+    # 1-input points, where resnet_agg cannot map; the 2-input points pair it with
+    # resnet_agg. Static came with the 2026-11-23 zip on the same configs.
     jobs, _ = gc.bundle_commands(DESIGNS_SINGLE_LEVEL, [by_id("resnet_pond_agg")], list(gc.MODES),
                                  "thesis", "/b", "/t", "/p.json")
-    assert jobs["resnet_pond"][0] == "# resnet_pond_agg: rv only"
+    assert not any(c.startswith("#") for c in jobs["resnet_pond"])
     cfgs = [w[w.index("--config") + 1] for w in map(shlex.split, jobs["resnet_pond"]) if "--config" in w]
-    assert len(cfgs) == 7 and all(c.endswith("_nofp_portcg_thesis_rv") for c in cfgs)
+    rv = [c for c in cfgs if c.endswith("_nofp_portcg_thesis_rv")]
+    assert len(cfgs) == 14 and len(rv) == 7
     assert {"fw2_dw16_sc2048_sp_in1_out1_vc2_nofp_portcg_thesis_rv",
-            "fw1_dw16_sc4096_dp_in1_out1_nofp_portcg_thesis_rv"} < set(cfgs)
+            "fw1_dw16_sc4096_dp_in1_out1_nofp_portcg_thesis_rv",
+            "fw1_dw16_sc4096_dp_in1_out1_sharectr_portcg_thesis"} < set(cfgs)
     assert gc.app_map()["resnet_pond"] == "resnet_pond_agg"  # the manifests' probe_1fa8/resnet_pond
     # its bundles record app_env {} (EXT defaults to png), unlike resnet_agg's EXT=mat
     assert not any("--env" in c for c in jobs["resnet_pond"])

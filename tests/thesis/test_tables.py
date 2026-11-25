@@ -147,14 +147,29 @@ def test_ul_ppa_summary_raises_without_the_baseline(tmp_path):
         tables.emit_ul_ppa_summary(_fake_extractor_df(), tmp_path / "x.tex", _fake_memtile(skip=same))
 
 
-def test_ul_ppa_summary_row_count_matches_designs(tmp_path):
+def test_by_width_one_tile_each_baseline_width_first():
+    from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
+    groups = tables._by_width(DESIGNS_SINGLE_LEVEL)
+    assert [g[0][0].data_width for g in groups] == [16, 8, 32]
+    assert all(dp.data_width == g[0][0].data_width for g in groups for dp, _ in g)
+    (base, same), *rest = groups[0]
+    assert base is DESIGNS_SINGLE_LEVEL[0]
+    # the MEM fw4 dw16 8KB point is the baseline's tile: it joins the baseline row
+    assert [d.id for d in same] == ["port_fw4_dw16_sc8k_sp2x2", "mem_fw4_dw16_sc8k_sp2x2"]
+    assert sum(len(g) for g in groups) == len(DESIGNS_SINGLE_LEVEL) - 1
+
+
+def test_ul_ppa_summary_one_row_per_tile_grouped_by_width(tmp_path):
     from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
     out = tmp_path / "ppa.tex"
     tables.emit_ul_ppa_summary(_fake_extractor_df(), out, _fake_memtile())
-    data_lines = [ln for ln in out.read_text().splitlines()
-                  if ln.endswith(r" \\") and not ln.strip().startswith("%")]
-    # 1 header row + N design rows
-    assert len(data_lines) == 1 + len(DESIGNS_SINGLE_LEVEL)
+    lines = out.read_text().splitlines()
+    data_lines = [ln for ln in lines if ln.endswith(r" \\") and not ln.strip().startswith("%")]
+    # 1 header row + one row per tile (the baseline's repeat dropped)
+    assert len(data_lines) == 1 + len(DESIGNS_SINGLE_LEVEL) - 1
+    assert "MEM fw4 dw16 8KB SP 2x2 &" not in out.read_text()
+    # a rule under the header and between the three widths
+    assert lines.count(r"\midrule") == 3
 
 
 def test_ul_ppa_summary_raises_when_no_designs(tmp_path, monkeypatch):
@@ -187,11 +202,21 @@ def test_ul_perf_one_row_per_app_with_ranges(tmp_path):
     assert row["Camera Pipeline 2x2"].endswith(r"& 0.978 & 12,562 & 1 of 7 design points; 28x16 array \\")
     assert "PE-tile pond" in row["Matrix Multiply (pond)"]
     assert row["Unsharp"] == r"Unsharp & -- & -- & -- & 0 of 7 design points \\"
-    # matmul_agg is blocked and resnet_pond_agg records RV only: not in the static table
-    assert "Matrix Multiply &" not in out.read_text() and "ResNet block (pond)" not in row
+    # matmul_agg is blocked: not in the table; resnet_pond_agg records in both modes
+    assert "Matrix Multiply &" not in out.read_text()
+    assert row["ResNet block (pond)"].endswith(r"& 0 of 7 design points; PE-tile pond \\")
     rv = tmp_path / "perf_rv.tex"
     tables.emit_ul_perf(_app_rows(), rv, mode="rv")
     assert "ResNet block (pond) &" in rv.read_text()
+
+
+def test_ul_perf_counts_the_tiles_of_one_width(tmp_path):
+    # 16-bit: the baseline, 2 KB SP 1x1, 4 KB DP 1x1 and 4 KB DP 2x2 (MEM fw4 dw16 8KB
+    # is the baseline's tile)
+    out = tmp_path / "perf.tex"
+    tables.emit_ul_perf(_app_rows(), out, data_width=16)
+    row = {ln.split(" & ")[0]: ln for ln in out.read_text().splitlines() if " & " in ln}
+    assert row["Gaussian"].endswith(r"& 2 of 4 design points \\")
 
 
 def test_ul_perf_raises_without_results(tmp_path):
@@ -202,13 +227,17 @@ def test_ul_perf_raises_without_results(tmp_path):
 # ---------- emit_ul_design_points ------------------------------------------
 
 
-def test_ul_design_points_writes_one_row_per_design(tmp_path):
+def test_ul_design_points_writes_one_row_per_tile_by_width(tmp_path):
     from THESIS.apps.design_points import DESIGNS_SINGLE_LEVEL
     tables.emit_ul_design_points(_fake_extractor_df(), tmp_path / "dp.tex")
     body = (tmp_path / "dp.tex").read_text()
     for dp in DESIGNS_SINGLE_LEVEL:
-        # id may contain underscores that get LaTeX-escaped.
-        assert dp.id.replace("_", r"\_") in body or dp.id in body
+        # id may contain underscores that get LaTeX-escaped; the baseline's repeat has no row
+        assert (dp.id.replace("_", r"\_") in body) == (dp.id != "mem_fw4_dw16_sc8k_sp2x2"), dp.id
+    rows = [ln.split(" & ") for ln in body.splitlines() if ln.endswith(r" \\")][1:]
+    assert rows[0][:2] == [r"port\_fw4\_dw16\_sc8k\_sp2x2", r"PORT\_EXP, MEMORY\_EXP"]
+    assert [r[4] for r in rows] == ["16"] * 4 + ["8"] + ["32"] * 2
+    assert body.splitlines().count(r"\midrule") == 3
 
 
 def test_ul_design_points_marks_roundtrip_validated(tmp_path):
@@ -239,14 +268,16 @@ def test_exploration_applications_lists_every_recorded_app(tmp_path):
 
 
 def test_exploration_applications_memory_tiles_per_mode(tmp_path):
+    pond = pd.DataFrame([{"app_id": "resnet_pond_agg", "config": "a", "tile_count": 5}])
+    static = pd.concat([_app_rows(), pond])
     rv = _app_rows().assign(tile_count=lambda d: d["tile_count"] - 1)
-    rv = pd.concat([rv, pd.DataFrame([{"app_id": "resnet_pond_agg", "config": "a", "tile_count": 5}])])
-    body, row = _apps_table(tmp_path, rv=rv)
+    rv = pd.concat([rv, pond.assign(tile_count=4)])
+    body, row = _apps_table(tmp_path, static=static, rv=rv)
     cells = {k: v.removesuffix(r" \\").split(" & ") for k, v in row.items()}
     assert cells["Gaussian"][2:] == ["2--3", "1--2", "Line Buffer"]
     assert cells["Matrix Multiply (pond)"][2:4] == ["4", "3"]
-    # resnet_pond_agg records ready/valid only: its static cell is "--" with no TODO
-    assert cells["ResNet block (pond)"][2:4] == ["--", "5"]
+    # resnet_pond_agg records in both modes (static since the 2026-11-23 zip)
+    assert cells["ResNet block (pond)"][2:4] == ["5", "4"]
     # Unsharp has no results in either mode: blank, and called out in a comment
     assert cells["Unsharp"][2:4] == ["--", "--"]
     assert body.startswith("% TODO: no app results for ") and "unsharp_agg (static)" in body

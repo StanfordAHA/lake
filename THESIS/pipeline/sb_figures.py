@@ -111,7 +111,7 @@ def interconnect_fifo_replace_ff(ctx, outpath: Path) -> None:
 
 # (column, label, color) stacked bottom to top; "rest" = everything else in the SB
 FORK_PARTS = [("regs", "Track registers", SERIES[0]), ("muxes", "Muxes", SERIES[2]),
-              ("config", "Configuration", MUTED), ("fork_area", "Fork logic", SERIES[1]),
+              ("config_regs", "Configuration", MUTED), ("fork_area", "Fork logic", SERIES[1]),
               ("rest", "Other", "#c9c8c0")]
 FORK_SPLIT = [("fan_in", "Ready reduction", SERIES[1]), ("valid", "Valid gating", "#f4a582"),
               ("loopbacks", "Core-output loopbacks", "#fbd3c0")]
@@ -122,7 +122,7 @@ def _fork_parts(df: pd.DataFrame) -> pd.DataFrame:
     connection boxes, loopbacks) added to the switch box they belong to."""
     d = df.copy()
     d["total"] = d["sb_area"] + d["tile_valid_ands"] + d["loopbacks"]
-    d["rest"] = d["total"] - d["regs"] - d["muxes"] - d["config"] - d["fork_area"]
+    d["rest"] = d["total"] - d["regs"] - d["muxes"] - d["config_regs"] - d["fork_area"]
     d["valid"] = d["valid_ands"] + d["tile_valid_ands"]
     return d
 
