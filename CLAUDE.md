@@ -192,11 +192,15 @@ dw16 8KB points are one config). The user's final data set is unpacked in
 **Re-ingested 2026-11-23** from `../thesis_final_data_11_23/` (same zip name, 121 rows, 135
 `results.json`, the earlier 89 unchanged): it adds the addon6 rows below and static
 `resnet_pond_agg`; only `single_level_pareto` changed.
+**Re-ingested 2026-11-26** from `../thesis_final_data_11_26/` (177 rows, 191 `results.json`,
+the earlier 135 unchanged): it adds the six addon8 points; again only `single_level_pareto`
+changed.
 The figures draw each distinct config once and an × where an app has no result.
-`DESIGNS_PARETO_ONLY` (user 2026-11-19): four more dw16 2x2 points from the addon6 bundles
-(2 KB DP, fw4 4 KB SP, fw2 8 KB SP, fw2 8 KB DP). The ingest maps them; only
-`single_level_pareto` draws them (diamonds), every other figure and table drops them
-(`THESIS/apps/CGRA_APP_POWER.md` §3).
+`DESIGNS_PARETO_ONLY` (user 2026-11-19): ten more dw16 points, four 2x2 ones from the addon6
+bundles (2 KB DP, fw4 4 KB SP, fw2 8 KB SP, fw2 8 KB DP) and six from addon8 (fw8 8 KB SP
+2x2 and 4x4, fw4 2 KB DP 4x4, fw2 4 KB and 8 KB SP 1x1, fw4 16 KB SP 2x2). The ingest maps
+them; only `single_level_pareto` draws them (diamonds), every other figure and table drops
+them (`THESIS/apps/CGRA_APP_POWER.md` §3).
 Apps (`registry.APPS`, user 2026-10-25): the 4 image apps, matmul single level
 (`matmul_agg`, blocked: the no-pond `matmul_rvtry3 sched=1` does not map on 16x16) and
 two level (`matmul_pond_agg`, pond accumulation; `level="two"`, not in `single_level_*`),

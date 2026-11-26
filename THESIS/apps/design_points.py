@@ -103,12 +103,12 @@ DESIGNS_SINGLE_LEVEL: list[DesignPoint] = [
 ]
 
 
-# Four more 16-bit points, recorded in the addon6 app bundles (2026-11-18). Only the
+# More 16-bit points, recorded in the addon6 app bundles (2026-11-18). Only the
 # app ingest and the single-level Pareto figure read them (user 2026-11-19, via session
 # app_power_pipeclean); the per-app figures and tables keep DESIGNS_SINGLE_LEVEL.
-# Each varies one parameter of a DESIGNS_SINGLE_LEVEL point: capacity (2 KB DP, 4 KB SP,
-# 8 KB DP) or fetch width (fw2 8 KB SP, which runs its 2+2 Ports at half rate: 2 SRAM
-# words per cycle).
+# The first four each vary one parameter of a DESIGNS_SINGLE_LEVEL point: capacity (2 KB
+# DP, 4 KB SP, 8 KB DP) or fetch width (fw2 8 KB SP, which runs its 2+2 Ports at half
+# rate: 2 SRAM words per cycle).
 DESIGNS_PARETO_ONLY: list[DesignPoint] = [
     DesignPoint(
         id="mem_fw2_dw16_sc2k_dp2x2",
@@ -137,6 +137,52 @@ DESIGNS_PARETO_ONLY: list[DesignPoint] = [
         experiment="MEMORY_EXP", sweep_group="addon6",
         fetch_width=2, storage_cap_bytes=8192, data_width=16,
         in_ports=2, out_ports=2, dual_port=True,
+    ),
+    # Six more, recorded in the addon8a/b/c app bundles (2026-11-24, session
+    # app_power_pipeclean; power in the 2026-11-26 zip): fetch width (fw8 8 KB SP 2x2),
+    # port count (fw8 8 KB SP 4x4, fw4 2 KB DP 4x4), 1x1 capacity (fw2 4 KB and 8 KB SP)
+    # and 16 KB. resnet_agg needs 2 MEM inputs, so the 1x1 points have no ResNet result.
+    DesignPoint(
+        id="port_fw8_dw16_sc8k_sp2x2",
+        display="PORT fw8 dw16 8KB SP 2x2",
+        experiment="PORT_EXP", sweep_group="addon8",
+        fetch_width=8, storage_cap_bytes=8192, data_width=16,
+        in_ports=2, out_ports=2, dual_port=False,
+    ),
+    DesignPoint(
+        id="mem_fw8_dw16_sc8k_sp4x4",
+        display="MEM fw8 dw16 8KB SP 4x4",
+        experiment="MEMORY_EXP", sweep_group="addon8",
+        fetch_width=8, storage_cap_bytes=8192, data_width=16,
+        in_ports=4, out_ports=4, dual_port=False,
+    ),
+    DesignPoint(
+        id="mem_fw4_dw16_sc2k_dp4x4",
+        display="MEM fw4 dw16 2KB DP 4x4",
+        experiment="MEMORY_EXP", sweep_group="addon8",
+        fetch_width=4, storage_cap_bytes=2048, data_width=16,
+        in_ports=4, out_ports=4, dual_port=True,
+    ),
+    DesignPoint(
+        id="mem_fw2_dw16_sc4k_sp1x1",
+        display="MEM fw2 dw16 4KB SP 1x1",
+        experiment="MEMORY_EXP", sweep_group="addon8",
+        fetch_width=2, storage_cap_bytes=4096, data_width=16,
+        in_ports=1, out_ports=1, dual_port=False,
+    ),
+    DesignPoint(
+        id="mem_fw2_dw16_sc8k_sp1x1",
+        display="MEM fw2 dw16 8KB SP 1x1",
+        experiment="MEMORY_EXP", sweep_group="addon8",
+        fetch_width=2, storage_cap_bytes=8192, data_width=16,
+        in_ports=1, out_ports=1, dual_port=False,
+    ),
+    DesignPoint(
+        id="mem_fw4_dw16_sc16k_sp2x2",
+        display="MEM fw4 dw16 16KB SP 2x2",
+        experiment="MEMORY_EXP", sweep_group="addon8",
+        fetch_width=4, storage_cap_bytes=16384, data_width=16,
+        in_ports=2, out_ports=2, dual_port=False,
     ),
 ]
 

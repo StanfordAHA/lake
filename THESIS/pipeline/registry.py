@@ -264,7 +264,8 @@ COMPONENT_CHARACTERIZATION = [
 # ---------------------------------------------------------------------------
 # Ch. 5 Application exploration figures: garnet whole-CGRA app power of the final run
 # (cgra_app_power_thesis_dp, ingested 2026-11-16 with THESIS.apps.cgra_power_ingest;
-# re-ingested 2026-11-23 with the addon6 rows, earlier cells unchanged).
+# re-ingested 2026-11-23 and 2026-11-26 with the addon6 and addon8 rows, earlier cells
+# unchanged).
 # ---------------------------------------------------------------------------
 EXPLORATION_APPS = [
     Entry("single_level_power", "fig:single_level_power",
@@ -305,9 +306,10 @@ EXPLORATION_APPS = [
                 "not comparable, and a width with one tile (8-bit) is left out (user "
                 "2026-11-23). (b) per app relative to the baseline design point, then the "
                 "geometric mean over the apps that ran on both; area = the tiles with "
-                "a placed core only, not route-only ones. Also the 4 DESIGNS_PARETO_ONLY "
-                "points (addon6 bundles), which no other figure shows (user 2026-11-19); "
-                "their app power is in since the 2026-11-23 ingest."),
+                "a placed core only, not route-only ones. Also the 10 DESIGNS_PARETO_ONLY "
+                "points (addon6 and addon8 bundles), which no other figure shows (user "
+                "2026-11-19); their app power is in since the 2026-11-23 and 2026-11-26 "
+                "ingests. A * marks a point with fewer apps in (b) than the baseline."),
     # Each two-level app against its single-level counterpart on every design point
     # (user 2026-10-30), not a sweep of two-level design points.
     Entry("two_level_power", "fig:two_level_power",

@@ -176,6 +176,15 @@ def test_a_design_point_keeps_its_color_in_every_figure():
     assert "mem_fw4_dw16_sc8k_sp2x2" not in colors  # drawn as the baseline
 
 
+def test_pareto_only_points_each_get_their_own_color():
+    """The DESIGNS_PARETO_ONLY points (diamonds) outnumber SERIES, so they go on to
+    _MORE_SERIES instead of repeating a diamond's color."""
+    from THESIS.apps.design_points import DESIGNS_PARETO_ONLY
+    colors = generators._design_colors()
+    extra = [colors[d.id] for d in DESIGNS_PARETO_ONLY]
+    assert len(set(extra)) == len(extra) == 10
+
+
 def test_energy_efficiency_gates_on_power(apps_root, empty_ctx, tmp_path):
     # Everything except power.
     _write_pass_cell(apps_root, "d", "a", total_cycles=100, utilization=0.5,

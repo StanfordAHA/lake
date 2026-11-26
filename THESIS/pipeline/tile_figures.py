@@ -1078,13 +1078,14 @@ def _style_handles(metric: str, prefix: bool = False) -> list:
     return hs
 
 
-def _fit_legend(fig, entries: list, title, y: float, below: bool = False):
+def _fit_legend(fig, entries: list, title, y: float, below: bool = False,
+                fontsize: float | None = None):
     """A legend above the figure (lower left at figure coords (0, y)), or below it
     (upper left at (0, y)), in the fewest rows that fit the figure's width, its
-    columns as even as those rows allow."""
+    columns as even as those rows allow. ``fontsize`` overrides legend.fontsize."""
     r, width = fig.canvas.get_renderer(), fig.bbox.width
     kw = dict(title=title, loc="upper left" if below else "lower left", bbox_to_anchor=(0, y),
-              columnspacing=0.7,
+              columnspacing=0.7, fontsize=fontsize,
               handlelength=1.3, handletextpad=0.4, borderaxespad=0.1, alignment="left")
     nc = len(entries)
     while nc > 1:
@@ -1108,9 +1109,10 @@ def _is_key(h) -> bool:
     return c is not None and matplotlib.colors.to_hex(c) in (MUTED, INK)
 
 
-def _legend_above(ax, handles=None, labels=None, title=None):
+def _legend_above(ax, handles=None, labels=None, title=None, fontsize=None):
     """Legend above the whole figure: the data series (with ``title``) over the gray
-    key (active/idle, y ∝ x, ...), each in as many columns as fit the width."""
+    key (active/idle, y ∝ x, ...), each in as many columns as fit the width, at
+    ``fontsize`` (default legend.fontsize)."""
     if handles is None:
         handles, labels = ax.get_legend_handles_labels()
     elif labels is None:
@@ -1123,7 +1125,7 @@ def _legend_above(ax, handles=None, labels=None, title=None):
     entries = [(handles[i], labels[i]) for i in order]
     is_key = [_is_key(h) for h, _ in entries]
     fig.tight_layout()
-    _ABOVE[fig] = [_fit_legend(fig, group, ttl, 1.0)
+    _ABOVE[fig] = [_fit_legend(fig, group, ttl, 1.0, fontsize=fontsize)
                    for group, ttl in (([e for e, k in zip(entries, is_key) if k], None),
                                       ([e for e, k in zip(entries, is_key) if not k], title))
                    if group]

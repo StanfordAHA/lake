@@ -461,15 +461,24 @@ def _at_width(df: pd.DataFrame) -> pd.DataFrame:
     return df[~df["design_id"].isin(other)]
 
 
+# Two more colors for the DESIGNS_PARETO_ONLY points, which outnumber SERIES (10 vs 8)
+_MORE_SERIES = ["#8b5a2b", "#17becf"]
+
+
 def _design_colors() -> dict[str, str]:
     """Each design point's bar color: its place among all the design points, so a
     design point keeps its color whichever of them a figure shows (and matches the
-    Pareto figure). The DESIGNS_PARETO_ONLY points come after the others, so they
-    reuse colors from the top of SERIES; the Pareto figure draws them as diamonds."""
-    from ..apps.design_points import DESIGNS_ALL
+    Pareto figure). The DESIGNS_PARETO_ONLY points come after the others and continue
+    around SERIES, then _MORE_SERIES, so no two of them share a color; the Pareto
+    figure draws them as diamonds, which keeps them apart from the circles."""
+    from ..apps.design_points import DESIGNS_ALL, DESIGNS_SINGLE_LEVEL
     from .tile_figures import SERIES
-    return {d: SERIES[i % len(SERIES)]
-            for i, (d, _) in enumerate(_app_designs({x.id for x in DESIGNS_ALL}))}
+    designs = _app_designs({x.id for x in DESIGNS_ALL})
+    n = len(_app_designs({x.id for x in DESIGNS_SINGLE_LEVEL}))
+    k = n % len(SERIES)
+    more = SERIES[k:] + SERIES[:k] + _MORE_SERIES
+    return {d: SERIES[i % len(SERIES)] if i < n else more[(i - n) % len(more)]
+            for i, (d, _) in enumerate(designs)}
 
 
 def _missing_mark(ax, xs, fontsize: float) -> None:
@@ -707,6 +716,7 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
     ringed, and a width with a single tile is left out (``_drop_lone_widths``). Colors
     follow the per-app bar figures (``_design_colors``). It also shows the
     DESIGNS_PARETO_ONLY points, as diamonds (user 2026-11-19)."""
+    from matplotlib.lines import Line2D
     from ..apps.design_points import DESIGNS_ALL, DESIGNS_PARETO_ONLY
     from . import tile_sweep
     from .tile_figures import FULL_W, INK2, MUTED, SERIES, _ax_style, _legend_above, _save
@@ -718,8 +728,11 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
         if df.empty:
             raise MissingDataError(f"no {mode} app results on a {data_width}-bit design point")
     pts = _design_ppa(df)
+    # a point with fewer apps in (b) than the baseline gets a mark, explained in the key
     n_base = pts[0][2]
-    notes = {d: "" if n == n_base else f" ({n} of {n_base} apps in b)" for d, _, n, _ in pts}
+    marks = dict(zip(sorted({n for _, _, n, _ in pts if n != n_base}, reverse=True),
+                     ["*", "†", "‡", "§"]))
+    notes = {d: marks.get(n, "") for d, _, n, _ in pts}
     notes[tiles[0][0]] = " (baseline)"
     colors = _design_colors()
     diamonds = {d.id for d in DESIGNS_PARETO_ONLY}
@@ -732,9 +745,11 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
     handles = {}
     for ax, (title, xlabel, ylabel, higher, xy) in zip(axes, panels):
         for d, label, x, y in xy:
+            # circles over diamonds: a diamond's corners still show around a circle
             handles[label] = ax.scatter(x, y, s=50, color=colors.get(d, SERIES[0]),
                                         marker="D" if d in diamonds else "o",
-                                        edgecolor="white", linewidth=0.6, zorder=3,
+                                        edgecolor="white", linewidth=0.6,
+                                        zorder=3 if d in diamonds else 4,
                                         label=label + notes.get(d, ""))
         for front in _fronts_by_width(xy, higher).values():
             # rings mark the front, so a one-point front still shows
@@ -750,7 +765,10 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
     labels = list(dict.fromkeys([label for _, label, *_ in tiles]
                                 + [label for _, label, *_ in pts]))
     hs = [handles[label] for label in labels] + [line]
-    _legend_above(axes[0], hs, [h.get_label() for h in hs])
+    hs += [Line2D([], [], ls="", color=MUTED, label=f"{m} {n} of {n_base} apps in (b)")
+           for n, m in marks.items()]
+    # 9 pt fits three columns of 17 design points (9.5 pt needs two)
+    _legend_above(axes[0], hs, [h.get_label() for h in hs], fontsize=9)
     _save(fig, outpath)
 
 

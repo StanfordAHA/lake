@@ -270,7 +270,26 @@ earlier cells are unchanged in every value (only `garnet` and `source_path` diff
 the four `DESIGNS_PARETO_ONLY` points (39 cells: 5 apps each, static and RV, minus RV
 camera on fw2 8 KB SP) and static `resnet_pond_agg` on six configs (7 cells; the two-level
 figures are RV only, so nothing draws them). Regenerated, every app figure and table but
-`single_level_pareto` came out byte-identical. What the figures
+`single_level_pareto` came out byte-identical.
+
+**Re-ingested 2026-11-26** with the addon8 rows (user's `thesis_final_data_20261126.zip`,
+md5 4460c7b1, unpacked in `../thesis_final_data_11_26/`; garnet 68588a42, POWER_ONLY run):
+the same zip name, now 177 rows, 28,155/28,155 tiles exact, 191 `results.json`. Same
+command on the new path. The 135 earlier cells are unchanged in every value (only `garnet`
+and `source_path` differ); the zip's other four parts are byte-identical to 11-23's. New:
+the six addon8 `DESIGNS_PARETO_ONLY` points (56 cells: the 5 single-level apps, static and
+RV, minus `resnet_agg` on the two 1x1 points, which can't map 2 MEM writers on 1 input
+Port). Every output word count equals the baseline's. Kernel cycles equal the baseline's
+except:
+- `resnet_agg` on both fw8 points (8 KB SP 2x2 and 4x4): static 13,327 (baseline 12,495),
+  RV 11,580 (11,661).
+- static `camera_pipeline_agg` on both fw2 1x1 points (4 KB, 8 KB): 12,657 (12,562), as on
+  the addon6 fw2 points. RV camera runs at full rate there (12,364).
+The bundles were recorded with two clockwork builds: the static fw8 8 KB SP 4x4
+`unsharp_agg` cell with clockwork lib md5 5d25de0d (clockwork cfcd281a, which stops static
+fw8 SP 4x4 from merging 5 SRAM streams), every other cell with ff7e5ad2. The 4x4 points'
+unsharp cells also needed MetaMapper 57ab013 (Mem with 2 outputs). Regenerated, every
+figure and table but `single_level_pareto` came out pixel-identical. What the figures
 show (2026-11-16):
 - `two_level_*` ResNet: the pond version uses far fewer tiles (7 MEM / 23 PE vs 26 MEM /
   52 PE; area about 0.3x) but delivers about 15x fewer output words per cycle (0.013 vs
@@ -316,13 +335,21 @@ Caveats:
   route-only tiles; no figure plots it.
 - **Pareto-only design points** (`design_points.DESIGNS_PARETO_ONLY`, user 2026-11-19):
   fw2 dw16 2 KB DP, fw4 dw16 4 KB SP, fw2 dw16 8 KB SP and fw2 dw16 8 KB DP, all 2x2,
-  recorded in the addon6 bundles. The ingest maps them like the others (it reads
+  recorded in the addon6 bundles; since 2026-11-26 also the six addon8 points: fw8 8 KB SP
+  2x2, fw8 8 KB SP 4x4, fw4 2 KB DP 4x4, fw2 4 KB SP 1x1, fw2 8 KB SP 1x1 and fw4 16 KB SP
+  2x2, all dw16. The ingest maps them like the others (it reads
   `DESIGNS_ALL`); only `single_level_pareto` shows them, as diamonds. Every other figure
   and table drops their rows (`generators._drop_pareto_only`). Their app power is in since
   2026-11-23: panel (b), static, puts fw4 4 KB SP on the 16-bit front with fw2 2 KB SP 1x1
   (0.92x area, 0.98x power). Gap: camera on fw2 8 KB SP deadlocks in RV, so that point has
   no RV camera result, and RV gaussian/harris/unsharp run about 1.5x slower there (static
   runs them at full rate); no RV Pareto exists, so no figure shows either.
+  With addon8 (2026-11-26), panel (b)'s static 16-bit front is fw2 2 KB SP 1x1 -> fw4
+  4 KB SP 2x2 -> fw8 8 KB SP 2x2 (1.05x area, 0.977x power); the 4x4 points use no fewer
+  Memory Tiles, so they cost area (1.18-1.19x) and stay off it. Panel (a)'s 16-bit front
+  ends at fw4 2 KB DP 4x4 (9.6 GB/s at 1.45x tile area). The ten diamonds get their own
+  colors (`generators._MORE_SERIES` after SERIES), and a point with fewer apps in (b) than
+  the baseline gets a * that the key explains.
 - **SRAM area is drawn in µm².** `single_level_area` stacks SRAM area absolute, while the
   tile figures show SRAM numbers relative (`tile_figures.SRAM_NDA`).
 

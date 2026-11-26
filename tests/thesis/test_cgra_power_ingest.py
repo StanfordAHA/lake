@@ -15,7 +15,7 @@ from THESIS.apps import cgra_power_ingest as ing
 
 STATIC = "fw4_dw16_sc8192_sp_in2_out2_vc2_sharectr_portcg_thesis"
 RV = "fw4_dw16_sc8192_sp_in2_out2_vc2_nofp_portcg_thesis_rv"
-UNMAPPED = "fw4_dw16_sc16384_sp_in2_out2_vc2_sharectr_portcg_thesis"  # not a design point
+UNMAPPED = "fw4_dw16_sc32768_sp_in2_out2_vc2_sharectr_portcg_thesis"  # not a design point
 # a DESIGNS_PARETO_ONLY point: ingested like the others (user 2026-11-19)
 PARETO_ONLY = "fw2_dw16_sc8192_sp_in2_out2_vc2_sharectr_portcg_thesis"
 
@@ -125,7 +125,7 @@ def test_unmapped_design_and_app_are_skipped_unless_kept(tmp_path):
     assert any("no design point with this geometry" in n for n in notes)
     assert any("app conv_3_3 not in registry.APPS" in n for n in notes)
     kept = _by_dir(ing.build_results(ing._Tree(out), keep_unmapped=True)[0])
-    unmapped = "fw4_dw16_sc16384_sp_in2_out2_vc2__static__thesis/gaussian_agg"
+    unmapped = "fw4_dw16_sc32768_sp_in2_out2_vc2__static__thesis/gaussian_agg"
     assert unmapped in kept and kept[unmapped]["in_design_set"] is False
     assert "port_fw4_dw16_sc8k_sp2x2__static__thesis/conv_3_3" in kept
     mapped = ing.build_results(ing._Tree(out), apps=ing.gc.app_map({"conv_3_3": "conv"}))[0]
