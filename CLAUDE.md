@@ -199,8 +199,14 @@ The figures draw each distinct config once and an × where an app has no result.
 `DESIGNS_PARETO_ONLY` (user 2026-11-19): ten more dw16 points, four 2x2 ones from the addon6
 bundles (2 KB DP, fw4 4 KB SP, fw2 8 KB SP, fw2 8 KB DP) and six from addon8 (fw8 8 KB SP
 2x2 and 4x4, fw4 2 KB DP 4x4, fw2 4 KB and 8 KB SP 1x1, fw4 16 KB SP 2x2). The ingest maps
-them; only `single_level_pareto` draws them (diamonds), every other figure and table drops
-them (`THESIS/apps/CGRA_APP_POWER.md` §3).
+them; only `single_level_pareto` draws them (diamonds), and its alternative below, every
+other figure and table drops them (`THESIS/apps/CGRA_APP_POWER.md` §3).
+`single_level_pareto_capacity` (`fig:pareto_single_level_capacity`, user 2026-11-26) is the
+same comparison at 16 bits with one Pareto front per SRAM capacity instead of per data width:
+(a) draws every comparable tile of the sweep (`generators._capacity_tiles`: 29 static gated
+vc2 6-dim tiles, 1-32 KB, 14 of them design points), (b) the 16-bit design points labeled by
+fetch width and Ports. Both figures are in main.tex with a `\todo` to keep one (the user
+picks later).
 Apps (`registry.APPS`, user 2026-10-25): the 4 image apps, matmul single level
 (`matmul_agg`, blocked: the no-pond `matmul_rvtry3 sched=1` does not map on 16x16) and
 two level (`matmul_pond_agg`, pond accumulation; `level="two"`, not in `single_level_*`),

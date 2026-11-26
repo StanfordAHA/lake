@@ -426,3 +426,64 @@ def test_pareto_keeps_points_nothing_beats_on_both_axes():
     pts = [(1.0, 1.0), (2.0, 3.0), (1.5, 0.5), (3.0, 2.0), (0.5, 0.8)]
     assert generators._pareto(pts, higher=True) == [(0.5, 0.8), (1.0, 1.0), (2.0, 3.0)]
     assert generators._pareto(pts, higher=False) == [(0.5, 0.8), (1.5, 0.5)]
+
+
+# ---------- single_level_pareto_capacity --------------------------------------
+
+
+def _tile_row(name, cap, fw, n_in, n_out, dp, area, mode="static"):
+    return {"garnet_config": name, "config": name, "mode": mode, "storage_capacity": cap,
+            "vec_width": fw, "in_ports": n_in, "out_ports": n_out, "dual_port": dp,
+            "syn_std": area / 2, "syn_sram": area / 2, "clock_mhz": 500.0,
+            "clock_period_ps": 2000.0, "synth_active_total_power": 0.01}
+
+
+def _capacity_sweep():
+    """The baseline tile, a 2 KB design point, a 1 KB fw1 tile without app results and
+    four tiles that are not comparable: another data width, ready/valid, a fetch buffer
+    of 4 and a 1-dimension IterationDomain."""
+    g = "_sharectr_portcg_thesis"
+    return pd.DataFrame([
+        _tile_row("fw4_dw16_sc8192_sp_in2_out2_vc2" + g, 8192, 4, 2, 2, False, 100.0),
+        _tile_row("fw2_dw16_sc2048_sp_in1_out1_vc2" + g, 2048, 2, 1, 1, False, 50.0),
+        _tile_row("fw1_dw16_sc1024_dp_in1_out1" + g, 1024, 1, 1, 1, True, 60.0),
+        _tile_row("fw4_dw32_sc8192_sp_in2_out2_vc2" + g, 8192, 4, 2, 2, False, 120.0),
+        _tile_row("fw4_dw16_sc8192_sp_in2_out2_vc2_nofp_portcg_thesis_rv", 8192, 4, 2, 2,
+                  False, 110.0, mode="rv"),
+        _tile_row("fw4_dw16_sc8192_sp_in2_out2_vc4" + g, 8192, 4, 2, 2, False, 104.0),
+        _tile_row("fw1_dw16_sc8192_sp_in2_out2_dim1_me64" + g, 8192, 1, 2, 2, False, 90.0),
+    ])
+
+
+def test_capacity_tiles_are_the_comparable_16_bit_tiles():
+    """_capacity_tiles keeps the static 16-bit thesis tiles built like the design points,
+    with or without app results, area over the baseline's and peak bandwidth as panel (a)
+    of single_level_pareto computes it."""
+    t = generators._capacity_tiles(_capacity_sweep()).set_index("capacity")
+    assert list(t.index) == [1024, 2048, 8192]
+    assert t.loc[8192, "area"] == 1.0 and t.loc[8192, "design"] == "port_fw4_dw16_sc8k_sp2x2"
+    assert t.loc[2048, "area"] == 0.5 and t.loc[2048, "design"] == "mem_fw2_dw16_sc2k_sp1x1"
+    assert pd.isna(t.loc[1024, "design"]) and bool(t.loc[1024, "dual_port"])
+    assert t.loc[8192, "bw"] == pytest.approx(4 * 2 * 0.5)  # 2+2 Ports, 16 bit, 500 MHz
+    assert t.loc[1024, "bw"] == pytest.approx(2 * 2 * 0.5)  # fw1 dual-port: 1 + 1 words
+    with pytest.raises(MissingDataError, match="baseline"):
+        generators._capacity_tiles(_capacity_sweep().iloc[1:])
+
+
+def test_pareto_capacity_draws_one_front_per_capacity(apps_root, empty_ctx, tmp_path,
+                                                       monkeypatch):
+    """single_level_pareto_capacity: one front per capacity in each panel, (a) from
+    every comparable tile and (b) from the 16-bit design points' apps only."""
+    from THESIS.pipeline import tile_sweep
+    monkeypatch.setattr(tile_sweep, "load", lambda *a, **k: _capacity_sweep())
+    for d in ("port_fw4_dw16_sc8k_sp2x2", "mem_fw2_dw16_sc2k_sp1x1", "port_fw4_dw8_sc8k_sp2x2"):
+        _write_pass_cell(apps_root, d, "gaussian_agg", total_cycles=100, synth_power_w=0.01,
+                         clock_period_ps=1000.0, mem_tiles_placed=2, mem_tile_area_um2=1e3,
+                         pe_tiles_placed=2, pe_tile_area_um2=5e2)
+    fronts, real = [], generators._pareto
+    monkeypatch.setattr(generators, "_pareto",
+                        lambda pts, higher: fronts.append((higher, len(pts))) or real(pts, higher))
+    generators.single_level_pareto_capacity(empty_ctx, tmp_path / "c.pdf")
+    assert (tmp_path / "c.pdf").stat().st_size > 1000
+    # (a): 1, 2 and 8 KB, one tile each; (b): 2 and 8 KB, not the 8-bit point
+    assert fronts == [(True, 1), (True, 1), (True, 1), (False, 1), (False, 1)]

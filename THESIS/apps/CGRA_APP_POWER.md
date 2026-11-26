@@ -338,7 +338,8 @@ Caveats:
   recorded in the addon6 bundles; since 2026-11-26 also the six addon8 points: fw8 8 KB SP
   2x2, fw8 8 KB SP 4x4, fw4 2 KB DP 4x4, fw2 4 KB SP 1x1, fw2 8 KB SP 1x1 and fw4 16 KB SP
   2x2, all dw16. The ingest maps them like the others (it reads
-  `DESIGNS_ALL`); only `single_level_pareto` shows them, as diamonds. Every other figure
+  `DESIGNS_ALL`); only `single_level_pareto` (as diamonds) and its per-capacity
+  alternative `single_level_pareto_capacity` (2026-11-26) show them. Every other figure
   and table drops their rows (`generators._drop_pareto_only`). Their app power is in since
   2026-11-23: panel (b), static, puts fw4 4 KB SP on the 16-bit front with fw2 2 KB SP 1x1
   (0.92x area, 0.98x power). Gap: camera on fw2 8 KB SP deadlocks in RV, so that point has

@@ -18,7 +18,7 @@ python3 -m pytest --confcutdir=tests/thesis tests/thesis/
 | --- | --- |
 | `test_tables.py` | The 5 LaTeX table emitters in `THESIS/pipeline/tables.py`. |
 | `test_apps_query.py` | `THESIS/pipeline/apps_query.py`: loading `THESIS/data/apps/**/results.json` into a DataFrame, and the mode/fabric/pond filter. |
-| `test_generators_single_level.py` | The 5 `single_level_*` generators and their 5 `_LI` (RV) twins: real plots from fixture results, `MissingDataError` when data is missing, static/RV/stock rows kept apart. |
+| `test_generators_single_level.py` | The 5 `single_level_*` generators and their 5 `_LI` (RV) twins, and `single_level_pareto_capacity` (which tiles are comparable, one front per capacity): real plots from fixture results, `MissingDataError` when data is missing, static/RV/stock rows kept apart. |
 | `test_run_matrix.py` | `THESIS/apps/run_matrix.py`: config-line composition, dry-run, parsing summary + util files, PPA lookup, graceful failure. |
 | `test_run_roundtrip_sweep_sh.py` | `ASPLOS_EXP/run_roundtrip_sweep.sh`: `--app-dir`/`--testname` flags and per-line overrides (runs only the argument-parsing part of the script). |
 | `test_roundtrip_sim.py` | `parse_util_txt` in `pd/thesis/clockwork-roundtrip-common/run_roundtrip_sim.py`. |

@@ -772,6 +772,168 @@ def single_level_pareto(ctx: GenContext, outpath: Path, mode: str = "static",
     _save(fig, outpath)
 
 
+# The tiles single_level_pareto_capacity draws in (a): every static 16-bit thesis tile of
+# the final run built like the design points (gated, 6 dims, default extents, fetch buffer
+# capacity 2), with or without app results. fw1 tile names carry no vc.
+_CAPACITY_TILE = re.compile(r"fw\d+_dw16_sc\d+_(sp|dp)_in\d+_out\d+(_vc2)?_sharectr_portcg_thesis")
+
+
+def _capacity_tiles(memtile: pd.DataFrame | None, mode: str = "static") -> pd.DataFrame:
+    """One row per comparable 16-bit tile (``_CAPACITY_TILE``) of the tile sweep:
+    ``capacity`` (bytes), ``dual_port``, ``area`` (synthesis area with the SRAM macros
+    over the baseline's, as ``_tile_bandwidth``), ``bw`` (peak GB/s, the same formula)
+    and ``design`` (the 16-bit design point built from it, else None), by capacity."""
+    from ..apps.design_points import DESIGNS_ALL, DESIGNS_SINGLE_LEVEL
+    from ..apps.garnet_configs import garnet_config
+    base = tables._memtile_power_row(memtile, DESIGNS_SINGLE_LEVEL[0], mode)
+    if base is None:
+        raise MissingDataError("no tile-sweep row for the baseline design point "
+                               "(python3 -m THESIS.pipeline.tile_sweep <thesis_dse zip>)")
+    names = memtile["garnet_config"] if "garnet_config" in memtile else memtile["config"]
+    keep = names.astype(str).str.fullmatch(_CAPACITY_TILE.pattern) & (memtile["mode"] == mode)
+    df = memtile[keep].copy()
+    df["name"] = names[df.index]
+    df = df.dropna(subset=["syn_std", "syn_sram"]).drop_duplicates("name")
+    design: dict = {}
+    for d in DESIGNS_ALL:
+        if d.data_width == 16:
+            design.setdefault(garnet_config(d, mode, "thesis"), d.id)
+    mhz = df["clock_mhz"].fillna(1e6 / df["clock_period_ps"])
+    dp = df["dual_port"].astype(bool)
+    words = pd.concat([df["in_ports"] + df["out_ports"], df["vec_width"] * (1 + dp)],
+                      axis=1).min(axis=1)
+    out = pd.DataFrame({
+        "name": df["name"], "capacity": df["storage_capacity"].astype(int), "dual_port": dp,
+        "area": (df["syn_std"] + df["syn_sram"]) / float(base["syn_std"] + base["syn_sram"]),
+        "bw": words * 16 / 8 * mhz / 1000, "design": df["name"].map(design)})
+    return out.sort_values(["capacity", "bw", "area"]).reset_index(drop=True)
+
+
+def _label_points(ax, items, fontsize: float) -> None:
+    """Text ``s`` beside each (x, y, s) of ``items``, in ink: at the first of 16 spots
+    around the marker (near ones first) that overlaps no marker, earlier label or the
+    axes edge, else at the spot that overlaps least. Crowded points are placed first."""
+    import numpy as np
+    from .tile_figures import INK2
+    fig = ax.figure
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    pad = 3.5 * fig.dpi / 72  # a marker's half width, in pixels
+    marks = np.array([ax.transData.transform((x, y)) for x, y, _ in items])
+    taken = [(mx - pad, my - pad, mx + pad, my + pad) for mx, my in marks]
+    box = ax.get_window_extent(r)
+    spots = [(dx * k, dy * k, ha, va) for k in (1, 2.4) for dx, dy, ha, va in (
+        (5, 0, "left", "center"), (-5, 0, "right", "center"), (0, 5, "center", "bottom"),
+        (0, -5, "center", "top"), (4, 4, "left", "bottom"), (-4, 4, "right", "bottom"),
+        (4, -4, "left", "top"), (-4, -4, "right", "top"))]
+
+    def common(b, t):  # the area b shares with the box t = (x0, y0, x1, y1)
+        w = max(0, min(b.x1, t[2]) - max(b.x0, t[0]))
+        return w * max(0, min(b.y1, t[3]) - max(b.y0, t[1]))
+
+    def overlap(b):
+        outside = b.width * b.height - common(b, (box.x0, box.y0, box.x1, box.y1))
+        return sum(common(b, t) for t in taken) + 4 * outside
+
+    near = [int((np.hypot(*(marks - m).T) < 40 * fig.dpi / 72).sum()) for m in marks]
+    for k in sorted(range(len(items)), key=lambda k: -near[k]):
+        x, y, s = items[k]
+        best = None
+        for dx, dy, ha, va in spots:
+            t = ax.annotate(s, (x, y), xytext=(dx, dy), textcoords="offset points", ha=ha,
+                            va=va, fontsize=fontsize, color=INK2)
+            b = t.get_window_extent(r)
+            cost = overlap(b)
+            if best is None or cost < best[0]:
+                if best is not None:
+                    best[1].remove()
+                best = (cost, t, b)
+            else:
+                t.remove()
+            if cost == 0:
+                break
+        taken.append((best[2].x0, best[2].y0, best[2].x1, best[2].y1))
+
+
+def single_level_pareto_capacity(ctx: GenContext, outpath: Path, mode: str = "static") -> None:
+    """single_level_pareto with one Pareto front per SRAM capacity instead of one per data
+    width, at 16 bits (user 2026-11-26: capacity is something a tile offers that neither
+    axis shows; kept beside single_level_pareto until the user picks one). Color =
+    capacity, marker = single- or dual-port. (a) Every comparable 16-bit tile of the
+    sweep (``_capacity_tiles``): the design points large with a dark edge, the tiles
+    with synthesis results only small; bandwidth on a log axis, so its four levels are
+    evenly spaced. (b) The 16-bit design points' apps (``_design_ppa``, as
+    single_level_pareto's (b)), each labeled with its fetch width and Ports."""
+    from matplotlib.lines import Line2D
+    from matplotlib.ticker import FixedLocator, NullLocator
+    from ..apps.design_points import DESIGNS_ALL
+    from . import tile_sweep
+    from .tile_figures import FULL_W, INK, INK2, MUTED, SERIES, _ax_style, _legend_above, _save
+    tiles = _capacity_tiles(tile_sweep.load(), mode)
+    df = _load_apps_or_miss(required_col="synth_power_w", mode=mode, pareto_only=True)
+    by_id = {d.id: d for d in DESIGNS_ALL}
+    df = df[df["design_id"].isin({d for d, p in by_id.items() if p.data_width == 16})]
+    if df.empty:
+        raise MissingDataError(f"no {mode} app results on a 16-bit design point")
+    pts = _design_ppa(df)
+    n_base = pts[0][2]
+    caps = sorted(set(tiles["capacity"]) | {by_id[d].storage_cap_bytes for d, *_ in pts})
+    color = dict(zip(caps, SERIES))
+    apps = pd.DataFrame([{"design": d, "capacity": by_id[d].storage_cap_bytes,
+                          "dual_port": by_id[d].dual_port, "area": v["area"], "y": v["power"],
+                          "n": n, "label": "baseline" if i == 0 else
+                          f"fw{by_id[d].fetch_width} {by_id[d].in_ports}x{by_id[d].out_ports}"
+                          f"{'*' if n < n_base else ''}"}
+                         for i, (d, _, n, v) in enumerate(pts)])
+    tiles = tiles.rename(columns={"bw": "y"})
+    # stacked, each full width: (b)'s labels need the room (user 2026-11-26)
+    fig, axes = plt.subplots(2, 1, figsize=(FULL_W, 5.2))
+    panels = ((axes[0], tiles, True, "(a) Tile", "Tile area (× baseline)", "Peak bandwidth (GB/s)"),
+              (axes[1], apps, False, "(b) Applications", "Area used (× baseline)",
+               "Power (× baseline)"))
+    for ax, xy, higher, title, xlabel, ylabel in panels:
+        for cap, grp in xy.groupby("capacity"):
+            c = color[cap]
+            for _, p in grp.iterrows():
+                small = pd.isna(p["design"])
+                ax.scatter(p["area"], p["y"], s=22 if small else 46,
+                           marker="s" if p["dual_port"] else "o", color=c,
+                           edgecolor="white" if small else INK, linewidth=0.5 if small else 0.9,
+                           zorder=3 if small else 4)
+            # each capacity's front: rings mark it, so a one-point front still shows
+            ax.plot(*zip(*_pareto(list(zip(grp["area"], grp["y"])), higher)), color=c,
+                    linestyle="--", linewidth=1.1, marker="o", markersize=11,
+                    markerfacecolor="none", markeredgewidth=1.0, zorder=2)
+        ax.set_title(title, loc="left", fontsize=10.5, color=INK2)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        _ax_style(ax, xgrid=True)
+    ax = axes[0]
+    ax.set_yscale("log", base=2)
+    levels = sorted(set(tiles["y"].round(1)))
+    ax.yaxis.set_major_locator(FixedLocator(levels))
+    ax.yaxis.set_minor_locator(NullLocator())
+    ax.set_yticklabels([f"{v:g}" for v in levels])
+    ax.set_ylim(levels[0] / 1.35, levels[-1] * 1.35)
+    hs = [Line2D([], [], ls="", marker="o", markersize=7, color=color[c],
+                 label=f"{c // 1024} KB") for c in caps]
+    hs += [Line2D([], [], ls="", marker="o", markersize=7, color=MUTED, label="single-port"),
+           Line2D([], [], ls="", marker="s", markersize=7, color=MUTED, label="dual-port"),
+           Line2D([], [], ls="", marker="o", markersize=7, color=MUTED, markeredgecolor=INK,
+                  label="design point"),
+           Line2D([], [], ls="", marker="o", markersize=4.5, color=MUTED,
+                  label="tile only (a)"),
+           Line2D([], [], ls="--", marker="o", markersize=9, markerfacecolor="none",
+                  color=MUTED, label="Pareto front (per capacity)")]
+    fewer = sorted(set(apps["n"][apps["n"] < n_base]))
+    if fewer:
+        n = fewer[0] if len(fewer) == 1 else f"fewer than {n_base}"
+        hs.append(Line2D([], [], ls="", color=MUTED, label=f"* {n} of {n_base} apps"))
+    _legend_above(axes[0], hs, [h.get_label() for h in hs], fontsize=9)
+    _label_points(axes[1], list(zip(apps["area"], apps["y"], apps["label"])), fontsize=7.5)
+    _save(fig, outpath)
+
+
 def ul_perf(ctx: GenContext, outpath: Path) -> None:
     """Per-app UL memories, output rate and runtime over the single-level design
     points: the static app results, every app of the run (the pond apps too), on the

@@ -310,6 +310,19 @@ EXPLORATION_APPS = [
                 "points (addon6 and addon8 bundles), which no other figure shows (user "
                 "2026-11-19); their app power is in since the 2026-11-23 and 2026-11-26 "
                 "ingests. A * marks a point with fewer apps in (b) than the baseline."),
+    # The same comparison with one front per SRAM capacity instead of per data width, kept
+    # beside single_level_pareto until the user picks one (user 2026-11-26).
+    Entry("single_level_pareto_capacity", "fig:pareto_single_level_capacity",
+          "figures/single_level_pareto_capacity.pdf", "figure",
+          "16-bit design points with one Pareto front per SRAM capacity: (a) every comparable "
+          "tile's peak bandwidth vs tile area, (b) app power vs area",
+          "real", g.single_level_pareto_capacity,
+          notes="Alternative to single_level_pareto (user 2026-11-26: capacity is something a "
+                "tile offers that neither axis shows). (a) every static 16-bit thesis tile "
+                "built like the design points (generators._capacity_tiles: gated, 6 dims, "
+                "default extents, vc2; 29 tiles, 1-32 KB, 14 of them design points), the "
+                "design points outlined; (b) as single_level_pareto's (b), each point labeled "
+                "with its fetch width and Ports. Color = capacity, marker = single/dual-port."),
     # Each two-level app against its single-level counterpart on every design point
     # (user 2026-10-30), not a sweep of two-level design points.
     Entry("two_level_power", "fig:two_level_power",
