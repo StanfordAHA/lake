@@ -345,11 +345,12 @@ Caveats:
   no RV camera result, and RV gaussian/harris/unsharp run about 1.5x slower there (static
   runs them at full rate); no RV Pareto exists, so no figure shows either.
   With addon8 (2026-11-26), panel (b)'s static 16-bit front is fw2 2 KB SP 1x1 -> fw4
-  4 KB SP 2x2 -> fw8 8 KB SP 2x2 (1.05x area, 0.977x power); the 4x4 points use no fewer
-  Memory Tiles, so they cost area (1.18-1.19x) and stay off it. Panel (a)'s 16-bit front
-  ends at fw4 2 KB DP 4x4 (9.6 GB/s at 1.45x tile area). The ten diamonds get their own
-  colors (`generators._MORE_SERIES` after SERIES), and a point with fewer apps in (b) than
-  the baseline gets a * that the key explains.
+  4 KB SP 2x2 -> fw8 8 KB SP 2x2 (1.05x area, 0.977x power; it places the baseline's
+  tiles). The 4x4 points save a Memory Tile only on Unsharp (10 instead of 11) and their
+  tiles are 1.46-1.48x the baseline's, so they cost area (1.18-1.19x) and stay off it.
+  Panel (a)'s 16-bit front ends at fw4 2 KB DP 4x4 (9.6 GB/s at 1.46x tile area). The ten
+  diamonds get their own colors (`generators._MORE_SERIES` after SERIES), and a point with
+  fewer apps in (b) than the baseline gets a * that the key explains.
 - **SRAM area is drawn in µm².** `single_level_area` stacks SRAM area absolute, while the
   tile figures show SRAM numbers relative (`tile_figures.SRAM_NDA`).
 
